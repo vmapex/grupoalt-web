@@ -17,9 +17,15 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.post('/auth/login', { email, password })
+      // OAuth2PasswordRequestForm — envia como form-urlencoded com campo "username"
+      const form = new URLSearchParams()
+      form.append('username', email)
+      form.append('password', password)
+      const { data } = await api.post('/auth/login', form, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
       setAuth(data.access_token, data.user, data.empresas || [])
-      router.push('/dashboard')
+      router.push('/dashboard/caixa')
     } catch {
       setError('Email ou senha inválidos.')
     } finally {
