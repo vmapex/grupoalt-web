@@ -1,11 +1,17 @@
 "use client"
 import { useEffect, useRef } from 'react'
+import { useAuthStore } from '@/store/authStore'
 
 export default function CpCrPage() {
   const ref = useRef<HTMLDivElement>(null)
+  const { token, empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
+
+    const empresaId = empresaAtiva?.id || 1
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app'
+
     const html = `
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/dm-mono@4.5.14/index.css">
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/plus-jakarta-sans@8.0.0/index.css">
@@ -222,41 +228,53 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 <script>
 Chart.register(ChartDataLabels);
 
+const API = '${apiUrl}';
+const EMPRESA = ${empresaId};
+const TOKEN = '${token}';
+
 const fmt  = v => Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2)); };
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
-const CP_DATA = [
-  {favorecido:'Taipastur',   categoria:'Descarga',      vcto:'14/03/2026', valor:855.10,   status:'A VENCER'},
-  {favorecido:'Taipastur',   categoria:'Agregados',     vcto:'16/03/2026', valor:19266.00, status:'A VENCER'},
-  {favorecido:'Triad',       categoria:'Serv. Contab.', vcto:'16/03/2026', valor:3000.00,  status:'A VENCER'},
-  {favorecido:'Allianz',     categoria:'Seguro Carga',  vcto:'25/03/2026', valor:2147.60,  status:'A VENCER'},
-  {favorecido:'Bsoft',       categoria:'Software / TI', vcto:'25/03/2026', valor:1334.31,  status:'A VENCER'},
-  {favorecido:'LHC',         categoria:'Folha PJ',      vcto:'28/02/2026', valor:12000.00, status:'PAGO'},
-  {favorecido:'João Vitor',  categoria:'Folha PJ',      vcto:'20/02/2026', valor:750.00,   status:'PAGO'},
-  {favorecido:'Taipastur',   categoria:'Agregados',     vcto:'31/01/2026', valor:48591.00, status:'PAGO'},
-  {favorecido:'Flash App',   categoria:'Desp. Viagens', vcto:'10/11/2025', valor:2000.00,  status:'PAGO'},
-  {favorecido:'Cooper',      categoria:'Descarga',      vcto:'24/11/2025', valor:1175.00,  status:'PAGO'},
-  {favorecido:'Bsoft',       categoria:'Software / TI', vcto:'27/10/2025', valor:204.60,   status:'PAGO'},
-];
+// ── DATA (loaded from API) ───────────────────────────────────────────────────
+let CP_DATA = [];
+let CR_DATA = [];
 
-const CR_DATA = [
-  {favorecido:'Ramax Cachoeira', categoria:'Receita MI', vcto:'04/12/2025', valor:1900.00,  status:'RECEBIDO'},
-  {favorecido:'Ramax Cachoeira', categoria:'Receita MI', vcto:'04/12/2025', valor:17100.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'15/12/2025', valor:8500.00,  status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'07/01/2026', valor:1175.00,  status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'16/12/2025', valor:8700.00,  status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'17/12/2025', valor:18000.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'23/12/2025', valor:18500.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'29/12/2025', valor:2583.00,  status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'01/01/2026', valor:33600.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'05/01/2026', valor:13750.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Itariri',   categoria:'Receita MI', vcto:'06/01/2026', valor:7243.72,  status:'RECEBIDO'},
-  {favorecido:'Ramax Mato Grosso',categoria:'Receita ME',vcto:'08/03/2026', valor:22300.00, status:'ATRASADO'},
-  {favorecido:'Ramax Rondon',    categoria:'Receita MI', vcto:'17/02/2026', valor:29000.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Rondon',    categoria:'Receita MI', vcto:'20/02/2026', valor:29000.00, status:'RECEBIDO'},
-  {favorecido:'Ramax Rondon',    categoria:'Receita MI', vcto:'25/02/2026', valor:21700.00, status:'RECEBIDO'},
-];
+async function loadFromAPI() {
+  try {
+    const [cpRes, crRes] = await Promise.all([
+      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers: { Authorization: 'Bearer ' + TOKEN } }),
+      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers: { Authorization: 'Bearer ' + TOKEN } })
+    ]);
+    const cpJson = await cpRes.json();
+    const crJson = await crRes.json();
+
+    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.contas || cpJson.items || []);
+    const crArr = Array.isArray(crJson) ? crJson : (crJson.contas || crJson.items || []);
+
+    CP_DATA = cpArr.map(r => ({
+      favorecido: r.favorecido || r.nome_favorecido || '—',
+      categoria: r.categoria || r.codigo_categoria || '—',
+      vcto: r.data_vencimento || '—',
+      valor: r.valor || 0,
+      valor_pago: r.valor_pago || 0,
+      status: r.status || 'A VENCER'
+    }));
+
+    CR_DATA = crArr.map(r => ({
+      favorecido: r.favorecido || r.nome_favorecido || '—',
+      categoria: r.categoria || r.codigo_categoria || '—',
+      vcto: r.data_vencimento || '—',
+      valor: r.valor || 0,
+      valor_recebido: r.valor_recebido || 0,
+      status: r.status || 'A RECEBER'
+    }));
+
+    renderKPIs();
+    renderChart();
+  } catch(e) {
+    console.error('Erro ao carregar CP/CR:', e);
+  }
+}
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let activeTab  = 'CP';
@@ -651,8 +669,7 @@ function renderKPIs() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-renderKPIs();
-renderChart();
+loadFromAPI();
 </script>
 `
     const iframe = document.createElement('iframe')
@@ -660,7 +677,7 @@ renderChart();
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [])
+  }, [empresaAtiva, token])
 
-  return <div ref={ref} style={{ width:'100%', height:'100vh' }} />
+  return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }

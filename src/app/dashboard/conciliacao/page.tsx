@@ -1,11 +1,17 @@
 "use client"
 import { useEffect, useRef } from 'react'
+import { useAuthStore } from '@/store/authStore'
 
 export default function ConciliacaoPage() {
   const ref = useRef<HTMLDivElement>(null)
+  const { token, empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
+
+    const empresaId = empresaAtiva?.id || 1
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app'
+
     const html = `
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -206,10 +212,10 @@ body {
 
 <!-- KPIs -->
 <div class="kpis">
-  <div class="kpi"><div class="kl">Receita Bruta</div><div class="kn b">210,7K</div><div class="ks">Mar/26</div></div>
-  <div class="kpi"><div class="kl">Custos Variáveis</div><div class="kn r">154,3K</div><div class="ks">73,2% da RoB</div></div>
-  <div class="kpi"><div class="kl">Margem de Contribuição</div><div class="kn g">25,2K</div><div class="ks">12,0%</div></div>
-  <div class="kpi"><div class="kl">Saldo de Caixa</div><div class="kn a">5,9K</div><div class="ks">Posição atual</div></div>
+  <div class="kpi"><div class="kl">Total Conciliados</div><div class="kn g" id="kConcil">—</div><div class="ks" id="kConcilSub">Carregando...</div></div>
+  <div class="kpi"><div class="kl">Total Pendentes</div><div class="kn a" id="kPend">—</div><div class="ks" id="kPendSub">Carregando...</div></div>
+  <div class="kpi"><div class="kl">% Conciliação</div><div class="kn b" id="kPct">—</div><div class="ks">Do período</div></div>
+  <div class="kpi"><div class="kl">Saldo de Caixa</div><div class="kn a" id="kSaldo">—</div><div class="ks">Posição atual</div></div>
 </div>
 
 <!-- LAYOUT -->
@@ -219,45 +225,32 @@ body {
   <div class="charts-col">
 
     <div class="mini-grid">
-      <div class="card blue">
-        <div class="card-title">EBT2 (Resultado Final)</div>
-        <div class="card-val" style="color:var(--green)">+5,9K</div>
-        <div class="card-sub">+2,8% sobre RoB</div>
+      <div class="card green">
+        <div class="card-title">Conciliados no Mês</div>
+        <div class="card-val" style="color:var(--green)" id="cMesConcil">—</div>
+        <div class="card-sub" id="cMesConcilSub">Carregando...</div>
       </div>
-      <div class="card red">
-        <div class="card-title">TDCF (Deduções)</div>
-        <div class="card-val" style="color:var(--amber)">31,1K</div>
-        <div class="card-sub">14,8% da RoB</div>
+      <div class="card amber">
+        <div class="card-title">Pendentes no Mês</div>
+        <div class="card-val" style="color:var(--amber)" id="cMesPend">—</div>
+        <div class="card-sub" id="cMesPendSub">Carregando...</div>
       </div>
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">DRE — Cascata de resultado (Mar/26)</div>
-      <div class="bar-chart">
-        <div class="bar-wrap"><div class="bar" style="height:80px;background:rgba(56,189,248,0.5)"></div><div class="bar-label">RoB</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:12px;background:rgba(251,191,36,0.5)"></div><div class="bar-label">TDCF</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:68px;background:rgba(52,211,153,0.4)"></div><div class="bar-label">RL</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:58px;background:rgba(248,113,113,0.5)"></div><div class="bar-label">CV</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:10px;background:rgba(52,211,153,0.6)"></div><div class="bar-label">MC</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:34px;background:rgba(251,191,36,0.4)"></div><div class="bar-label">CF</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:35px;background:rgba(248,113,113,0.3)"></div><div class="bar-label">EBT1</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:35px;background:rgba(192,132,252,0.4)"></div><div class="bar-label">RNOP</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:8px;background:rgba(248,113,113,0.3)"></div><div class="bar-label">DNOP</div></div>
-        <div class="bar-wrap"><div class="bar" style="height:2px;background:rgba(52,211,153,0.8)"></div><div class="bar-label">EBT2</div></div>
+      <div class="chart-title">Heatmap de Conciliação — Últimos 5 meses</div>
+      <div id="heatmapArea" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">
+        Carregando dados...
       </div>
     </div>
 
     <div class="table-card">
       <table>
         <thead><tr>
-          <th>Indicador</th><th>Valor</th><th>% RoB</th><th>Status</th>
+          <th>Mês</th><th>Conciliados</th><th>Pendentes</th><th>% Concil.</th><th>Status</th>
         </tr></thead>
-        <tbody>
-          <tr><td>Receita Bruta (RoB)</td><td style="font-family:'DM Mono',monospace">210.752</td><td style="font-family:'DM Mono',monospace;color:var(--blue)">100%</td><td><span class="badge g">Base</span></td></tr>
-          <tr><td>Margem de Contribuição</td><td style="font-family:'DM Mono',monospace">25.232</td><td style="font-family:'DM Mono',monospace;color:var(--amber)">12,0%</td><td><span class="badge a">Atenção</span></td></tr>
-          <tr><td>Custo Fixo (CF)</td><td style="font-family:'DM Mono',monospace">90.480</td><td style="font-family:'DM Mono',monospace;color:var(--red)">42,9%</td><td><span class="badge r">Alto</span></td></tr>
-          <tr><td>RNOP</td><td style="font-family:'DM Mono',monospace">92.702</td><td style="font-family:'DM Mono',monospace;color:var(--green)">44,0%</td><td><span class="badge g">OK</span></td></tr>
-          <tr><td>Resultado Final (EBT2)</td><td style="font-family:'DM Mono',monospace">5.901</td><td style="font-family:'DM Mono',monospace;color:var(--green)">2,8%</td><td><span class="badge g">Positivo</span></td></tr>
+        <tbody id="monthTable">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -311,43 +304,142 @@ body {
 </div>
 
 <script>
+const API = '${apiUrl}';
+const EMPRESA = ${empresaId};
+const TOKEN = '${token}';
+
+const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2)); };
+
+async function loadConciliacao() {
+  try {
+    const [concRes, saldosRes] = await Promise.all([
+      fetch(API + '/empresas/' + EMPRESA + '/conciliacao/calendario', { headers: { Authorization: 'Bearer ' + TOKEN } }),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers: { Authorization: 'Bearer ' + TOKEN } })
+    ]);
+    const concData = await concRes.json();
+    const saldosJson = await saldosRes.json();
+
+    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.contas || saldosJson.saldos || []);
+    const saldoTotal = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
+    document.getElementById('kSaldo').textContent = fmtK(saldoTotal);
+
+    // concData pode ser um objeto com meses ou array
+    const meses = Array.isArray(concData) ? concData : (concData.meses || concData.calendario || concData.items || []);
+
+    let totalConcil = 0, totalPend = 0;
+
+    // Build month table
+    const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const tableRows = meses.map(m => {
+      const concil = m.conciliados || m.conciliado || 0;
+      const pend = m.pendentes || m.pendente || 0;
+      const total = concil + pend;
+      const pct = total > 0 ? Math.round(concil / total * 100) : 0;
+      totalConcil += concil;
+      totalPend += pend;
+      const mes = m.mes || m.month || m.periodo || '—';
+      const badge = pct >= 90 ? '<span class="badge g">OK</span>' :
+                    pct >= 70 ? '<span class="badge a">Atenção</span>' :
+                    '<span class="badge r">Baixo</span>';
+      return '<tr>' +
+        '<td>' + mes + '</td>' +
+        '<td style="font-family:DM Mono,monospace;color:var(--green)">' + concil + '</td>' +
+        '<td style="font-family:DM Mono,monospace;color:var(--amber)">' + pend + '</td>' +
+        '<td style="font-family:DM Mono,monospace;color:var(--blue)">' + pct + '%</td>' +
+        '<td>' + badge + '</td></tr>';
+    });
+    document.getElementById('monthTable').innerHTML = tableRows.length ? tableRows.join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Nenhum dado encontrado</td></tr>';
+
+    // KPIs
+    const totalAll = totalConcil + totalPend;
+    const pctGeral = totalAll > 0 ? Math.round(totalConcil / totalAll * 100) : 0;
+    document.getElementById('kConcil').textContent = totalConcil;
+    document.getElementById('kConcilSub').textContent = 'Lançamentos ok';
+    document.getElementById('kPend').textContent = totalPend;
+    document.getElementById('kPendSub').textContent = 'Precisam atenção';
+    document.getElementById('kPct').textContent = pctGeral + '%';
+
+    // Month cards
+    if (meses.length > 0) {
+      const lastMonth = meses[meses.length - 1];
+      const lc = lastMonth.conciliados || lastMonth.conciliado || 0;
+      const lp = lastMonth.pendentes || lastMonth.pendente || 0;
+      document.getElementById('cMesConcil').textContent = lc;
+      document.getElementById('cMesConcilSub').textContent = lastMonth.mes || 'Mês atual';
+      document.getElementById('cMesPend').textContent = lp;
+      document.getElementById('cMesPendSub').textContent = lastMonth.mes || 'Mês atual';
+    }
+
+    // Heatmap
+    buildHeatmap(meses);
+
+  } catch(e) {
+    console.error('Erro conciliação:', e);
+    document.getElementById('heatmapArea').textContent = 'Erro ao carregar: ' + e.message;
+  }
+}
+
+function buildHeatmap(meses) {
+  if (!meses.length) {
+    document.getElementById('heatmapArea').textContent = 'Sem dados para heatmap';
+    return;
+  }
+
+  // Build heatmap grid from dias data if available, otherwise from monthly totals
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;width:100%;padding:10px 0">';
+
+  meses.forEach(m => {
+    const concil = m.conciliados || m.conciliado || 0;
+    const pend = m.pendentes || m.pendente || 0;
+    const total = concil + pend;
+    const pct = total > 0 ? Math.round(concil / total * 100) : 0;
+    const mes = m.mes || m.month || m.periodo || '—';
+
+    // Color based on percentage
+    const color = pct >= 90 ? 'rgba(52,211,153,0.3)' :
+                  pct >= 70 ? 'rgba(251,191,36,0.3)' :
+                  pct >= 50 ? 'rgba(251,191,36,0.2)' :
+                  'rgba(248,113,113,0.3)';
+    const borderColor = pct >= 90 ? 'rgba(52,211,153,0.5)' :
+                        pct >= 70 ? 'rgba(251,191,36,0.5)' :
+                        'rgba(248,113,113,0.5)';
+
+    // If month has daily data
+    if (m.dias && Array.isArray(m.dias)) {
+      html += '<div style="margin-bottom:4px"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:DM Mono,monospace">' + mes + '</div>';
+      html += '<div style="display:flex;gap:2px;flex-wrap:wrap">';
+      m.dias.forEach(d => {
+        const dc = d.conciliados || d.conciliado || 0;
+        const dp = d.pendentes || d.pendente || 0;
+        const dt = dc + dp;
+        const dpct = dt > 0 ? Math.round(dc / dt * 100) : -1;
+        let bg = 'rgba(255,255,255,0.03)';
+        if (dpct >= 0) bg = dpct >= 90 ? 'rgba(52,211,153,0.4)' : dpct >= 50 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
+        const dia = d.dia || d.day || '';
+        html += '<div title="' + dia + ': ' + dc + ' concil / ' + dp + ' pend" style="width:14px;height:14px;border-radius:2px;background:' + bg + ';cursor:default"></div>';
+      });
+      html += '</div></div>';
+    } else {
+      // Monthly bar
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:4px 0">';
+      html += '<div style="font-size:9px;color:var(--muted);font-family:DM Mono,monospace;width:60px">' + mes + '</div>';
+      html += '<div style="flex:1;height:20px;background:rgba(255,255,255,0.03);border-radius:4px;overflow:hidden;position:relative;border:1px solid ' + borderColor + '">';
+      html += '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width 0.5s ease"></div>';
+      html += '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;font-family:DM Mono,monospace;color:var(--text)">' + pct + '% (' + concil + '/' + total + ')</div>';
+      html += '</div></div>';
+    }
+  });
+
+  html += '</div>';
+  document.getElementById('heatmapArea').innerHTML = html;
+}
+
 const FINANCIAL_CONTEXT = \`
 Você é o Claude, analista financeiro integrado ao dashboard da ALT MAX LOG.
 Responda SEMPRE em português brasileiro, de forma direta e profissional.
 Use emojis com moderação para facilitar leitura.
-
-DADOS FINANCEIROS ATUAIS (Março/2026):
-- Receita Bruta (RoB): R$ 210.752 (100%)
-- TDCF (deduções fiscais): R$ 31.169 (14,8%)
-- Receita Líquida (RL): R$ 179.583 (85,2%)
-- Custos Variáveis (CV): R$ 154.351 (73,2% da RoB)
-- Margem de Contribuição (MC): R$ 25.232 (12,0%)
-- Custo Fixo (CF): R$ 90.480 (42,9%)
-- EBT1 (antes NOP): -R$ 65.248 (-31,0%)
-- RNOP (receitas não operacionais): R$ 92.702 (44,0%)
-- DNOP (despesas não operacionais): R$ 21.553 (10,2%)
-- Resultado Final (EBT2): R$ 5.901 (2,8%)
-- Saldo de Caixa atual: R$ 5.901
-
-CONTAS A PAGAR EM ABERTO:
-- Taipastur Transportes: R$ 20.121 (Agregados + Descarga) — vence 16/03
-- Triad Assessoria: R$ 3.000 (Contabilidade) — vence 16/03  
-- Allianz Seguros: R$ 2.148 (Seguro Carga) — vence 25/03
-- Bsoft Internetworks: R$ 1.334 (Software) — vence 25/03
-Total CP em aberto: R$ 26.603
-
-CONTAS A RECEBER EM ABERTO:
-- Ramax Mato Grosso: R$ 22.300 (Atrasado desde 08/03) — CRÍTICO
-Total CR em aberto: R$ 22.300
-
-CONTEXTO DO NEGÓCIO:
-- Empresa de logística/transporte
-- 3 principais clientes: Ramax Itariri, Ramax Rondon, Ramax Cachoeira
-- Principal fornecedor: Taipastur (agregados — motoristas parceiros)
-- Negócio altamente dependente de RNOP (mútuos entre empresas do grupo)
-
-Seja conciso, prático e focado em ação. 
-Quando identificar riscos, sugira medidas concretas.
+Analise os dados de conciliação bancária e saldos exibidos no dashboard.
+Seja conciso, prático e focado em ação.
 Máximo 200 palavras por resposta, use listas quando ajudar.
 \`;
 
@@ -358,9 +450,10 @@ const suggestions = document.getElementById('suggestions');
 let isLoading = false;
 let history = [];
 
-// Mensagem inicial
+// Init
 window.onload = () => {
-  addMessage('assistant', \`Olá! Já carregei os dados financeiros da **ALT MAX LOG** referentes a **Março/2026**.\\n\\nPosso analisar resultados, identificar riscos, comparar indicadores e gerar resumos executivos. O que você gostaria de saber?\`);
+  loadConciliacao();
+  addMessage('assistant', \`Olá! Estou carregando os dados de conciliação da **ALT MAX LOG**.\\n\\nPosso analisar status de conciliação, identificar pendências e gerar resumos. O que você gostaria de saber?\`);
 };
 
 function addMessage(role, content) {
@@ -451,11 +544,11 @@ function sendSuggestion(q) {
 </script>
 `
     const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'width:100%;height:calc(100vh - 0px);border:none;display:block'
+    iframe.style.cssText = 'width:100%;height:calc(100vh - 48px);border:none;display:block'
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [])
+  }, [empresaAtiva, token])
 
-  return <div ref={ref} style={{ width:'100%', height:'100vh' }} />
+  return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }

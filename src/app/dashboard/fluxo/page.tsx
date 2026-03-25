@@ -1,11 +1,17 @@
 "use client"
 import { useEffect, useRef } from 'react'
+import { useAuthStore } from '@/store/authStore'
 
 export default function FluxoPage() {
   const ref = useRef<HTMLDivElement>(null)
+  const { token, empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
+
+    const empresaId = empresaAtiva?.id || 1
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app'
+
     const html = `
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/dm-mono@4.5.14/index.css">
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/plus-jakarta-sans@8.0.0/index.css">
@@ -279,9 +285,14 @@ input[type="date"]:focus{outline:none;border-color:rgba(56,189,248,0.4)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script>
 Chart.register(ChartDataLabels);
+
+const API = '${apiUrl}';
+const EMPRESA = ${empresaId};
+const TOKEN = '${token}';
+
 const fmtK=v=>{const a=Math.abs(v);return(v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2));};
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const SALDO_ATUAL=5901.01;
+let SALDO_ATUAL=0;
 
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 const toISO=d=>\`\${d.getFullYear()}-\${String(d.getMonth()+1).padStart(2,'0')}-\${String(d.getDate()).padStart(2,'0')}\`;
@@ -290,11 +301,9 @@ const parseDMY=s=>{const[d,m,y]=s.split('/').map(Number);return new Date(y,m-1,d
 
 document.getElementById('todayStr').textContent=fmtBR(TODAY);
 
-// Estado do horizonte
 let dateTo=new Date(TODAY);dateTo.setDate(dateTo.getDate()+30);
 document.getElementById('dtFim').value=toISO(dateTo);
 
-// ── PRESET ────────────────────────────────────────────────────────────────────
 function setHorizon(days, btn){
   document.querySelectorAll('.hz-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -304,12 +313,10 @@ function setHorizon(days, btn){
   renderAll();
 }
 
-// ── CUSTOM DATE — botão explícito ─────────────────────────────────────────────
 function applyCustomDate(){
   const v=document.getElementById('dtFim').value;
   if(!v){alert('Por favor selecione uma data.');return;}
-  // Parse sem problema de fuso: usa string diretamente
-  const parts=v.split('-').map(Number); // [yyyy, mm, dd]
+  const parts=v.split('-').map(Number);
   const nd=new Date(parts[0],parts[1]-1,parts[2]);
   nd.setHours(0,0,0,0);
   if(nd<TODAY){alert('A data final deve ser igual ou posterior a hoje.');return;}
@@ -318,27 +325,48 @@ function applyCustomDate(){
   renderAll();
 }
 
-// DATA
-const CP_ALL=[
-  {favorecido:'Taipastur',  categoria:'Agregados',    previsao:'16/03/2026',valor:855.10,  status:'A VENCER'},
-  {favorecido:'Taipastur',  categoria:'Agregados',    previsao:'16/03/2026',valor:19266.00,status:'A VENCER'},
-  {favorecido:'Triad',      categoria:'Serv. Contab.',previsao:'16/03/2026',valor:3000.00, status:'A VENCER'},
-  {favorecido:'Allianz',    categoria:'Seguro Carga', previsao:'25/03/2026',valor:2147.60, status:'A VENCER'},
-  {favorecido:'Bsoft',      categoria:'Software / TI',previsao:'25/03/2026',valor:1334.31, status:'A VENCER'},
-  {favorecido:'LHC',        categoria:'Folha PJ',     previsao:'28/04/2026',valor:12000.00,status:'A VENCER'},
-  {favorecido:'Taipastur',  categoria:'Agregados',    previsao:'30/04/2026',valor:52000.00,status:'A VENCER'},
-  {favorecido:'Allianz',    categoria:'Seguro Carga', previsao:'25/05/2026',valor:2147.60, status:'A VENCER'},
-  {favorecido:'LHC',        categoria:'Folha PJ',     previsao:'29/05/2026',valor:12000.00,status:'A VENCER'},
-  {favorecido:'Taipastur',  categoria:'Agregados',    previsao:'30/06/2026',valor:52000.00,status:'A VENCER'},
-];
-const CR_ALL=[
-  {favorecido:'Ramax Mato Grosso',categoria:'Receita ME',previsao:'09/03/2026',valor:22300.00,status:'ATRASADO'},
-  {favorecido:'Ramax Itariri',    categoria:'Receita MI',previsao:'15/04/2026',valor:78000.00,status:'A RECEBER'},
-  {favorecido:'Ramax Rondon',     categoria:'Receita MI',previsao:'20/04/2026',valor:31000.00,status:'A RECEBER'},
-  {favorecido:'Ramax Rondon',     categoria:'Receita MI',previsao:'22/05/2026',valor:31000.00,status:'A RECEBER'},
-  {favorecido:'Ramax Cachoeira',  categoria:'Receita MI',previsao:'10/06/2026',valor:24000.00,status:'A RECEBER'},
-  {favorecido:'Ramax Itariri',    categoria:'Receita MI',previsao:'15/07/2026',valor:82000.00,status:'A RECEBER'},
-];
+// DATA (loaded from API)
+let CP_ALL=[];
+let CR_ALL=[];
+
+async function loadFromAPI() {
+  try {
+    const [cpRes, crRes, saldosRes] = await Promise.all([
+      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers: { Authorization: 'Bearer ' + TOKEN } }),
+      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers: { Authorization: 'Bearer ' + TOKEN } }),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers: { Authorization: 'Bearer ' + TOKEN } })
+    ]);
+    const cpJson = await cpRes.json();
+    const crJson = await crRes.json();
+    const saldosJson = await saldosRes.json();
+
+    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.contas || cpJson.items || []);
+    const crArr = Array.isArray(crJson) ? crJson : (crJson.contas || crJson.items || []);
+    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.contas || saldosJson.saldos || []);
+
+    SALDO_ATUAL = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
+
+    CP_ALL = cpArr.map(r => ({
+      favorecido: r.favorecido || r.nome_favorecido || '—',
+      categoria: r.categoria || r.codigo_categoria || '—',
+      previsao: r.data_previsao || r.data_vencimento || '—',
+      valor: r.valor || 0,
+      status: r.status || 'A VENCER'
+    }));
+
+    CR_ALL = crArr.map(r => ({
+      favorecido: r.favorecido || r.nome_favorecido || '—',
+      categoria: r.categoria || r.codigo_categoria || '—',
+      previsao: r.data_previsao || r.data_vencimento || '—',
+      valor: r.valor || 0,
+      status: r.status || 'A RECEBER'
+    }));
+
+    renderAll();
+  } catch(e) {
+    console.error('Erro ao carregar fluxo:', e);
+  }
+}
 
 let chartType='bars';
 let charts={};
@@ -519,7 +547,7 @@ function updateRight(totCR,totCP,CP,CR){
     :'<div class="empty-state">Nenhuma previsão no horizonte</div>';
 }
 
-renderAll();
+loadFromAPI();
 </script>
 `
     const iframe = document.createElement('iframe')
@@ -527,7 +555,7 @@ renderAll();
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [])
+  }, [empresaAtiva, token])
 
-  return <div ref={ref} style={{ width:'100%', height:'100vh' }} />
+  return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }
