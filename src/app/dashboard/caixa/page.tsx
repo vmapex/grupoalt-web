@@ -22,10 +22,6 @@ export default function CaixaPage() {
 :root{--bg:#05091A;--surface:rgba(255,255,255,0.034);--border:rgba(255,255,255,0.07);--blue:#38BDF8;--green:#34D399;--red:#F87171;--amber:#FBBF24;--orange:#FB923C;--purple:#C084FC;--text:#F1F5F9;--muted:#64748B;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px;}
-.nav{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.97);position:sticky;top:0;z-index:20}
-.logo-name{font-family:'DM Mono',monospace;font-size:13px;color:#fff;letter-spacing:2px}
-.logo-tag{font-size:8px;color:var(--blue);letter-spacing:3px;margin-left:4px}
-.nav-r{display:flex;align-items:center;gap:8px}
 .period-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace}
 .fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:10px;padding:4px 8px;border-radius:7px;font-family:inherit}
 .fsel option{background:#0f172a}
@@ -109,12 +105,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 </head>
 <body>
 
-<div class="nav">
-  <div style="display:flex;align-items:baseline;gap:8px">
-    <span class="logo-name">ALT MAX</span><span class="logo-tag">PORTAL BI</span>
-    <span style="font-size:10px;color:var(--muted);margin-left:4px" id="navEmpresa">${empresaNome}</span>
-  </div>
-  <div class="nav-r">
+<div class="toolbar" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 20px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.97)">
     <button class="drill-btn active" id="btnQ" onclick="setLevel('quarterly')">Trimestral</button>
     <button class="drill-btn" id="btnM" onclick="setLevel('monthly')">Mensal</button>
     <button class="drill-btn" id="btnW" onclick="setLevel('weekly')">Semanal</button>
@@ -123,7 +114,6 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
       <option value="2026">2026</option>
       <option value="2025">2025</option>
     </select>
-  </div>
 </div>
 
 <div class="kpi-strip">

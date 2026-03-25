@@ -26,17 +26,6 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
   background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);
   background-size:48px 48px;}
 
-.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.95);position:sticky;top:0;z-index:20}
-.logo-name{font-family:'DM Mono',monospace;font-size:14px;color:#fff;letter-spacing:2px}
-.logo-tag{font-size:8px;color:var(--blue);letter-spacing:3px;margin-left:5px}
-.nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:8px;padding:3px}
-.ntab{padding:5px 12px;border-radius:6px;font-size:10px;color:var(--muted);cursor:pointer;transition:all 0.2s;border:none;background:transparent;font-family:inherit}
-.ntab:hover{color:var(--text)}.ntab.active{background:rgba(56,189,248,0.12);color:var(--blue);font-weight:600}
-.nav-right{display:flex;align-items:center;gap:8px}
-.period-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 11px;font-size:10px;font-family:'DM Mono',monospace;color:var(--muted)}
-.period-pill b{color:var(--text);font-weight:500}
-.emp-sel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:10px;padding:5px 10px;border-radius:7px;font-family:inherit}
-.emp-sel option{background:#0f172a}
 
 /* SUBTABS */
 .subtabs{display:flex;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.6)}
@@ -129,26 +118,15 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .kpi{animation:fadeUp 0.35s ease both}
 .kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}
 .kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}
+.loading-overlay{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:14px;color:var(--muted);font-size:12px}
+.spinner{width:20px;height:20px;border:2px solid rgba(56,189,248,0.2);border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:40px 20px;color:var(--red);font-size:12px}
 </style>
 
-<div class="nav">
-  <div style="display:flex;align-items:baseline">
-    <span class="logo-name">ALT MAX</span><span class="logo-tag">LOG</span>
-  </div>
-  <div class="nav-tabs">
-    <button class="ntab" onclick="sendPrompt('Mostrar Caixa Realizado no novo layout')">Caixa Realizado</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar DRE Tabela no novo layout')">DRE Tabela</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Extrato no novo layout')">Extrato</button>
-    <button class="ntab active">A Pagar / A Receber</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Fluxo de Caixa no novo layout')">Fluxo</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Conciliação no novo layout')">Conciliação</button>
-  </div>
-  <div class="nav-right">
-    <div class="period-pill">📅 <b>01/01/2025</b> → hoje</div>
-    <select class="emp-sel"><option>Empresa Alpha Ltda</option><option>Beta Serviços S/A</option><option>Gama Comércio ME</option></select>
-  </div>
-</div>
 
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div>Carregando contas a pagar e receber...</div>
+<div id="mainContent" style="display:none">
 <div class="subtabs">
   <div class="stab cp active" id="tabCP" onclick="switchTab('CP')" style="border-bottom-color:var(--red)">
     Contas a Pagar <span class="badge-cnt" id="cntCP">5</span>
@@ -222,6 +200,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 <div class="view" id="viewRepr" style="padding:40px;text-align:center;color:var(--muted)">
   ← Clique em "Representatividade" para ver os rankings
 </div>
+</div><!-- /mainContent -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
@@ -269,10 +248,13 @@ async function loadFromAPI() {
       status: r.status || 'A RECEBER'
     }));
 
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
     renderKPIs();
     renderChart();
   } catch(e) {
     console.error('Erro ao carregar CP/CR:', e);
+    document.getElementById('loadingOverlay').innerHTML = '<div class="error-msg">Erro ao carregar dados: ' + e.message + '<br><br><button onclick="loadFromAPI()" style="padding:6px 16px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:#38BDF8;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
   }
 }
 

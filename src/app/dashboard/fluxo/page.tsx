@@ -26,15 +26,6 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
   background-image:linear-gradient(rgba(56,189,248,0.025)1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025)1px,transparent 1px);
   background-size:48px 48px;}
 
-.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.95);position:sticky;top:0;z-index:20}
-.logo-name{font-family:'DM Mono',monospace;font-size:14px;color:#fff;letter-spacing:2px}
-.logo-tag{font-size:8px;color:var(--blue);letter-spacing:3px;margin-left:5px}
-.nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:8px;padding:3px}
-.ntab{padding:5px 12px;border-radius:6px;font-size:10px;color:var(--muted);cursor:pointer;transition:all 0.2s;border:none;background:transparent;font-family:inherit}
-.ntab:hover{color:var(--text)}.ntab.active{background:rgba(56,189,248,0.12);color:var(--blue);font-weight:600}
-.nav-right{display:flex;align-items:center;gap:8px}
-.emp-sel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:10px;padding:5px 10px;border-radius:7px;font-family:inherit}
-.emp-sel option{background:#0f172a}
 
 /* HORIZON BAR */
 .horizon-bar{display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.5);flex-wrap:wrap}
@@ -132,25 +123,15 @@ input[type="date"]:focus{outline:none;border-color:rgba(56,189,248,0.4)}
 .kpi{animation:fadeUp 0.35s ease both}
 .kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}
 .kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.20s}
+.loading-overlay{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:14px;color:var(--muted);font-size:12px}
+.spinner{width:20px;height:20px;border:2px solid rgba(56,189,248,0.2);border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:40px 20px;color:var(--red);font-size:12px}
 </style>
 
-<div class="nav">
-  <div style="display:flex;align-items:baseline">
-    <span class="logo-name">ALT MAX</span><span class="logo-tag">LOG</span>
-  </div>
-  <div class="nav-tabs">
-    <button class="ntab" onclick="sendPrompt('Mostrar Caixa Realizado no novo layout')">Caixa Realizado</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar DRE Tabela no novo layout')">DRE Tabela</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Extrato no novo layout')">Extrato</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Contas a Pagar no novo layout')">A Pagar / A Receber</button>
-    <button class="ntab active">Fluxo de Caixa</button>
-    <button class="ntab" onclick="sendPrompt('Mostrar Conciliação no novo layout')">Conciliação</button>
-  </div>
-  <div class="nav-right">
-    <select class="emp-sel"><option>Empresa Alpha Ltda</option><option>Beta Serviços S/A</option><option>Gama Comércio ME</option></select>
-  </div>
-</div>
 
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div>Carregando fluxo de caixa...</div>
+<div id="mainContent" style="display:none">
 <!-- HORIZON BAR -->
 <div class="horizon-bar">
   <div class="hz-from">
@@ -280,6 +261,7 @@ input[type="date"]:focus{outline:none;border-color:rgba(56,189,248,0.4)}
     <div><div class="panel-title">Próximas previsões</div><div id="proxVenc"></div></div>
   </div>
 </div>
+</div><!-- /mainContent -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
@@ -344,6 +326,9 @@ async function loadFromAPI() {
     const crArr = Array.isArray(crJson) ? crJson : (crJson.contas || crJson.items || []);
     const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.contas || saldosJson.saldos || []);
 
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+
     SALDO_ATUAL = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
 
     CP_ALL = cpArr.map(r => ({
@@ -365,6 +350,7 @@ async function loadFromAPI() {
     renderAll();
   } catch(e) {
     console.error('Erro ao carregar fluxo:', e);
+    document.getElementById('loadingOverlay').innerHTML = '<div class="error-msg">Erro ao carregar dados: ' + e.message + '<br><br><button onclick="loadFromAPI()" style="padding:6px 16px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:#38BDF8;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
   }
 }
 

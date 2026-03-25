@@ -32,8 +32,8 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .kpi-num{font-family:'DM Mono',monospace;font-size:19px;font-weight:400}
 .kpi-num.g{color:var(--green)}.kpi-num.r{color:var(--red)}.kpi-num.w{color:#fff}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:2px}
-.body{display:grid;grid-template-columns:1fr 220px;min-height:calc(100vh - 90px)}
-.main-col{display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.body{display:grid;grid-template-columns:1fr 220px;height:calc(100vh - 68px);overflow:hidden}
+.main-col{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
 .filter-bar{display:flex;align-items:center;gap:8px;padding:12px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:rgba(5,9,26,0.4)}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:7px 10px 7px 10px;border-radius:8px;font-family:inherit;transition:border-color 0.2s}
@@ -107,10 +107,9 @@ td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-
 <div class="body">
   <div class="main-col">
     <div class="filter-bar">
-      <input class="fsel" type="date" id="fDtIni" style="flex:0 0 auto">
+      <input class="fsel" type="date" id="fDtIni" style="flex:0 0 auto" onchange="debouncedLoad()">
       <span style="color:var(--muted);font-size:11px">até</span>
-      <input class="fsel" type="date" id="fDtFim" style="flex:0 0 auto">
-      <button onclick="loadData()" style="padding:7px 14px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:#38BDF8;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit">Buscar</button>
+      <input class="fsel" type="date" id="fDtFim" style="flex:0 0 auto" onchange="debouncedLoad()">
       <div class="search-wrap">
         <input type="text" id="fSearch" placeholder="Buscar por descrição, categoria..." oninput="applyFilters()">
       </div>
@@ -199,6 +198,12 @@ const d90 = new Date(); d90.setDate(d90.getDate() - 90);
 const toISO = d => d.toISOString().slice(0,10);
 document.getElementById('fDtIni').value = toISO(d90);
 document.getElementById('fDtFim').value = toISO(today);
+
+let _debounceTimer = null;
+function debouncedLoad() {
+  clearTimeout(_debounceTimer);
+  _debounceTimer = setTimeout(() => loadData(), 400);
+}
 
 async function loadData() {
   document.getElementById('loadingEl').style.display = 'flex';
