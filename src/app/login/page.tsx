@@ -26,8 +26,15 @@ export default function LoginPage() {
       })
       setAuth(data.access_token, data.user, data.empresas || [])
       router.push('/dashboard/caixa')
-    } catch {
-      setError('Email ou senha inválidos.')
+    } catch (err: any) {
+      if (err?.response?.status === 400 || err?.response?.status === 401) {
+        setError('Email ou senha inválidos.')
+      } else if (err?.code === 'ERR_NETWORK') {
+        setError('Erro de conexão com o servidor. Verifique se o servidor está online ou se há bloqueio de CORS.')
+      } else {
+        const detail = err?.response?.data?.detail || err?.message || 'Erro desconhecido'
+        setError(`Erro ao fazer login: ${detail}`)
+      }
     } finally {
       setLoading(false)
     }
