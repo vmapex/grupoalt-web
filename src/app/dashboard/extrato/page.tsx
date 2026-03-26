@@ -222,6 +222,21 @@ async function loadData() {
     // Suporta tanto array direto quanto {lancamentos: [...]}
     RAW = Array.isArray(data) ? data : (data.lancamentos || data.items || []);
 
+    // Normaliza campos — API pode retornar formato Omie ou simplificado
+    RAW = RAW.map(r => {
+      const v = r.valor || 0;
+      return {
+        ...r,
+        nValorEntrada: r.nValorEntrada || (v > 0 ? v : 0),
+        nValorSaida: r.nValorSaida || (v < 0 ? Math.abs(v) : 0),
+        cDescricao: r.cDescricao || r.descricao || r.cObs || '—',
+        dDataLancamento: r.dDataLancamento || r.data_lancamento || '—',
+        cDescricaoConta: r.cDescricaoConta || r.conta || '—',
+        cCodCateg: r.cCodCateg || r.categoria || '—',
+        lLancConciliado: r.lLancConciliado || (r.conciliado === true ? 'S' : 'N'),
+      };
+    });
+
     // Carrega saldos por conta
     loadSaldos();
     applyFilters();
