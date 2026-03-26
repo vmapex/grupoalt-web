@@ -222,13 +222,22 @@ async function loadData() {
     // Suporta tanto array direto quanto {lancamentos: [...]}
     RAW = Array.isArray(data) ? data : (data.lancamentos || data.items || []);
 
-    // Normaliza campos — API pode retornar formato Omie ou simplificado
+    // Normaliza campos — API retorna valor sempre positivo, direção vem de 'origem'
+    // origem terminando em P = Pagar (saída), R = Receber (entrada)
     RAW = RAW.map(r => {
-      const v = r.valor || 0;
+      const v = Math.abs(r.valor || 0);
+      const origem = (r.origem || '').toUpperCase();
+      const isSaida = origem.endsWith('P') || origem.includes('PAG');
+      const isEntrada = origem.endsWith('R') || origem.includes('REC');
+      // Se não conseguir determinar pela origem, usa categoria: 1.x = receita, 2.x = despesa
+      const cat = r.categoria || r.cCodCateg || '';
+      const finalSaida = isSaida || (!isEntrada && cat.startsWith('2.'));
+      const finalEntrada = isEntrada || (!isSaida && (cat.startsWith('1.') || !finalSaida));
+
       return {
         ...r,
-        nValorEntrada: r.nValorEntrada || (v > 0 ? v : 0),
-        nValorSaida: r.nValorSaida || (v < 0 ? Math.abs(v) : 0),
+        nValorEntrada: r.nValorEntrada != null && r.nValorEntrada > 0 ? r.nValorEntrada : (finalEntrada && v > 0 ? v : 0),
+        nValorSaida: r.nValorSaida != null && r.nValorSaida > 0 ? r.nValorSaida : (finalSaida && v > 0 ? v : 0),
         cDescricao: r.cDescricao || r.descricao || r.cObs || '—',
         dDataLancamento: r.dDataLancamento || r.data_lancamento || '—',
         cDescricaoConta: r.cDescricaoConta || r.conta || '—',

@@ -214,8 +214,13 @@ function agregaPorPeriodo(lancamentos, nivel, filtroMes) {
     }
     if (!key) return;
     if (!map[key]) map[key] = { ent: 0, sai: 0, concil: 0, total: 0 };
-    map[key].ent  += r.valor > 0 ? r.valor : 0;
-    map[key].sai  += r.valor < 0 ? Math.abs(r.valor) : 0;
+    // Direção: origem terminando em P = saída, R = entrada; fallback: categoria 1.x/2.x
+    const origem = (r.origem || '').toUpperCase();
+    const cat = r.categoria || '';
+    const isSaida = origem.endsWith('P') || (!origem.endsWith('R') && cat.startsWith('2.'));
+    const v = Math.abs(r.valor || 0);
+    map[key].ent  += isSaida ? 0 : v;
+    map[key].sai  += isSaida ? v : 0;
     if (r.conciliado) map[key].concil++;
     map[key].total++;
   });
