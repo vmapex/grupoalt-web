@@ -322,9 +322,9 @@ async function loadFromAPI() {
     const crJson = await crRes.json();
     const saldosJson = await saldosRes.json();
 
-    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.contas || cpJson.items || []);
-    const crArr = Array.isArray(crJson) ? crJson : (crJson.contas || crJson.items || []);
-    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.contas || saldosJson.saldos || []);
+    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.dados || cpJson.contas || cpJson.items || []);
+    const crArr = Array.isArray(crJson) ? crJson : (crJson.dados || crJson.contas || crJson.items || []);
+    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.dados || saldosJson.contas || saldosJson.saldos || []);
 
     document.getElementById('loadingOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = '';
@@ -334,7 +334,7 @@ async function loadFromAPI() {
     CP_ALL = cpArr.map(r => ({
       favorecido: r.favorecido || r.nome_favorecido || '—',
       categoria: r.categoria || r.codigo_categoria || '—',
-      previsao: r.data_previsao || r.data_vencimento || '—',
+      previsao: r.data_previsao || r.data_vcto || r.data_vencimento || '—',
       valor: r.valor || 0,
       status: r.status || 'A VENCER'
     }));
@@ -342,7 +342,7 @@ async function loadFromAPI() {
     CR_ALL = crArr.map(r => ({
       favorecido: r.favorecido || r.nome_favorecido || '—',
       categoria: r.categoria || r.codigo_categoria || '—',
-      previsao: r.data_previsao || r.data_vencimento || '—',
+      previsao: r.data_previsao || r.data_vcto || r.data_vencimento || '—',
       valor: r.valor || 0,
       status: r.status || 'A RECEBER'
     }));

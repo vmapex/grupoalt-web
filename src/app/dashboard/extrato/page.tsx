@@ -220,7 +220,7 @@ async function loadData() {
     const data = await res.json();
 
     // Suporta tanto array direto quanto {lancamentos: [...]}
-    RAW = Array.isArray(data) ? data : (data.lancamentos || data.items || []);
+    RAW = Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []);
 
     // Normaliza campos — API retorna valor sempre positivo, direção vem de 'origem'
     // origem terminando em P = Pagar (saída), R = Receber (entrada)
@@ -277,7 +277,7 @@ async function loadSaldos() {
       { headers: { Authorization: 'Bearer ' + TOKEN } }
     );
     const data = await res.json();
-    const contas = Array.isArray(data) ? data : (data.contas || data.saldos || []);
+    const contas = Array.isArray(data) ? data : (data.dados || data.contas || data.saldos || []);
     const maxSaldo = Math.max(...contas.map(c => Math.abs(c.saldo || 0)), 1);
     const colors = ['#38BDF8','#34D399','#FBBF24','#C084FC','#FB923C'];
 

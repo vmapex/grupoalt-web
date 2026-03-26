@@ -200,12 +200,12 @@ async function loadConciliacao() {
     const concData = await concRes.json();
     const saldosJson = await saldosRes.json();
 
-    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.contas || saldosJson.saldos || []);
+    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.dados || saldosJson.contas || saldosJson.saldos || []);
     const saldoTotal = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
     document.getElementById('kSaldo').textContent = fmtK(saldoTotal);
 
     // concData pode ser um objeto com meses ou array
-    const meses = Array.isArray(concData) ? concData : (concData.meses || concData.calendario || concData.items || []);
+    const meses = Array.isArray(concData) ? concData : (concData.dados || concData.meses || concData.calendario || concData.items || []);
 
     let totalConcil = 0, totalPend = 0;
 

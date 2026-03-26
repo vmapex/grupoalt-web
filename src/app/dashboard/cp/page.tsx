@@ -227,13 +227,13 @@ async function loadFromAPI() {
     const cpJson = await cpRes.json();
     const crJson = await crRes.json();
 
-    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.contas || cpJson.items || []);
-    const crArr = Array.isArray(crJson) ? crJson : (crJson.contas || crJson.items || []);
+    const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.dados || cpJson.contas || cpJson.items || []);
+    const crArr = Array.isArray(crJson) ? crJson : (crJson.dados || crJson.contas || crJson.items || []);
 
     CP_DATA = cpArr.map(r => ({
       favorecido: r.favorecido || r.nome_favorecido || '—',
       categoria: r.categoria || r.codigo_categoria || '—',
-      vcto: r.data_vencimento || '—',
+      vcto: r.data_vcto || r.data_vencimento || '—',
       valor: r.valor || 0,
       valor_pago: r.valor_pago || 0,
       status: r.status || 'A VENCER'
@@ -242,7 +242,7 @@ async function loadFromAPI() {
     CR_DATA = crArr.map(r => ({
       favorecido: r.favorecido || r.nome_favorecido || '—',
       categoria: r.categoria || r.codigo_categoria || '—',
-      vcto: r.data_vencimento || '—',
+      vcto: r.data_vcto || r.data_vencimento || '—',
       valor: r.valor || 0,
       valor_recebido: r.valor_recebido || 0,
       status: r.status || 'A RECEBER'
