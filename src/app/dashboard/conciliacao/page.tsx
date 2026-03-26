@@ -10,7 +10,7 @@ export default function ConciliacaoPage() {
     if (!ref.current) return
 
     const empresaId = empresaAtiva?.id || 1
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app'
+    const apiUrl = window.location.origin + '/api/proxy'
 
     const html = `
 <link rel="preconnect" href="https://fonts.googleapis.com">

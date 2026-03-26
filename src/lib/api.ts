@@ -2,7 +2,7 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app',
+  baseURL: '/api/proxy',
   headers: { 'Content-Type': 'application/json' },
 })
 

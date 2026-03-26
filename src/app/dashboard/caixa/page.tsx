@@ -11,7 +11,7 @@ export default function CaixaPage() {
 
     const empresaId = empresaAtiva?.id || 1
     const empresaNome = empresaAtiva?.nome || 'Empresa'
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://altmax-api-production.up.railway.app'
+    const apiUrl = window.location.origin + '/api/proxy'
 
     const html = `<!DOCTYPE html>
 <html>
