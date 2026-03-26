@@ -193,37 +193,60 @@ const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000)
 
 async function loadConciliacao() {
   try {
-    const [concRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/conciliacao/calendario', { headers: { Authorization: 'Bearer ' + TOKEN } }),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers: { Authorization: 'Bearer ' + TOKEN } })
+    const headers = { Authorization: 'Bearer ' + TOKEN };
+    // Busca extrato dos últimos 5 meses + saldos
+    const d = new Date();
+    const dtFim = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    const d5 = new Date(); d5.setMonth(d5.getMonth() - 5);
+    const dtIni = '01/' + String(d5.getMonth()+1).padStart(2,'0') + '/' + d5.getFullYear();
+
+    const [extratoRes, saldosRes] = await Promise.all([
+      fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + dtIni + '&data_fim=' + dtFim, { headers }),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers })
     ]);
-    const concData = await concRes.json();
+
+    const extratoJson = await extratoRes.json();
     const saldosJson = await saldosRes.json();
 
+    const lancamentos = Array.isArray(extratoJson) ? extratoJson : (extratoJson.dados || extratoJson.lancamentos || []);
     const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.dados || saldosJson.contas || saldosJson.saldos || []);
     const saldoTotal = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
     document.getElementById('kSaldo').textContent = fmtK(saldoTotal);
 
-    // concData pode ser um objeto com meses ou array
-    const meses = Array.isArray(concData) ? concData : (concData.dados || concData.meses || concData.calendario || concData.items || []);
+    // Agrupa lançamentos por mês
+    const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const monthMap = {};
+    lancamentos.forEach(r => {
+      const dt = r.data_lancamento || '';
+      if (!dt || dt === '—') return;
+      const parts = dt.split('/');
+      if (parts.length < 3) return;
+      const mIdx = parseInt(parts[1]) - 1;
+      const year = parts[2];
+      const key = MONTH_NAMES[mIdx] + '/' + year.slice(2);
+      if (!monthMap[key]) monthMap[key] = { concil: 0, pend: 0 };
+      if (r.conciliado === true) monthMap[key].concil++;
+      else monthMap[key].pend++;
+    });
+
+    const meses = Object.entries(monthMap).map(([mes, v]) => ({
+      mes, conciliados: v.concil, pendentes: v.pend
+    }));
 
     let totalConcil = 0, totalPend = 0;
 
-    // Build month table
-    const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     const tableRows = meses.map(m => {
-      const concil = m.conciliados || m.conciliado || 0;
-      const pend = m.pendentes || m.pendente || 0;
+      const concil = m.conciliados;
+      const pend = m.pendentes;
       const total = concil + pend;
       const pct = total > 0 ? Math.round(concil / total * 100) : 0;
       totalConcil += concil;
       totalPend += pend;
-      const mes = m.mes || m.month || m.periodo || '—';
       const badge = pct >= 90 ? '<span class="badge g">OK</span>' :
                     pct >= 70 ? '<span class="badge a">Atenção</span>' :
                     '<span class="badge r">Baixo</span>';
       return '<tr>' +
-        '<td>' + mes + '</td>' +
+        '<td>' + m.mes + '</td>' +
         '<td style="font-family:DM Mono,monospace;color:var(--green)">' + concil + '</td>' +
         '<td style="font-family:DM Mono,monospace;color:var(--amber)">' + pend + '</td>' +
         '<td style="font-family:DM Mono,monospace;color:var(--blue)">' + pct + '%</td>' +
@@ -240,15 +263,13 @@ async function loadConciliacao() {
     document.getElementById('kPendSub').textContent = 'Precisam atenção';
     document.getElementById('kPct').textContent = pctGeral + '%';
 
-    // Month cards
+    // Month cards (último mês)
     if (meses.length > 0) {
       const lastMonth = meses[meses.length - 1];
-      const lc = lastMonth.conciliados || lastMonth.conciliado || 0;
-      const lp = lastMonth.pendentes || lastMonth.pendente || 0;
-      document.getElementById('cMesConcil').textContent = lc;
-      document.getElementById('cMesConcilSub').textContent = lastMonth.mes || 'Mês atual';
-      document.getElementById('cMesPend').textContent = lp;
-      document.getElementById('cMesPendSub').textContent = lastMonth.mes || 'Mês atual';
+      document.getElementById('cMesConcil').textContent = lastMonth.conciliados;
+      document.getElementById('cMesConcilSub').textContent = lastMonth.mes;
+      document.getElementById('cMesPend').textContent = lastMonth.pendentes;
+      document.getElementById('cMesPendSub').textContent = lastMonth.mes;
     }
 
     // Heatmap + side panel

@@ -313,14 +313,21 @@ let CR_ALL=[];
 
 async function loadFromAPI() {
   try {
+    const headers = { Authorization: 'Bearer ' + TOKEN };
     const [cpRes, crRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers: { Authorization: 'Bearer ' + TOKEN } }),
-      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers: { Authorization: 'Bearer ' + TOKEN } }),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers: { Authorization: 'Bearer ' + TOKEN } })
+      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers }).catch(() => null),
+      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers }).catch(() => null),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers }).catch(() => null)
     ]);
-    const cpJson = await cpRes.json();
-    const crJson = await crRes.json();
-    const saldosJson = await saldosRes.json();
+
+    const parseJson = async (res) => {
+      if (!res || !res.ok) return [];
+      try { return await res.json(); } catch { return []; }
+    };
+
+    const cpJson = await parseJson(cpRes);
+    const crJson = await parseJson(crRes);
+    const saldosJson = await parseJson(saldosRes);
 
     const cpArr = Array.isArray(cpJson) ? cpJson : (cpJson.dados || cpJson.contas || cpJson.items || []);
     const crArr = Array.isArray(crJson) ? crJson : (crJson.dados || crJson.contas || crJson.items || []);
