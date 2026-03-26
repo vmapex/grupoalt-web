@@ -192,12 +192,49 @@ let RAW = [];
 let filtered = [];
 let sortCol = 'data_lancamento', sortDir = -1;
 
-// Datas default: busca ampla (2 anos) — ajusta após carregar dados
+// Datas default — descobre o primeiro lançamento via probe
 const today = new Date();
-const dStart = new Date(); dStart.setFullYear(dStart.getFullYear() - 2); dStart.setDate(1);
 const toISO = d => d.toISOString().slice(0,10);
-document.getElementById('fDtIni').value = toISO(dStart);
 document.getElementById('fDtFim').value = toISO(today);
+
+// Probe: busca período grande em uma única chamada para encontrar data mais antiga
+async function findFirstDate() {
+  try {
+    const probe = await fetch(
+      API + '/empresas/' + EMPRESA + '/extrato?data_inicio=01/01/2020&data_fim=31/01/2020',
+      { headers: { Authorization: 'Bearer ' + TOKEN } }
+    ).then(r => r.ok ? r.json() : []).catch(() => []);
+    const arr = Array.isArray(probe) ? probe : (probe.dados || probe.lancamentos || []);
+    if (arr.length > 0) return '2020-01-01';
+
+    // Tenta blocos de 1 ano para encontrar onde começa
+    for (let year = 2021; year <= today.getFullYear(); year++) {
+      for (let q = 0; q < 4; q++) {
+        const m1 = q * 3 + 1;
+        const m2 = Math.min(q * 3 + 3, 12);
+        const ini = '01/' + String(m1).padStart(2,'0') + '/' + year;
+        const lastDay = new Date(year, m2, 0).getDate();
+        const fim = String(lastDay).padStart(2,'0') + '/' + String(m2).padStart(2,'0') + '/' + year;
+        const res = await fetch(
+          API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + ini + '&data_fim=' + fim,
+          { headers: { Authorization: 'Bearer ' + TOKEN } }
+        ).then(r => r.ok ? r.json() : []).catch(() => []);
+        const data = Array.isArray(res) ? res : (res.dados || res.lancamentos || []);
+        if (data.length > 0) {
+          // Encontrou dados — retorna 1º dia do trimestre
+          return year + '-' + String(m1).padStart(2,'0') + '-01';
+        }
+      }
+    }
+  } catch(e) { console.warn('probe error:', e); }
+  // Fallback: 6 meses atrás
+  const fb = new Date(); fb.setMonth(fb.getMonth() - 6); fb.setDate(1);
+  return toISO(fb);
+}
+
+// Inicializa com fallback e depois ajusta via probe
+const fallback = new Date(); fallback.setMonth(fallback.getMonth() - 6); fallback.setDate(1);
+document.getElementById('fDtIni').value = toISO(fallback);
 
 let _debounceTimer = null;
 function debouncedLoad() {
@@ -273,20 +310,6 @@ async function loadData() {
         lLancConciliado: r.lLancConciliado || (r.conciliado === true ? 'S' : 'N'),
       };
     });
-
-    // Ajusta data inicial para o primeiro lançamento encontrado
-    if (RAW.length > 0) {
-      const parseDMY = s => { const p = (s||'').split('/'); return p.length===3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
-      let earliest = null;
-      RAW.forEach(r => {
-        const d = parseDMY(r.dDataLancamento || r.data_lancamento);
-        if (d && (!earliest || d < earliest)) earliest = d;
-      });
-      if (earliest) {
-        earliest.setDate(1); // início do mês
-        document.getElementById('fDtIni').value = toISO(earliest);
-      }
-    }
 
     // Carrega saldos por conta
     loadSaldos();
@@ -366,10 +389,19 @@ function applyFilters() {
 
 function sortTable(col) {
   if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  const parseDt = s => { const p = (s||'').split('/'); return p.length===3 ? +p[2]*10000 + +p[1]*100 + +p[0] : 0; };
   filtered.sort((a, b) => {
-    let va = a[col] || '';
-    let vb = b[col] || '';
-    if (col === 'valor') { va = (a.nValorEntrada || 0) - (a.nValorSaida || 0); vb = (b.nValorEntrada || 0) - (b.nValorSaida || 0); }
+    let va, vb;
+    if (col === 'data_lancamento') {
+      va = parseDt(a.dDataLancamento || a.data_lancamento);
+      vb = parseDt(b.dDataLancamento || b.data_lancamento);
+    } else if (col === 'valor') {
+      va = (a.nValorEntrada || 0) - (a.nValorSaida || 0);
+      vb = (b.nValorEntrada || 0) - (b.nValorSaida || 0);
+    } else {
+      va = a[col] || '';
+      vb = b[col] || '';
+    }
     return va < vb ? sortDir : va > vb ? -sortDir : 0;
   });
   renderTable();
@@ -451,7 +483,12 @@ function updateSummary() {
     </div>\`).join('');
 }
 
-loadData();
+// Na primeira carga, descobre a data do primeiro lançamento
+(async () => {
+  const firstDate = await findFirstDate();
+  document.getElementById('fDtIni').value = firstDate;
+  loadData();
+})();
 </script>
 </body>
 </html>`
