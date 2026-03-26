@@ -194,21 +194,40 @@ const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000)
 async function loadConciliacao() {
   try {
     const headers = { Authorization: 'Bearer ' + TOKEN };
-    // Busca extrato dos últimos 5 meses + saldos
-    const d = new Date();
-    const dtFim = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-    const d5 = new Date(); d5.setMonth(d5.getMonth() - 5);
-    const dtIni = '01/' + String(d5.getMonth()+1).padStart(2,'0') + '/' + d5.getFullYear();
+    // Busca extrato dos últimos 5 meses em blocos de 85 dias (limitação Omie)
+    const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    const dFim = new Date();
+    const dIni = new Date(); dIni.setMonth(dIni.getMonth() - 5); dIni.setDate(1);
+    const BLOCK = 85;
 
-    const [extratoRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + dtIni + '&data_fim=' + dtFim, { headers }),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers })
+    const ranges = [];
+    let cursor = new Date(dIni);
+    while (cursor < dFim) {
+      const blockEnd = new Date(cursor);
+      blockEnd.setDate(blockEnd.getDate() + BLOCK);
+      if (blockEnd > dFim) blockEnd.setTime(dFim.getTime());
+      ranges.push({ ini: fmtDMY(cursor), fim: fmtDMY(blockEnd) });
+      cursor = new Date(blockEnd);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const [saldosRes, ...extratoResults] = await Promise.all([
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers }),
+      ...ranges.map(r =>
+        fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + r.ini + '&data_fim=' + r.fim, { headers })
+          .then(res => res.ok ? res.json() : [])
+          .then(data => Array.isArray(data) ? data : (data.dados || data.lancamentos || []))
+          .catch(() => [])
+      )
     ]);
 
-    const extratoJson = await extratoRes.json();
-    const saldosJson = await saldosRes.json();
-
-    const lancamentos = Array.isArray(extratoJson) ? extratoJson : (extratoJson.dados || extratoJson.lancamentos || []);
+    const saldosJson = await saldosRes.json().catch(() => []);
+    const seen = new Set();
+    const lancamentos = [];
+    extratoResults.flat().forEach(r => {
+      const key = r.id || (r.data_lancamento + r.valor + r.descricao);
+      if (!seen.has(key)) { seen.add(key); lancamentos.push(r); }
+    });
     const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.dados || saldosJson.contas || saldosJson.saldos || []);
     const saldoTotal = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
     document.getElementById('kSaldo').textContent = fmtK(saldoTotal);

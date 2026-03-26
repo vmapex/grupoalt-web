@@ -209,18 +209,46 @@ async function loadData() {
   document.getElementById('loadingEl').style.display = 'flex';
   document.getElementById('mainTable').style.display = 'none';
 
-  const dtIni = document.getElementById('fDtIni').value.split('-').reverse().join('/');
-  const dtFim = document.getElementById('fDtFim').value.split('-').reverse().join('/');
+  const iniVal = document.getElementById('fDtIni').value;
+  const fimVal = document.getElementById('fDtFim').value;
 
   try {
-    const res = await fetch(
-      API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + dtIni + '&data_fim=' + dtFim,
-      { headers: { Authorization: 'Bearer ' + TOKEN } }
-    );
-    const data = await res.json();
+    // Omie limita extrato a ~90 dias por chamada
+    // Divide período em blocos de 85 dias e faz chamadas paralelas
+    const parseDateISO = s => { const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
+    const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    const dIni = parseDateISO(iniVal);
+    const dFim = parseDateISO(fimVal);
+    const BLOCK = 85; // dias por bloco (margem de segurança)
 
-    // Suporta tanto array direto quanto {lancamentos: [...]}
-    RAW = Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []);
+    const ranges = [];
+    let cursor = new Date(dIni);
+    while (cursor < dFim) {
+      const blockEnd = new Date(cursor);
+      blockEnd.setDate(blockEnd.getDate() + BLOCK);
+      if (blockEnd > dFim) blockEnd.setTime(dFim.getTime());
+      ranges.push({ ini: fmtDMY(cursor), fim: fmtDMY(blockEnd) });
+      cursor = new Date(blockEnd);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    document.getElementById('loadingEl').innerHTML = '<div class="spinner"></div>Carregando ' + ranges.length + ' bloco(s) de dados...';
+
+    const results = await Promise.all(ranges.map(r =>
+      fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + r.ini + '&data_fim=' + r.fim,
+        { headers: { Authorization: 'Bearer ' + TOKEN } })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []))
+        .catch(() => [])
+    ));
+
+    // Junta todos os blocos e remove duplicatas por id
+    const seen = new Set();
+    RAW = [];
+    results.flat().forEach(r => {
+      const key = r.id || (r.data_lancamento + r.valor + r.descricao);
+      if (!seen.has(key)) { seen.add(key); RAW.push(r); }
+    });
 
     // Normaliza campos — API retorna valor sempre positivo, direção vem de 'origem'
     // origem terminando em P = Pagar (saída), R = Receber (entrada)
