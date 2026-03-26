@@ -192,11 +192,11 @@ let RAW = [];
 let filtered = [];
 let sortCol = 'data_lancamento', sortDir = -1;
 
-// Datas default: últimos 90 dias
+// Datas default: busca ampla (2 anos) — ajusta após carregar dados
 const today = new Date();
-const d90 = new Date(); d90.setDate(d90.getDate() - 90);
+const dStart = new Date(); dStart.setFullYear(dStart.getFullYear() - 2); dStart.setDate(1);
 const toISO = d => d.toISOString().slice(0,10);
-document.getElementById('fDtIni').value = toISO(d90);
+document.getElementById('fDtIni').value = toISO(dStart);
 document.getElementById('fDtFim').value = toISO(today);
 
 let _debounceTimer = null;
@@ -273,6 +273,20 @@ async function loadData() {
         lLancConciliado: r.lLancConciliado || (r.conciliado === true ? 'S' : 'N'),
       };
     });
+
+    // Ajusta data inicial para o primeiro lançamento encontrado
+    if (RAW.length > 0) {
+      const parseDMY = s => { const p = (s||'').split('/'); return p.length===3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
+      let earliest = null;
+      RAW.forEach(r => {
+        const d = parseDMY(r.dDataLancamento || r.data_lancamento);
+        if (d && (!earliest || d < earliest)) earliest = d;
+      });
+      if (earliest) {
+        earliest.setDate(1); // início do mês
+        document.getElementById('fDtIni').value = toISO(earliest);
+      }
+    }
 
     // Carrega saldos por conta
     loadSaldos();
