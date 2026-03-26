@@ -483,9 +483,9 @@ function updateUI() {
   if (currentLevel==='quarterly') {
     bc.innerHTML = '<span class="bc-item active">Trimestral</span>';
   } else if (currentLevel==='monthly') {
-    bc.innerHTML = '<span class="bc-item" onclick="setLevel(\'quarterly\')">Trimestral</span><span class="bc-sep">›</span><span class="bc-item active">Mensal</span>';
+    bc.innerHTML = '<span class="bc-item" onclick="setLevel(&#39;quarterly&#39;)">Trimestral</span><span class="bc-sep">›</span><span class="bc-item active">Mensal</span>';
   } else {
-    bc.innerHTML = '<span class="bc-item" onclick="setLevel(\'quarterly\')">Trimestral</span><span class="bc-sep">›</span><span class="bc-item" onclick="setLevel(\'monthly\')">Mensal</span><span class="bc-sep">›</span><span class="bc-item active">' + (selectedPeriod||'Semanal') + '</span>';
+    bc.innerHTML = '<span class="bc-item" onclick="setLevel(&#39;quarterly&#39;)">Trimestral</span><span class="bc-sep">›</span><span class="bc-item" onclick="setLevel(&#39;monthly&#39;)">Mensal</span><span class="bc-sep">›</span><span class="bc-item active">' + (selectedPeriod||'Semanal') + '</span>';
   }
 }
 
