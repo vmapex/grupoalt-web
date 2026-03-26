@@ -221,7 +221,7 @@ async function loadData() {
   const fetchFim = fimVal.split('-').reverse().join('/');
 
   try {
-    const url = API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + encodeURIComponent(fetchIni) + '&data_fim=' + encodeURIComponent(fetchFim);
+    const url = API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + fetchIni + '&data_fim=' + fetchFim;
     console.log('[Extrato] Fetching:', url);
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
     if (!res.ok) throw new Error('Erro HTTP ' + res.status);
@@ -298,6 +298,7 @@ async function loadSaldos() {
       API + '/empresas/' + EMPRESA + '/saldos',
       { headers: { Authorization: 'Bearer ' + TOKEN } }
     );
+    if (!res.ok) throw new Error('Saldos HTTP ' + res.status);
     const data = await res.json();
     const contas = Array.isArray(data) ? data : (data.dados || data.contas || data.saldos || []);
     const maxSaldo = Math.max(...contas.map(c => Math.abs(c.saldo || 0)), 1);
