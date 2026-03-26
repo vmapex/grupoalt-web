@@ -200,7 +200,7 @@ async function loadConciliacao() {
     const dIni = new Date(); dIni.setMonth(dIni.getMonth() - 5); dIni.setDate(1);
 
     const [extratoRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + fmtDMY(dIni) + '&data_fim=' + fmtDMY(dFim), { headers }),
+      fetch(API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fmtDMY(dIni) + '&dt_fim=' + fmtDMY(dFim), { headers }),
       fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers })
     ]);
 

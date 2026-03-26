@@ -221,7 +221,7 @@ async function loadData() {
   const fetchFim = fimVal.split('-').reverse().join('/');
 
   try {
-    const url = API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + fetchIni + '&data_fim=' + fetchFim;
+    const url = API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fetchIni + '&dt_fim=' + fetchFim;
     console.log('[Extrato] Fetching:', url);
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
     if (!res.ok) throw new Error('Erro HTTP ' + res.status);

@@ -177,7 +177,7 @@ async function fetchData(ano) {
   const dtIni = '01/01/' + ano;
   const dtFim = '31/12/' + ano;
   const res = await fetch(
-    API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + dtIni + '&data_fim=' + dtFim,
+    API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + dtIni + '&dt_fim=' + dtFim,
     { headers: { Authorization: 'Bearer ' + TOKEN } }
   );
   if (!res.ok) throw new Error('Erro HTTP ' + res.status);
