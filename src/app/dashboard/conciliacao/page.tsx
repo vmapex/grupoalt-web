@@ -352,6 +352,7 @@ loadConciliacao();
 `
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'width:100%;height:calc(100vh - 48px);border:none;display:block'
+    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts')
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
