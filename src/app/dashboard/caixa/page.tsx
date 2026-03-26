@@ -174,39 +174,15 @@ let charts = {};
 
 // ── FETCH ─────────────────────────────────────────────────────────────────────
 async function fetchData(ano) {
-  // Omie limita extrato a ~90 dias por chamada — divide ano em blocos de 85 dias
-  const BLOCK = 85;
-  const dIni = new Date(ano, 0, 1);
-  const dFim = new Date(ano, 11, 31);
-  const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-
-  const ranges = [];
-  let cursor = new Date(dIni);
-  while (cursor <= dFim) {
-    const blockEnd = new Date(cursor);
-    blockEnd.setDate(blockEnd.getDate() + BLOCK);
-    if (blockEnd > dFim) blockEnd.setTime(dFim.getTime());
-    ranges.push({ ini: fmtDMY(cursor), fim: fmtDMY(blockEnd) });
-    cursor = new Date(blockEnd);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  const results = await Promise.all(ranges.map(r =>
-    fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + r.ini + '&data_fim=' + r.fim,
-      { headers: { Authorization: 'Bearer ' + TOKEN } })
-      .then(res => res.ok ? res.json() : [])
-      .then(data => Array.isArray(data) ? data : (data.dados || data.lancamentos || []))
-      .catch(() => [])
-  ));
-
-  // Junta e deduplica por id
-  const seen = new Set();
-  const all = [];
-  results.flat().forEach(r => {
-    const key = r.id || (r.data_lancamento + r.valor + r.descricao);
-    if (!seen.has(key)) { seen.add(key); all.push(r); }
-  });
-  return all;
+  const dtIni = '01/01/' + ano;
+  const dtFim = '31/12/' + ano;
+  const res = await fetch(
+    API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + dtIni + '&data_fim=' + dtFim,
+    { headers: { Authorization: 'Bearer ' + TOKEN } }
+  );
+  if (!res.ok) throw new Error('Erro HTTP ' + res.status);
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.dados || data.lancamentos || []);
 }
 
 // ── AGREGA POR PERÍODO ────────────────────────────────────────────────────────

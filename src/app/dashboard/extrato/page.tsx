@@ -192,49 +192,13 @@ let RAW = [];
 let filtered = [];
 let sortCol = 'data_lancamento', sortDir = -1;
 
-// Datas default — descobre o primeiro lançamento via probe
+// Datas default
 const today = new Date();
 const toISO = d => d.toISOString().slice(0,10);
 document.getElementById('fDtFim').value = toISO(today);
-
-// Probe: busca período grande em uma única chamada para encontrar data mais antiga
-async function findFirstDate() {
-  try {
-    const probe = await fetch(
-      API + '/empresas/' + EMPRESA + '/extrato?data_inicio=01/01/2020&data_fim=31/01/2020',
-      { headers: { Authorization: 'Bearer ' + TOKEN } }
-    ).then(r => r.ok ? r.json() : []).catch(() => []);
-    const arr = Array.isArray(probe) ? probe : (probe.dados || probe.lancamentos || []);
-    if (arr.length > 0) return '2020-01-01';
-
-    // Tenta blocos de 1 ano para encontrar onde começa
-    for (let year = 2021; year <= today.getFullYear(); year++) {
-      for (let q = 0; q < 4; q++) {
-        const m1 = q * 3 + 1;
-        const m2 = Math.min(q * 3 + 3, 12);
-        const ini = '01/' + String(m1).padStart(2,'0') + '/' + year;
-        const lastDay = new Date(year, m2, 0).getDate();
-        const fim = String(lastDay).padStart(2,'0') + '/' + String(m2).padStart(2,'0') + '/' + year;
-        const res = await fetch(
-          API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + ini + '&data_fim=' + fim,
-          { headers: { Authorization: 'Bearer ' + TOKEN } }
-        ).then(r => r.ok ? r.json() : []).catch(() => []);
-        const data = Array.isArray(res) ? res : (res.dados || res.lancamentos || []);
-        if (data.length > 0) {
-          // Encontrou dados — retorna 1º dia do trimestre
-          return year + '-' + String(m1).padStart(2,'0') + '-01';
-        }
-      }
-    }
-  } catch(e) { console.warn('probe error:', e); }
-  // Fallback: 6 meses atrás
-  const fb = new Date(); fb.setMonth(fb.getMonth() - 6); fb.setDate(1);
-  return toISO(fb);
-}
-
-// Inicializa com fallback e depois ajusta via probe
-const fallback = new Date(); fallback.setMonth(fallback.getMonth() - 6); fallback.setDate(1);
-document.getElementById('fDtIni').value = toISO(fallback);
+// Inicializa 6 meses atrás como placeholder — será ajustado após primeiro carregamento
+const fallbackIni = new Date(); fallbackIni.setMonth(fallbackIni.getMonth() - 6); fallbackIni.setDate(1);
+document.getElementById('fDtIni').value = toISO(fallbackIni);
 
 let _debounceTimer = null;
 function debouncedLoad() {
@@ -242,50 +206,28 @@ function debouncedLoad() {
   _debounceTimer = setTimeout(() => loadData(), 400);
 }
 
+let firstLoadDone = false;
+
 async function loadData() {
   document.getElementById('loadingEl').style.display = 'flex';
+  document.getElementById('loadingEl').innerHTML = '<div class="spinner"></div>Carregando dados da Omie...';
   document.getElementById('mainTable').style.display = 'none';
 
-  const iniVal = document.getElementById('fDtIni').value;
+  let iniVal = document.getElementById('fDtIni').value;
   const fimVal = document.getElementById('fDtFim').value;
 
+  // Na primeira carga, busca desde 01/01/2020 para encontrar todos os dados
+  const fetchIni = !firstLoadDone ? '01/01/2020' : iniVal.split('-').reverse().join('/');
+  const fetchFim = fimVal.split('-').reverse().join('/');
+
   try {
-    // Omie limita extrato a ~90 dias por chamada
-    // Divide período em blocos de 85 dias e faz chamadas paralelas
-    const parseDateISO = s => { const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
-    const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-    const dIni = parseDateISO(iniVal);
-    const dFim = parseDateISO(fimVal);
-    const BLOCK = 85; // dias por bloco (margem de segurança)
-
-    const ranges = [];
-    let cursor = new Date(dIni);
-    while (cursor < dFim) {
-      const blockEnd = new Date(cursor);
-      blockEnd.setDate(blockEnd.getDate() + BLOCK);
-      if (blockEnd > dFim) blockEnd.setTime(dFim.getTime());
-      ranges.push({ ini: fmtDMY(cursor), fim: fmtDMY(blockEnd) });
-      cursor = new Date(blockEnd);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    document.getElementById('loadingEl').innerHTML = '<div class="spinner"></div>Carregando ' + ranges.length + ' bloco(s) de dados...';
-
-    const results = await Promise.all(ranges.map(r =>
-      fetch(API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + r.ini + '&data_fim=' + r.fim,
-        { headers: { Authorization: 'Bearer ' + TOKEN } })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []))
-        .catch(() => [])
-    ));
-
-    // Junta todos os blocos e remove duplicatas por id
-    const seen = new Set();
-    RAW = [];
-    results.flat().forEach(r => {
-      const key = r.id || (r.data_lancamento + r.valor + r.descricao);
-      if (!seen.has(key)) { seen.add(key); RAW.push(r); }
-    });
+    const res = await fetch(
+      API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + fetchIni + '&data_fim=' + fetchFim,
+      { headers: { Authorization: 'Bearer ' + TOKEN } }
+    );
+    if (!res.ok) throw new Error('Erro HTTP ' + res.status);
+    const data = await res.json();
+    RAW = Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []);
 
     // Normaliza campos — API retorna valor sempre positivo, direção vem de 'origem'
     // origem terminando em P = Pagar (saída), R = Receber (entrada)
@@ -310,6 +252,21 @@ async function loadData() {
         lLancConciliado: r.lLancConciliado || (r.conciliado === true ? 'S' : 'N'),
       };
     });
+
+    // Na primeira carga, ajusta data inicial para o mês do primeiro lançamento
+    if (!firstLoadDone && RAW.length > 0) {
+      firstLoadDone = true;
+      const parseDMY2 = s => { const p = (s||'').split('/'); return p.length===3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
+      let earliest = null;
+      RAW.forEach(r => {
+        const d = parseDMY2(r.data_lancamento);
+        if (d && (!earliest || d < earliest)) earliest = d;
+      });
+      if (earliest) {
+        earliest.setDate(1);
+        document.getElementById('fDtIni').value = toISO(earliest);
+      }
+    }
 
     // Carrega saldos por conta
     loadSaldos();
@@ -483,12 +440,8 @@ function updateSummary() {
     </div>\`).join('');
 }
 
-// Na primeira carga, descobre a data do primeiro lançamento
-(async () => {
-  const firstDate = await findFirstDate();
-  document.getElementById('fDtIni').value = firstDate;
-  loadData();
-})();
+// Inicia carregamento
+loadData();
 </script>
 </body>
 </html>`
