@@ -221,13 +221,13 @@ async function loadData() {
   const fetchFim = fimVal.split('-').reverse().join('/');
 
   try {
-    const res = await fetch(
-      API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + fetchIni + '&data_fim=' + fetchFim,
-      { headers: { Authorization: 'Bearer ' + TOKEN } }
-    );
+    const url = API + '/empresas/' + EMPRESA + '/extrato?data_inicio=' + encodeURIComponent(fetchIni) + '&data_fim=' + encodeURIComponent(fetchFim);
+    console.log('[Extrato] Fetching:', url);
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
     if (!res.ok) throw new Error('Erro HTTP ' + res.status);
     const data = await res.json();
     RAW = Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []);
+    console.log('[Extrato] Recebidos:', RAW.length, 'registros. Período:', fetchIni, '→', fetchFim);
 
     // Normaliza campos — API retorna valor sempre positivo, direção vem de 'origem'
     // origem terminando em P = Pagar (saída), R = Receber (entrada)
