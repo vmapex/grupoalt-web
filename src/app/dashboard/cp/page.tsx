@@ -193,12 +193,39 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
   </div>
 </div>
 
-<!-- placeholder views -->
-<div class="view" id="viewLanc" style="padding:40px;text-align:center;color:var(--muted)">
-  ← Clique em "Lançamentos" para ver a tabela completa
+<!-- LANÇAMENTOS VIEW -->
+<div class="view" id="viewLanc" style="padding:0">
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.4)">
+    <input type="text" id="lancSearch" placeholder="Buscar por favorecido, categoria..." oninput="renderLanc()" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:7px 10px;border-radius:8px;font-family:inherit">
+    <select id="lancStatus" onchange="renderLanc()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:7px 10px;border-radius:8px;font-family:inherit;cursor:pointer">
+      <option value="">Todos os status</option>
+      <option value="A VENCER">A Vencer</option>
+      <option value="ATRASADO">Atrasado</option>
+      <option value="PAGO">Pago</option>
+      <option value="RECEBIDO">Recebido</option>
+    </select>
+    <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap" id="lancCount">— registros</span>
+  </div>
+  <div style="flex:1;overflow:auto;max-height:calc(100vh - 200px)">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px" id="lancTable">
+      <thead style="position:sticky;top:0;z-index:5">
+        <tr style="background:#080d1e;border-bottom:1px solid var(--border)">
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('favorecido')">Favorecido <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('categoria')">Categoria <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('vcto')">Vencimento <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:right;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('valor')">Valor <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace">Status</th>
+          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace">Tipo</th>
+        </tr>
+      </thead>
+      <tbody id="lancBody"></tbody>
+    </table>
+  </div>
 </div>
-<div class="view" id="viewRepr" style="padding:40px;text-align:center;color:var(--muted)">
-  ← Clique em "Representatividade" para ver os rankings
+
+<!-- REPRESENTATIVIDADE VIEW -->
+<div class="view" id="viewRepr" style="padding:22px 26px;overflow-y:auto;max-height:calc(100vh - 200px)">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="reprContent"></div>
 </div>
 </div><!-- /mainContent -->
 
@@ -252,6 +279,8 @@ async function loadFromAPI() {
     document.getElementById('mainContent').style.display = '';
     renderKPIs();
     renderChart();
+    renderLanc();
+    renderRepr();
   } catch(e) {
     console.error('Erro ao carregar CP/CR:', e);
     document.getElementById('loadingOverlay').innerHTML = '<div class="error-msg">Erro ao carregar dados: ' + e.message + '<br><br><button onclick="loadFromAPI()" style="padding:6px 16px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:#38BDF8;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
@@ -608,6 +637,139 @@ function updateSidePanel(keys, cpVals, crVals, balVals) {
   document.getElementById('selLevel').textContent  = LEVEL_NAMES[level];
 }
 
+// ── LANÇAMENTOS VIEW ──────────────────────────────────────────────────────────
+let lancSortCol = 'vcto';
+let lancSortAsc = true;
+
+function sortLanc(col) {
+  if (lancSortCol === col) lancSortAsc = !lancSortAsc;
+  else { lancSortCol = col; lancSortAsc = true; }
+  renderLanc();
+}
+
+function renderLanc() {
+  const isCP = activeTab === 'CP';
+  const data = isCP ? CP_DATA.map(r=>({...r,_tipo:'CP'})) : CR_DATA.map(r=>({...r,_tipo:'CR'}));
+  const search = (document.getElementById('lancSearch')?.value || '').toLowerCase();
+  const statusF = document.getElementById('lancStatus')?.value || '';
+
+  let filtered = data.filter(r => {
+    if (search && !r.favorecido.toLowerCase().includes(search) && !r.categoria.toLowerCase().includes(search)) return false;
+    if (statusF && r.status !== statusF) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (lancSortCol === 'valor') { va = a.valor; vb = b.valor; }
+    else if (lancSortCol === 'vcto') {
+      const pa = a.vcto.split('/').map(Number), pb = b.vcto.split('/').map(Number);
+      va = (pa[2]||0)*10000 + (pa[1]||0)*100 + (pa[0]||0);
+      vb = (pb[2]||0)*10000 + (pb[1]||0)*100 + (pb[0]||0);
+    }
+    else { va = (a[lancSortCol]||'').toLowerCase(); vb = (b[lancSortCol]||'').toLowerCase(); }
+    if (va < vb) return lancSortAsc ? -1 : 1;
+    if (va > vb) return lancSortAsc ? 1 : -1;
+    return 0;
+  });
+
+  document.getElementById('lancCount').textContent = filtered.length + ' registros';
+
+  const statusBadge = s => {
+    if (s === 'PAGO' || s === 'RECEBIDO') return '<span style="display:inline-flex;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.15)">' + s + '</span>';
+    if (s === 'ATRASADO') return '<span style="display:inline-flex;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;background:rgba(248,113,113,0.1);color:var(--red);border:1px solid rgba(248,113,113,0.15)">' + s + '</span>';
+    return '<span style="display:inline-flex;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.15)">' + s + '</span>';
+  };
+
+  document.getElementById('lancBody').innerHTML = filtered.length ? filtered.map(r =>
+    '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.12s;cursor:default" onmouseover="this.style.background=\\'rgba(255,255,255,0.025)\\'" onmouseout="this.style.background=\\'\\'">'+
+    '<td style="padding:8px 14px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.favorecido + '</td>' +
+    '<td style="padding:8px 14px;font-size:10px;color:var(--muted);font-family:DM Mono,monospace">' + r.categoria + '</td>' +
+    '<td style="padding:8px 14px;font-size:11px;font-family:DM Mono,monospace;color:var(--muted)">' + r.vcto + '</td>' +
+    '<td style="padding:8px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:500;color:' + (isCP ? 'var(--red)' : 'var(--green)') + '">' + fmt(r.valor) + '</td>' +
+    '<td style="padding:8px 14px;text-align:center">' + statusBadge(r.status) + '</td>' +
+    '<td style="padding:8px 14px;text-align:center;font-size:9px;font-family:DM Mono,monospace;color:' + (r._tipo==='CP' ? 'var(--red)' : 'var(--green)') + '">' + r._tipo + '</td>' +
+    '</tr>'
+  ).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Nenhum registro encontrado</td></tr>';
+}
+
+// ── REPRESENTATIVIDADE VIEW ──────────────────────────────────────────────────
+function renderRepr() {
+  const isCP = activeTab === 'CP';
+  const data = isCP ? CP_DATA : CR_DATA;
+  const mainColor = isCP ? 'var(--red)' : 'var(--green)';
+  const mainHex = isCP ? '#F87171' : '#34D399';
+  const mainBg = isCP ? 'rgba(248,113,113,' : 'rgba(52,211,153,';
+
+  // By favorecido
+  const favMap = {};
+  data.forEach(r => { favMap[r.favorecido] = (favMap[r.favorecido] || 0) + r.valor; });
+  const favSorted = Object.entries(favMap).sort((a,b) => b[1] - a[1]);
+  const favTotal = favSorted.reduce((s,[,v]) => s+v, 0);
+  const favMax = favSorted[0]?.[1] || 1;
+
+  // By categoria
+  const catMap = {};
+  data.forEach(r => { catMap[r.categoria] = (catMap[r.categoria] || 0) + r.valor; });
+  const catSorted = Object.entries(catMap).sort((a,b) => b[1] - a[1]);
+  const catTotal = catSorted.reduce((s,[,v]) => s+v, 0);
+  const catMax = catSorted[0]?.[1] || 1;
+
+  // By status
+  const statMap = {};
+  data.forEach(r => { statMap[r.status] = (statMap[r.status] || 0) + r.valor; });
+  const statSorted = Object.entries(statMap).sort((a,b) => b[1] - a[1]);
+  const statTotal = statSorted.reduce((s,[,v]) => s+v, 0);
+  const statColors = { 'A VENCER': 'var(--amber)', 'ATRASADO': 'var(--red)', 'PAGO': 'var(--green)', 'RECEBIDO': 'var(--green)', 'A RECEBER': 'var(--amber)' };
+
+  // By month
+  const moMap = {};
+  const MN = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  data.forEach(r => {
+    const p = r.vcto.split('/');
+    if (p.length >= 3) {
+      const k = MN[parseInt(p[1])-1] + '/' + p[2].slice(2);
+      moMap[k] = (moMap[k] || 0) + r.valor;
+    }
+  });
+  const moSorted = Object.entries(moMap).sort((a,b) => {
+    const [ma,ya] = a[0].split('/'), [mb,yb] = b[0].split('/');
+    return (+ya*100+MN.indexOf(ma)) - (+yb*100+MN.indexOf(mb));
+  });
+  const moMax = Math.max(...moSorted.map(([,v])=>v), 1);
+
+  const buildRanking = (title, items, total, maxVal, color, limit) => {
+    const shown = items.slice(0, limit || 10);
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:DM Mono,monospace">' + title + '</div>' +
+        '<div style="font-family:DM Mono,monospace;font-size:13px;color:#fff">' + fmtK(total) + '</div>' +
+      '</div>' +
+      shown.map(([name, val], i) => {
+        const pct = total > 0 ? (val/total*100).toFixed(1) : 0;
+        const w = Math.round(val/maxVal*100);
+        return '<div style="margin-bottom:8px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">' +
+            '<span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">' + (i+1) + '. ' + name + '</span>' +
+            '<span style="font-family:DM Mono,monospace;color:var(--text)">' + fmtK(val) + '  <span style="color:' + color + '">' + pct + '%</span></span>' +
+          '</div>' +
+          '<div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">' +
+            '<div style="height:100%;width:' + w + '%;background:' + color + ';opacity:0.6;border-radius:2px;transition:width 0.5s"></div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+      (items.length > (limit||10) ? '<div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">+ ' + (items.length-(limit||10)) + ' mais</div>' : '') +
+    '</div>';
+  };
+
+  document.getElementById('reprContent').innerHTML =
+    buildRanking(isCP ? 'Maiores Fornecedores' : 'Maiores Clientes', favSorted, favTotal, favMax, mainColor, 10) +
+    buildRanking('Por Categoria', catSorted, catTotal, catMax, 'var(--blue)', 10) +
+    buildRanking('Por Status', statSorted, statTotal, Math.max(...statSorted.map(([,v])=>v),1), 'var(--amber)', 5) +
+    buildRanking('Por Mês de Vencimento', moSorted, moSorted.reduce((s,[,v])=>s+v,0), moMax, 'var(--purple)', 12);
+}
+
 // ── TABS & VIEW ───────────────────────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
@@ -617,6 +779,9 @@ function switchTab(tab) {
   document.getElementById('tabCP').style.borderBottomColor = isCP?'var(--red)':'transparent';
   document.getElementById('tabCR').style.borderBottomColor = !isCP?'var(--green)':'transparent';
   renderKPIs();
+  if (activeView === 'lanc') renderLanc();
+  if (activeView === 'repr') renderRepr();
+  if (activeView === 'temp') renderChart();
 }
 
 function switchView(view) {
@@ -626,6 +791,8 @@ function switchView(view) {
     document.getElementById('vt'+v.charAt(0).toUpperCase()+v.slice(1))?.classList.toggle('active', v===view);
   });
   if(view==='temp') renderChart();
+  if(view==='lanc') renderLanc();
+  if(view==='repr') renderRepr();
 }
 
 function renderKPIs() {
@@ -633,7 +800,22 @@ function renderKPIs() {
   const isCP    = activeTab==='CP';
   const avencer = data.filter(r=>r.status==='A VENCER').reduce((s,r)=>s+r.valor,0);
   const atrasado= data.filter(r=>r.status==='ATRASADO').reduce((s,r)=>s+r.valor,0);
-  const pmDays  = isCP ? 24.67 : 19.7;
+
+  // Calculate prazo médio from data
+  const today = new Date(); today.setHours(0,0,0,0);
+  const openItems = data.filter(r => r.status === 'A VENCER' || r.status === 'ATRASADO');
+  let pmDays = 0;
+  if (openItems.length > 0) {
+    const totalDays = openItems.reduce((s, r) => {
+      const parts = r.vcto.split('/');
+      if (parts.length < 3) return s;
+      const vctoDate = new Date(+parts[2], +parts[1]-1, +parts[0]);
+      vctoDate.setHours(0,0,0,0);
+      return s + Math.round((vctoDate - today) / 86400000);
+    }, 0);
+    pmDays = Math.round(totalDays / openItems.length * 10) / 10;
+  }
+
   document.getElementById('kpiStrip').innerHTML = \`
     <div class="kpi"><div class="kpi-glow" style="background:\${isCP?'var(--red)':'var(--green)'}"></div>
       <div class="kpi-label">\${isCP?'Total a Pagar':'Total a Receber'}</div>
@@ -645,7 +827,7 @@ function renderKPIs() {
       <div class="kpi-sub">\${atrasado>0?'Atenção necessária':'Nenhum em atraso'}</div></div>
     <div class="kpi"><div class="kpi-glow" style="background:var(--muted)"></div>
       <div class="kpi-label">Prazo Médio</div><div class="kpi-num w">\${pmDays} dias</div>
-      <div class="kpi-sub">\${isCP?'Pagamento':'Recebimento'}</div></div>\`;
+      <div class="kpi-sub">\${isCP?'Pagamento':'Recebimento'} · \${openItems.length} em aberto</div></div>\`;
   document.getElementById('cntCP').textContent = CP_DATA.filter(r=>r.status==='A VENCER'||r.status==='ATRASADO').length;
   document.getElementById('cntCR').textContent = CR_DATA.filter(r=>r.status==='A VENCER'||r.status==='ATRASADO').length;
 }
