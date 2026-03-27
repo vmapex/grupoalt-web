@@ -3,88 +3,61 @@ import { useEffect, useRef } from 'react'
 import { useAuthStore } from '@/store/authStore'
 
 export default function CaixaPage() {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLIFrameElement>(null)
   const { token, empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
 
     const empresaId = empresaAtiva?.id || 1
-    const empresaNome = empresaAtiva?.nome || 'Empresa'
     const apiUrl = window.location.origin + '/api/proxy'
 
     const html = `<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/dm-mono@4.5.14/index.css">
 <link rel="stylesheet" href="https://unpkg.com/@fontsource/plus-jakarta-sans@8.0.0/index.css">
 <style>
-:root{--bg:#05091A;--surface:rgba(255,255,255,0.034);--border:rgba(255,255,255,0.07);--blue:#38BDF8;--green:#34D399;--red:#F87171;--amber:#FBBF24;--orange:#FB923C;--purple:#C084FC;--text:#F1F5F9;--muted:#64748B;}
+:root{--bg:#05091A;--surface:rgba(255,255,255,0.034);--border:rgba(255,255,255,0.07);--blue:#38BDF8;--green:#34D399;--red:#F87171;--amber:#FBBF24;--text:#F1F5F9;--muted:#64748B}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px;}
-.period-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace}
-.fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:10px;padding:4px 8px;border-radius:7px;font-family:inherit}
-.fsel option{background:#0f172a}
-.drill-btn{padding:3px 9px;border-radius:5px;font-size:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#94A3B8;cursor:pointer;font-family:inherit;transition:all .15s}
-.drill-btn:hover{background:rgba(56,189,248,.1);color:#38BDF8;border-color:#38BDF8}
-.drill-btn.active{background:rgba(56,189,248,.15);color:#38BDF8;border-color:#38BDF8}
+body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px}
+input[type="date"]{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 10px;border-radius:7px;font-family:inherit;outline:none;cursor:pointer}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5;cursor:pointer}
+input[type="date"]:focus{border-color:rgba(56,189,248,.4)}
+.toolbar{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:8px 20px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.97)}
+.toolbar label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.toolbar-group{display:flex;align-items:center;gap:6px}
+.btn{padding:4px 12px;border-radius:6px;font-size:10px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{background:rgba(56,189,248,.1);color:var(--blue);border-color:var(--blue)}
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border)}
-.kpi{padding:12px 20px;border-right:1px solid var(--border);position:relative;overflow:hidden;cursor:default;transition:background 0.2s}
+.kpi{padding:12px 20px;border-right:1px solid var(--border);position:relative;overflow:hidden;cursor:default;transition:background .2s;animation:fadeUp .35s ease both}
 .kpi:last-child{border-right:none}
 .kpi:hover{background:rgba(255,255,255,0.015)}
-.kpi-glow{position:absolute;bottom:0;left:0;right:0;height:1.5px;opacity:0;transition:opacity 0.3s}
+.kpi-glow{position:absolute;bottom:0;left:0;right:0;height:1.5px;opacity:0;transition:opacity .3s}
 .kpi:hover .kpi-glow{opacity:1}
+.kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.20s}
 .kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
 .kpi-num{font-family:'DM Mono',monospace;font-size:18px;font-weight:400}
 .kpi-num.g{color:var(--green)}.kpi-num.r{color:var(--red)}.kpi-num.w{color:#fff}.kpi-num.b{color:var(--blue)}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:2px}
-.body{display:grid;grid-template-columns:1fr 220px;height:calc(100vh - 118px)}
+.body{display:grid;grid-template-columns:1fr 260px;height:calc(100vh - 118px)}
 .charts-col{padding:14px 18px;overflow-y:auto;border-right:1px solid var(--border)}
-.drill-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.drill-left{display:flex;align-items:center;gap:8px}
-.drill-title{font-size:10px;font-weight:600;color:var(--text)}
-.breadcrumb{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
-.bc-item{cursor:pointer;transition:color .15s}.bc-item:hover{color:var(--blue)}.bc-item.active{color:var(--blue)}
-.bc-sep{opacity:.4}
-.level-pill{padding:3px 9px;border-radius:5px;font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.5px;border:1px solid var(--border);color:var(--muted)}
-.level-pill.monthly{border-color:rgba(56,189,248,.4);color:var(--blue);background:rgba(56,189,248,.06)}
-.level-pill.weekly{border-color:rgba(52,211,153,.4);color:var(--green);background:rgba(52,211,153,.06)}
-.level-pill.quarterly{border-color:rgba(251,191,36,.4);color:var(--amber);background:rgba(251,191,36,.06)}
-.top-row{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px}
-.cc{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px;transition:border-color .2s;position:relative;overflow:hidden}
-.cc:hover{border-color:rgba(56,189,248,.18)}
-.cc-shine{position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
-.cc:hover .cc-shine{opacity:1}
-.cc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
-.cc-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
-.cc-kpi{font-family:'DM Mono',monospace;font-size:15px;text-align:right;color:#fff}
-.cc-kpi-sub{font-size:9px;color:var(--muted);text-align:right;margin-top:1px}
-.h-lg{position:relative;height:140px}
-.h-sm{position:relative;height:100px}
 .charts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.click-hint{font-size:8px;color:rgba(100,116,139,.5);text-align:center;margin-top:3px;letter-spacing:.3px}
-.concil-big{font-family:'DM Mono',monospace;font-size:26px;color:#fff;line-height:1;margin:4px 0 2px}
-.concil-label{font-size:9px;color:var(--muted);margin-bottom:8px}
-.pbar{height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:10px}
-.pbar-fill{height:100%;border-radius:99px;transition:width 1s cubic-bezier(.4,0,.2,1)}
-.concil-stats{display:flex;flex-direction:column;gap:5px}
-.cs-row{display:flex;align-items:center;justify-content:space-between;font-size:10px}
-.cs-left{display:flex;align-items:center;gap:5px;color:var(--muted)}
-.cs-dot{width:5px;height:5px;border-radius:50%}
-.cs-val{font-family:'DM Mono',monospace;font-size:10px;color:#fff}
-.res-card{background:linear-gradient(135deg,rgba(52,211,153,.07),rgba(56,189,248,.04));border:1px solid rgba(52,211,153,.18);border-radius:11px;padding:12px}
-.res-big{font-family:'DM Mono',monospace;font-size:22px;color:var(--green);line-height:1;margin:5px 0 2px}
-.res-pct{font-size:9px;color:rgba(52,211,153,.6);margin-bottom:10px}
-.res-row{display:flex;justify-content:space-between;font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-.res-row:last-child{border-bottom:none}
-.res-name{color:var(--muted)}
-.res-val{font-family:'DM Mono',monospace;font-size:10px}
-.dre-col{padding:14px 12px;display:flex;flex-direction:column;gap:0;overflow-y:auto}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px;transition:border-color .2s;position:relative;overflow:hidden;cursor:pointer}
+.cc:hover{border-color:rgba(56,189,248,.18)}
+.cc-shine{position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s;background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+.cc:hover .cc-shine{opacity:1}
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.cc-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+.cc-kpi{font-family:'DM Mono',monospace;font-size:13px;text-align:right;color:#fff}
+.chart-wrap{position:relative;height:120px}
+.dre-col{padding:14px 12px;display:flex;flex-direction:column;overflow-y:auto}
 .dre-title-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
-.di{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);cursor:default;transition:padding-left .15s}
+.di{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);cursor:default;transition:padding-left .15s}
 .di:last-child{border-bottom:none}
 .di:hover{padding-left:3px}
-.di-l{display:flex;align-items:center;gap:5px}
+.di-l{display:flex;align-items:center;gap:6px}
 .di-dot{width:4px;height:4px;border-radius:50%}
 .di-name{font-size:10px;color:var(--muted)}
 .di:hover .di-name{color:var(--text)}
@@ -92,70 +65,61 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .di-val{font-family:'DM Mono',monospace;font-size:10px;color:#fff}
 .di-val.neg{color:var(--red)}
 .di-pct{font-size:9px;color:var(--muted);margin-top:1px}
-.di-bar{height:1.5px;background:rgba(255,255,255,.05);border-radius:1px;margin-top:3px;overflow:hidden}
-.di-bar-inner{height:100%;border-radius:1px;transition:width .7s ease}
-.loading-overlay{display:flex;align-items:center;justify-content:center;height:200px;gap:10px;color:var(--muted);font-size:11px}
-.spinner{width:14px;height:14px;border:2px solid rgba(56,189,248,.2);border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite}
+.di.subtotal .di-name{color:var(--text);font-weight:600}
+.di.subtotal .di-val{font-weight:600}
+.di.subtotal{border-bottom:1px solid rgba(255,255,255,.12)}
+.di.final-row .di-name{color:var(--blue);font-weight:700;font-size:11px}
+.di.final-row .di-val{color:var(--blue);font-weight:700;font-size:11px}
+.loading-overlay{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:12px;color:var(--muted);font-size:11px}
+.spinner{width:18px;height:18px;border:2px solid rgba(56,189,248,.2);border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite}
+.error-box{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:12px;color:var(--red);font-size:12px}
+.error-box .btn{margin-top:8px;color:var(--text);border-color:var(--red)}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.kpi{animation:fadeUp .35s ease both}
-.kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}
-.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.20s}
 </style>
 </head>
 <body>
 
-<div class="toolbar" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 20px;border-bottom:1px solid var(--border);background:rgba(5,9,26,0.97)">
-    <button class="drill-btn active" id="btnQ" onclick="setLevel('quarterly')">Trimestral</button>
-    <button class="drill-btn" id="btnM" onclick="setLevel('monthly')">Mensal</button>
-    <button class="drill-btn" id="btnW" onclick="setLevel('weekly')">Semanal</button>
-    <div class="period-pill" id="periodPill">Carregando...</div>
-    <select class="fsel" id="anoSel" onchange="changeAno(this.value)">
-      <option value="2026">2026</option>
-      <option value="2025">2025</option>
-    </select>
+<div class="toolbar">
+  <div class="toolbar-group">
+    <label>De</label>
+    <input type="date" id="dtInicio">
+  </div>
+  <div class="toolbar-group">
+    <label>Até</label>
+    <input type="date" id="dtFim">
+  </div>
+  <button class="btn" onclick="applyFilter()">Filtrar</button>
 </div>
 
 <div class="kpi-strip">
   <div class="kpi"><div class="kpi-glow" style="background:var(--blue)"></div>
-    <div class="kpi-label">Saldo Inicial</div><div class="kpi-num w" id="kSI">—</div><div class="kpi-sub">Base do período</div></div>
+    <div class="kpi-label">Saldo Inicial</div><div class="kpi-num w" id="kSI">--</div><div class="kpi-sub">Base do período</div></div>
   <div class="kpi"><div class="kpi-glow" style="background:var(--green)"></div>
-    <div class="kpi-label">Entradas</div><div class="kpi-num g" id="kEnt">—</div><div class="kpi-sub">Receitas realizadas</div></div>
+    <div class="kpi-label">Entradas</div><div class="kpi-num g" id="kEnt">--</div><div class="kpi-sub">Receitas realizadas</div></div>
   <div class="kpi"><div class="kpi-glow" style="background:var(--red)"></div>
-    <div class="kpi-label">Saídas</div><div class="kpi-num r" id="kSai">—</div><div class="kpi-sub">Custos + despesas</div></div>
+    <div class="kpi-label">Saídas</div><div class="kpi-num r" id="kSai">--</div><div class="kpi-sub">Custos + despesas</div></div>
   <div class="kpi"><div class="kpi-glow" style="background:var(--green)"></div>
-    <div class="kpi-label">Saldo Final</div><div class="kpi-num" id="kSF">—</div><div class="kpi-sub">Posição atual</div></div>
+    <div class="kpi-label">Saldo Final</div><div class="kpi-num" id="kSF">--</div><div class="kpi-sub">Posição atual</div></div>
   <div class="kpi"><div class="kpi-glow" style="background:var(--green)"></div>
-    <div class="kpi-label">Balanço</div><div class="kpi-num" id="kBal">—</div><div class="kpi-sub">Resultado líquido</div></div>
+    <div class="kpi-label">Balanço</div><div class="kpi-num" id="kBal">--</div><div class="kpi-sub">Resultado líquido</div></div>
 </div>
 
 <div class="body">
-  <div class="charts-col">
-    <div class="drill-bar">
-      <div class="drill-left">
-        <span class="drill-title">Granularidade</span>
-        <div class="breadcrumb" id="breadcrumb"></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="level-pill monthly" id="levelPill">Mensal</span>
-        <button class="drill-btn" id="btnUp" onclick="drillUp()">▲ Drill Up</button>
-        <button class="drill-btn" id="btnDown" onclick="drillDown()">▼ Drill Down</button>
-      </div>
-    </div>
-
-    <div id="chartsArea">
-      <div class="loading-overlay"><div class="spinner"></div>Carregando dados da Omie...</div>
+  <div class="charts-col" id="chartsCol">
+    <div class="loading-overlay" id="loadingState">
+      <div class="spinner"></div>
+      Carregando dados da Omie...
     </div>
   </div>
-
   <div class="dre-col">
     <div class="dre-title-label">DRE Realizado</div>
     <div id="dreList"><div class="loading-overlay"><div class="spinner"></div></div></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"><\/script>
 <script>
 Chart.register(ChartDataLabels);
 
@@ -163,380 +127,339 @@ const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
 const TOKEN = '${token}';
 
-const fmt = v => Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtK = v => {if(!v||v===0)return'—';const a=Math.abs(v);const s=v<0?'−':'';return s+(a>=1e6?(a/1e6).toFixed(1)+'M':a>=1e3?(a/1e3).toFixed(1)+'K':a.toFixed(2));};
+// ── FORMATTERS ───────────────────────────────────────────────────────────────
+function fmtBR(v) {
+  return Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtK(v) {
+  if (v === 0 || v == null) return '0,00';
+  var a = Math.abs(v);
+  var s = v < 0 ? '-' : '';
+  if (a >= 1e6) return s + (a / 1e6).toFixed(2).replace('.', ',') + 'M';
+  if (a >= 1e3) return s + (a / 1e3).toFixed(2).replace('.', ',') + 'K';
+  return s + a.toFixed(2).replace('.', ',');
+}
+function fmtKShort(v) {
+  if (v === 0 || v == null) return '0';
+  var a = Math.abs(v);
+  var s = v < 0 ? '-' : '';
+  if (a >= 1e6) return s + (a / 1e6).toFixed(1).replace('.', ',') + 'M';
+  if (a >= 1e3) return s + (a / 1e3).toFixed(1).replace('.', ',') + 'K';
+  return s + a.toFixed(0);
+}
+function fmtPct(v) {
+  return (v >= 0 ? '' : '-') + Math.abs(v).toFixed(1).replace('.', ',') + '%';
+}
+function parseDateBR(str) {
+  var p = str.split('/');
+  return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+}
+function toDateInput(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function toApiBR(dateStr) {
+  var p = dateStr.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
 
-let RAW = [];
-let currentLevel = 'monthly';
-let selectedPeriod = null;
-let currentAno = 2026;
-let charts = {};
+// ── DRE MAPPING ──────────────────────────────────────────────────────────────
+function getDREGroup(cat) {
+  if (!cat) return null;
+  if (/^1\\.01\\./.test(cat)) return 'RoB';
+  if (/^1\\.02\\./.test(cat)) return 'RNOP';
+  if (/^2\\.01\\./.test(cat) || /^2\\.02\\./.test(cat)) return 'TDCF';
+  if (/^2\\.03\\./.test(cat) || /^2\\.04\\./.test(cat)) return 'CV';
+  if (/^2\\.0[5-9]\\./.test(cat) || /^2\\.1[0-3]\\./.test(cat)) return 'CF';
+  if (/^2\\.14\\./.test(cat)) return 'DNOP';
+  if (/^2\\.15\\./.test(cat)) return 'IRPJ';
+  if (/^2\\.16\\./.test(cat)) return 'CSLL';
+  // Fallback: 1.xx = RoB, 2.xx = CF
+  if (cat.startsWith('1.')) return 'RoB';
+  if (cat.startsWith('2.')) return 'CF';
+  return null;
+}
 
-// ── FETCH ─────────────────────────────────────────────────────────────────────
-async function fetchData(ano) {
-  const dtIni = '01/01/' + ano;
-  const dtFim = '31/12/' + ano;
-  const res = await fetch(
-    API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + dtIni + '&dt_fim=' + dtFim,
-    { headers: { Authorization: 'Bearer ' + TOKEN } }
-  );
+var RAW = [];
+var charts = {};
+var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+// ── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchData(dtIni, dtFim) {
+  var url = API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + encodeURIComponent(dtIni) + '&dt_fim=' + encodeURIComponent(dtFim);
+  var res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
   if (!res.ok) throw new Error('Erro HTTP ' + res.status);
-  const data = await res.json();
+  var data = await res.json();
   return Array.isArray(data) ? data : (data.dados || data.lancamentos || []);
 }
 
-// ── AGREGA POR PERÍODO ────────────────────────────────────────────────────────
-function agregaPorPeriodo(lancamentos, nivel, filtroMes) {
-  const map = {};
-
-  lancamentos.forEach(r => {
-    const dt = r.data_lancamento || '';
-    if (!dt) return;
-    const parts = dt.split('/');
-    if (parts.length < 3) return;
-    const [dd, mm, yyyy] = parts;
-    const anoLanc = parseInt(yyyy);
-    const mesLanc = parseInt(mm);
-    const diaLanc = parseInt(dd);
-
-    let key;
-    if (nivel === 'quarterly') {
-      const q = Math.ceil(mesLanc / 3);
-      key = 'Q' + q + '/' + String(anoLanc).slice(2);
-    } else if (nivel === 'monthly') {
-      const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      key = meses[mesLanc-1] + '/' + String(anoLanc).slice(2);
-    } else if (nivel === 'weekly' && filtroMes) {
-      const [mNome, ano2] = filtroMes.split('/');
-      const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      const mIdx = meses.indexOf(mNome) + 1;
-      if (mesLanc !== mIdx) return;
-      const semana = Math.ceil(diaLanc / 7);
-      key = 'Sem ' + semana + '·' + filtroMes;
-    }
-    if (!key) return;
-    if (!map[key]) map[key] = { ent: 0, sai: 0, concil: 0, total: 0 };
-    // Direção: origem terminando em P = saída, R = entrada; fallback: categoria 1.x/2.x
-    const origem = (r.origem || '').toUpperCase();
-    const cat = r.categoria || '';
-    const isSaida = origem.endsWith('P') || (!origem.endsWith('R') && cat.startsWith('2.'));
-    const v = Math.abs(r.valor || 0);
-    map[key].ent  += isSaida ? 0 : v;
-    map[key].sai  += isSaida ? v : 0;
-    if (r.conciliado) map[key].concil++;
-    map[key].total++;
-  });
-
-  return map;
+// ── DETERMINE DIRECTION ─────────────────────────────────────────────────────
+function isEntrada(r) {
+  var cat = r.categoria || '';
+  return cat.startsWith('1.');
 }
 
-// ── BUILD CHARTS ──────────────────────────────────────────────────────────────
-function buildCharts(data) {
-  const map = agregaPorPeriodo(RAW, currentLevel, selectedPeriod);
-  
-  // Ordena as labels
-  const labels = Object.keys(map).sort((a, b) => {
-    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const parseKey = k => {
-      if (k.startsWith('Q')) {
-        const [q, ano] = k.split('/');
-        return parseInt(ano) * 10 + parseInt(q[1]);
-      }
-      if (k.startsWith('Sem')) {
-        const parts = k.split('·');
-        const sem = parseInt(parts[0].replace('Sem ',''));
-        const [m, ano] = parts[1].split('/');
-        return parseInt(ano) * 1000 + meses.indexOf(m) * 10 + sem;
-      }
-      const [m, ano] = k.split('/');
-      return parseInt(ano) * 100 + meses.indexOf(m);
-    };
-    return parseKey(a) - parseKey(b);
+// ── AGGREGATE BY MONTH ───────────────────────────────────────────────────────
+function aggregateByMonth(lancamentos) {
+  var map = {};
+  lancamentos.forEach(function(r) {
+    var dt = r.data_lancamento || '';
+    if (!dt) return;
+    var parts = dt.split('/');
+    if (parts.length < 3) return;
+    var mm = parseInt(parts[1]);
+    var yyyy = parseInt(parts[2]);
+    var key = yyyy * 100 + mm;
+    var label = MESES[mm - 1] + '/' + String(yyyy).slice(2);
+    if (!map[key]) map[key] = { key: key, label: label, RoB: 0, RNOP: 0, TDCF: 0, CV: 0, CF: 0, DNOP: 0, IRPJ: 0, CSLL: 0 };
+    var grp = getDREGroup(r.categoria);
+    if (grp && map[key][grp] !== undefined) {
+      map[key][grp] += Math.abs(r.valor || 0);
+    }
   });
+  var keys = Object.keys(map).map(Number).sort(function(a, b) { return a - b; });
+  return keys.map(function(k) { return map[k]; });
+}
 
-  const entradas = labels.map(l => map[l].ent);
-  const saidas   = labels.map(l => map[l].sai);
-  const saldos   = labels.map((l, i) => {
-    const cumEnt = entradas.slice(0, i+1).reduce((s,v)=>s+v,0);
-    const cumSai = saidas.slice(0, i+1).reduce((s,v)=>s+v,0);
-    return cumEnt - cumSai;
+// ── COMPUTE DRE TOTALS ──────────────────────────────────────────────────────
+function computeDRE(lancamentos) {
+  var dre = { RoB: 0, RNOP: 0, TDCF: 0, CV: 0, CF: 0, DNOP: 0, IRPJ: 0, CSLL: 0 };
+  lancamentos.forEach(function(r) {
+    var grp = getDREGroup(r.categoria);
+    if (grp && dre[grp] !== undefined) {
+      dre[grp] += Math.abs(r.valor || 0);
+    }
   });
+  dre.RL = dre.RoB - dre.TDCF;
+  dre.MC = dre.RL - dre.CV;
+  dre.EBT1 = dre.MC - dre.CF;
+  dre.SNOP = dre.RNOP - dre.DNOP;
+  dre.EBT2 = dre.EBT1 + dre.SNOP;
+  dre.RES_LIQ = dre.EBT2 - dre.IRPJ - dre.CSLL;
+  return dre;
+}
 
-  const totEnt = entradas.reduce((s,v)=>s+v,0);
-  const totSai = saidas.reduce((s,v)=>s+v,0);
-  const totConcil = Object.values(map).reduce((s,v)=>s+v.concil,0);
-  const totTotal  = Object.values(map).reduce((s,v)=>s+v.total,0);
-  const pctConcil = totTotal > 0 ? Math.round(totConcil/totTotal*100) : 0;
-  const saldoFinal = totEnt - totSai;
+// ── BUILD KPIs ───────────────────────────────────────────────────────────────
+function updateKPIs(lancamentos) {
+  var totEnt = 0, totSai = 0;
+  lancamentos.forEach(function(r) {
+    var v = Math.abs(r.valor || 0);
+    if (isEntrada(r)) totEnt += v;
+    else totSai += v;
+  });
+  var saldo = totEnt - totSai;
 
-  // Atualiza KPIs
   document.getElementById('kSI').textContent = '0,00';
   document.getElementById('kEnt').textContent = fmtK(totEnt);
   document.getElementById('kSai').textContent = fmtK(totSai);
-  const sfEl = document.getElementById('kSF');
-  sfEl.textContent = fmtK(saldoFinal);
-  sfEl.className = 'kpi-num ' + (saldoFinal >= 0 ? 'g' : 'r');
-  const balEl = document.getElementById('kBal');
-  balEl.textContent = fmtK(saldoFinal);
-  balEl.className = 'kpi-num ' + (saldoFinal >= 0 ? 'g' : 'r');
-  document.getElementById('periodPill').textContent = labels[0] + ' → ' + labels[labels.length-1];
 
-  // Destrói charts antigos
-  Object.values(charts).forEach(c => c.destroy());
+  var sfEl = document.getElementById('kSF');
+  sfEl.textContent = fmtK(saldo);
+  sfEl.className = 'kpi-num ' + (saldo >= 0 ? 'g' : 'r');
+
+  var balEl = document.getElementById('kBal');
+  balEl.textContent = fmtK(saldo);
+  balEl.className = 'kpi-num ' + (saldo >= 0 ? 'g' : 'r');
+}
+
+// ── CREATE BAR CHART ─────────────────────────────────────────────────────────
+function createBarChart(canvasId, title, labels, data, color) {
+  var ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: color + '33',
+        borderColor: color,
+        borderWidth: 1,
+        borderRadius: 3,
+        barPercentage: 0.7,
+        categoryPercentage: 0.8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          color: '#94A3B8',
+          font: { family: 'DM Mono', size: 8 },
+          formatter: function(v) { return fmtKShort(v); }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748B', font: { family: 'DM Mono', size: 8 } },
+          border: { display: false }
+        },
+        y: {
+          display: false,
+          grid: { display: false },
+          beginAtZero: true,
+          grace: '20%'
+        }
+      },
+      onClick: function(e, elements) {
+        if (elements.length > 0) {
+          var idx = elements[0].index;
+          console.log('Drill into ' + title + ' at ' + labels[idx]);
+        }
+      }
+    }
+  });
+}
+
+// ── RENDER CHARTS ────────────────────────────────────────────────────────────
+function renderCharts(monthly) {
+  Object.values(charts).forEach(function(c) { c.destroy(); });
   charts = {};
 
-  document.getElementById('chartsArea').innerHTML = \`
-    <div class="top-row">
-      <div class="cc">
-        <div class="cc-shine" style="background:linear-gradient(90deg,transparent,var(--blue),transparent)"></div>
-        <div class="cc-head">
-          <div class="cc-title" style="color:var(--blue)">Receita Bruta (Entradas)</div>
-          <div><div class="cc-kpi" id="kRB">\${fmtK(totEnt)}</div><div class="cc-kpi-sub">Total período</div></div>
-        </div>
-        <div class="h-lg"><canvas id="cRB"></canvas></div>
-        \${currentLevel==='monthly'?'<div class="click-hint">clique em uma barra para detalhar ▼</div>':''}
-      </div>
-      <div class="cc">
-        <div class="cc-shine" style="background:linear-gradient(90deg,transparent,var(--green),transparent)"></div>
-        <div class="cc-head"><div class="cc-title" style="color:var(--green)">Conciliação</div></div>
-        <div class="concil-big" id="pbarPct">\${pctConcil}%</div>
-        <div class="concil-label">dos lançamentos conciliados</div>
-        <div class="pbar"><div class="pbar-fill" id="pbarFill" style="width:0%;background:var(--green)"></div></div>
-        <div class="concil-stats">
-          <div class="cs-row"><div class="cs-left"><div class="cs-dot" style="background:var(--green)"></div>Conciliados</div><span class="cs-val">\${totConcil}</span></div>
-          <div class="cs-row"><div class="cs-left"><div class="cs-dot" style="background:var(--amber)"></div>Pendentes</div><span class="cs-val" style="color:var(--amber)">\${totTotal-totConcil}</span></div>
-          <div class="cs-row" style="border-top:1px solid var(--border);padding-top:5px;margin-top:2px">
-            <div class="cs-left"><div class="cs-dot" style="background:var(--muted)"></div>Total</div><span class="cs-val">\${totTotal}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="charts-grid">
-      <div class="cc">
-        <div class="cc-shine" style="background:linear-gradient(90deg,transparent,var(--red),transparent)"></div>
-        <div class="cc-head"><div class="cc-title" style="color:var(--red)">Saídas</div><div><div class="cc-kpi" style="color:var(--red)">\${fmtK(totSai)}</div></div></div>
-        <div class="h-sm"><canvas id="cSai"></canvas></div>
-      </div>
-      <div class="cc">
-        <div class="cc-shine" style="background:linear-gradient(90deg,transparent,var(--blue),transparent)"></div>
-        <div class="cc-head"><div class="cc-title" style="color:var(--blue)">Saldo Acumulado</div><div><div class="cc-kpi" style="color:\${saldoFinal>=0?'var(--green)':'var(--red)'}">\${fmtK(saldoFinal)}</div></div></div>
-        <div class="h-sm"><canvas id="cSaldo"></canvas></div>
-      </div>
-      <div class="cc">
-        <div class="cc-shine" style="background:linear-gradient(90deg,transparent,var(--green),transparent)"></div>
-        <div class="cc-head"><div class="cc-title" style="color:var(--green)">Entradas × Saídas</div></div>
-        <div class="h-sm"><canvas id="cComp"></canvas></div>
-      </div>
-      <div class="cc" style="grid-column:1/-1">
-        <div class="cc-title" style="color:rgba(52,211,153,.7)">Resultado do Período</div>
-        <div class="res-big">\${fmtK(Math.abs(saldoFinal))}</div>
-        <div class="res-pct">\${saldoFinal>=0?'Resultado positivo':'Resultado negativo'} — \${(Math.abs(saldoFinal)/Math.max(totEnt,1)*100).toFixed(1)}% sobre entradas</div>
-        <div style="display:flex;flex-direction:column;gap:0">
-          <div class="res-row"><span class="res-name">Total entradas</span><span class="res-val" style="color:var(--green)">+\${fmtK(totEnt)}</span></div>
-          <div class="res-row"><span class="res-name">Total saídas</span><span class="res-val" style="color:var(--red)">−\${fmtK(totSai)}</span></div>
-          <div class="res-row" style="border-top:1px solid rgba(52,211,153,.2)!important">
-            <span class="res-name" style="color:var(--text);font-weight:600">= Saldo final</span>
-            <span class="res-val" style="color:\${saldoFinal>=0?'var(--green)':'var(--red)'};\font-weight:700">\${saldoFinal>=0?'+':''}\${fmtK(saldoFinal)}</span>
-          </div>
-        </div>
-      </div>
-    </div>\`;
+  var labels = monthly.map(function(m) { return m.label; });
+  var col = document.getElementById('chartsCol');
 
-  setTimeout(() => { document.getElementById('pbarFill').style.width = pctConcil + '%'; }, 300);
-
-  const opts = (color, isLine=false) => ({
-    responsive:true, maintainAspectRatio:false,
-    plugins:{
-      legend:{display:false},
-      datalabels:{
-        display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
-        color, font:{family:'DM Mono',size:9},
-        anchor:'end', align:'end', offset:2,
-        formatter: v => fmtK(v), clip:false
-      },
-      tooltip:{
-        backgroundColor:'rgba(5,9,26,.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
-        titleColor:'#64748b',bodyColor:color,padding:10,
-        callbacks:{label:c=>fmtK(c.raw)}
-      }
-    },
-    scales:{
-      x:{grid:{display:false},ticks:{color:'#475569',font:{size:9,family:'DM Mono'},maxRotation:0,autoSkip:true,maxTicksLimit:8}},
-      y:{display:false}
-    },
-    animation:{duration:450,easing:'easeInOutQuart'},
-    layout:{padding:{top:22}}
-  });
-
-  const mkBar = (id, data, color, clickFn) => {
-    const ctx = document.getElementById(id);
-    if (!ctx) return;
-    const c = new Chart(ctx, {
-      type:'bar',
-      data:{labels, datasets:[{
-        data, backgroundColor:data.map(v=>v>0?color+'22':'transparent'),
-        borderColor:data.map(v=>v>0?color:'transparent'),
-        borderWidth:1.5, borderRadius:5, borderSkipped:false,
-        datalabels:{
-          display:ctx2=>ctx2.dataset.data[ctx2.dataIndex]>0,
-          color, font:{family:'DM Mono',size:9},
-          anchor:'end',align:'end',offset:2,
-          formatter:v=>fmtK(v),clip:false
-        }
-      }]},
-      options:{...opts(color), onClick:(e,els)=>{ if(els.length && clickFn) clickFn(labels[els[0].index]); }}
-    });
-    charts[id] = c;
-  };
-
-  mkBar('cRB', entradas, '#38BDF8', currentLevel==='monthly'? l => drillDownTo(l) : null);
-  mkBar('cSai', saidas, '#F87171', null);
-
-  // Saldo acumulado — linha
-  const ctxSaldo = document.getElementById('cSaldo');
-  if (ctxSaldo) {
-    charts['cSaldo'] = new Chart(ctxSaldo, {
-      type:'line',
-      data:{labels, datasets:[{
-        data:saldos,
-        borderColor: saldoFinal>=0?'#34D399':'#F87171',
-        borderWidth:2, pointRadius:3,
-        pointBackgroundColor: saldoFinal>=0?'#34D399':'#F87171',
-        fill:true, backgroundColor: saldoFinal>=0?'rgba(52,211,153,.06)':'rgba(248,113,113,.06)',
-        tension:.35,
-        datalabels:{display:false}
-      }]},
-      options:{...opts(saldoFinal>=0?'#34D399':'#F87171',true),
-        plugins:{...opts(saldoFinal>=0?'#34D399':'#F87171',true).plugins,
-          datalabels:{display:false}}}
-    });
-  }
-
-  // Comparativo Entradas × Saídas
-  const ctxComp = document.getElementById('cComp');
-  if (ctxComp) {
-    charts['cComp'] = new Chart(ctxComp, {
-      type:'bar',
-      data:{labels, datasets:[
-        {label:'Entradas',data:entradas,backgroundColor:'rgba(52,211,153,.25)',borderColor:'#34D399',borderWidth:1.5,borderRadius:4,datalabels:{display:false}},
-        {label:'Saídas',  data:saidas,  backgroundColor:'rgba(248,113,113,.25)',borderColor:'#F87171',borderWidth:1.5,borderRadius:4,datalabels:{display:false}}
-      ]},
-      options:{...opts('#34D399'),
-        plugins:{...opts('#34D399').plugins,
-          legend:{display:true,position:'bottom',labels:{color:'#64748B',font:{size:9},boxWidth:10,padding:10}},
-          datalabels:{display:false}}}
-    });
-  }
-
-  // DRE
-  buildDRE(totEnt, totSai, pctConcil);
-}
-
-function buildDRE(ent, sai, pctConcil) {
-  const dre = [
-    {name:'Entradas',   val:ent,         pct:100,             c:'#38BDF8', neg:false},
-    {name:'Saídas',     val:sai,         pct:sai/Math.max(ent,1)*100,  c:'#F87171', neg:false},
-    {name:'Saldo',      val:ent-sai,     pct:(ent-sai)/Math.max(ent,1)*100, c:ent-sai>=0?'#34D399':'#F87171', neg:ent-sai<0},
-    {name:'Conciliados', val:pctConcil,  pct:pctConcil,       c:'#34D399', neg:false, isPct:true},
+  var chartDefs = [
+    { id: 'cRoB', title: 'RECEITA BRUTA', field: 'RoB', color: '#38BDF8' },
+    { id: 'cTDCF', title: 'T.D.C.F.', field: 'TDCF', color: '#38BDF8' },
+    { id: 'cCV', title: 'CUSTO VARIÁVEL', field: 'CV', color: '#38BDF8' },
+    { id: 'cCF', title: 'CUSTO FIXO', field: 'CF', color: '#38BDF8' },
+    { id: 'cRNOP', title: 'RECEITA NOP', field: 'RNOP', color: '#38BDF8' },
+    { id: 'cDNOP', title: 'DESPESA NOP', field: 'DNOP', color: '#38BDF8' }
   ];
 
-  document.getElementById('dreList').innerHTML = dre.map((d,i) => \`
-    <div class="di" style="animation:fadeUp .3s \${i*.04}s both ease">
-      <div class="di-l"><div class="di-dot" style="background:\${d.c}"></div><span class="di-name">\${d.name}</span></div>
-      <div class="di-r">
-        <div class="di-val\${d.neg?' neg':''}">\${d.isPct ? d.val+'%' : (d.neg?'−':'') + fmtK(Math.abs(d.val))}</div>
-        \${!d.isPct?'<div class="di-pct\${d.neg?" neg":""}">' + Math.abs(d.pct).toFixed(1)+'%</div>':''}
-      </div>
-    </div>
-    <div class="di-bar"><div class="di-bar-inner" style="width:\${Math.min(Math.abs(d.pct),100)}%;background:\${d.c};opacity:.55"></div></div>
-  \`).join('');
+  var gridHtml = '<div class="charts-grid">';
+  chartDefs.forEach(function(cd) {
+    var total = monthly.reduce(function(s, m) { return s + m[cd.field]; }, 0);
+    gridHtml += '<div class="cc" onclick="console.log(\\'Drill: ' + cd.title + '\\')">' +
+      '<div class="cc-shine"></div>' +
+      '<div class="cc-head">' +
+        '<div class="cc-title">' + cd.title + '</div>' +
+        '<div class="cc-kpi">' + fmtK(total) + '</div>' +
+      '</div>' +
+      '<div class="chart-wrap"><canvas id="' + cd.id + '"></canvas></div>' +
+    '</div>';
+  });
+  gridHtml += '</div>';
+
+  col.innerHTML = gridHtml;
+
+  chartDefs.forEach(function(cd) {
+    var data = monthly.map(function(m) { return m[cd.field]; });
+    charts[cd.id] = createBarChart(cd.id, cd.title, labels, data, cd.color);
+  });
 }
 
-// ── DRILL ─────────────────────────────────────────────────────────────────────
-function setLevel(l) {
-  currentLevel = l; selectedPeriod = null;
-  ['btnQ','btnM','btnW'].forEach(id => document.getElementById(id).classList.remove('active'));
-  document.getElementById(l==='quarterly'?'btnQ':l==='monthly'?'btnM':'btnW').classList.add('active');
-  updateUI(); buildCharts();
+// ── RENDER DRE ───────────────────────────────────────────────────────────────
+function renderDRE(dre) {
+  var robVal = dre.RoB || 1;
+  function pct(v) { return (v / robVal) * 100; }
+
+  var rows = [
+    { name: 'RoB', val: dre.RoB, dot: '#38BDF8' },
+    { name: 'TDCF', val: dre.TDCF, dot: '#F87171' },
+    { name: 'RL', val: dre.RL, dot: '#34D399', sub: true },
+    { name: 'CV', val: dre.CV, dot: '#FB923C' },
+    { name: 'MC', val: dre.MC, dot: '#34D399', sub: true },
+    { name: 'CF', val: dre.CF, dot: '#FBBF24' },
+    { name: 'EBT1', val: dre.EBT1, dot: '#C084FC', sub: true },
+    { name: 'RNOP', val: dre.RNOP, dot: '#38BDF8' },
+    { name: 'DNOP', val: dre.DNOP, dot: '#F87171' },
+    { name: 'EBT2', val: dre.EBT2, dot: '#C084FC', sub: true },
+    { name: 'IRPJ', val: dre.IRPJ, dot: '#64748B' },
+    { name: 'CSLL', val: dre.CSLL, dot: '#64748B' },
+    { name: 'RES LÍQ', val: dre.RES_LIQ, dot: '#34D399', final: true }
+  ];
+
+  var html = '';
+  rows.forEach(function(r) {
+    var isNeg = r.val < 0;
+    var cls = 'di';
+    if (r.sub) cls += ' subtotal';
+    if (r.final) cls += ' final-row';
+    var valCls = 'di-val' + (isNeg ? ' neg' : '');
+    var p = pct(r.val);
+    html += '<div class="' + cls + '">' +
+      '<div class="di-l"><div class="di-dot" style="background:' + r.dot + '"></div><div class="di-name">' + r.name + '</div></div>' +
+      '<div class="di-r"><div class="' + valCls + '">' + fmtK(r.val) + '</div><div class="di-pct">' + fmtPct(p) + '</div></div>' +
+    '</div>';
+  });
+
+  document.getElementById('dreList').innerHTML = html;
 }
 
-function drillDown() {
-  if (currentLevel==='quarterly') { currentLevel='monthly'; selectedPeriod=null; }
-  else if (currentLevel==='monthly') { currentLevel='weekly'; }
-  updateUI(); buildCharts();
+// ── SHOW ERROR ───────────────────────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById('chartsCol').innerHTML =
+    '<div class="error-box">' +
+      '<div>' + msg + '</div>' +
+      '<button class="btn" onclick="applyFilter()">Tentar novamente</button>' +
+    '</div>';
+  document.getElementById('dreList').innerHTML = '<div class="error-box" style="height:100px"><div>' + msg + '</div></div>';
 }
 
-function drillUp() {
-  if (currentLevel==='weekly') { currentLevel='monthly'; selectedPeriod=null; }
-  else if (currentLevel==='monthly') { currentLevel='quarterly'; selectedPeriod=null; }
-  updateUI(); buildCharts();
-}
+// ── MAIN LOAD ────────────────────────────────────────────────────────────────
+async function loadData(dtIni, dtFim) {
+  document.getElementById('chartsCol').innerHTML = '<div class="loading-overlay" id="loadingState"><div class="spinner"></div>Carregando dados da Omie...</div>';
+  document.getElementById('dreList').innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
 
-function drillDownTo(label) {
-  currentLevel='weekly'; selectedPeriod=label;
-  updateUI(); buildCharts();
-}
+  try {
+    RAW = await fetchData(dtIni, dtFim);
 
-function updateUI() {
-  const names = {quarterly:'Trimestral',monthly:'Mensal',weekly:'Semanal'};
-  const cls   = {quarterly:'quarterly', monthly:'monthly', weekly:'weekly'};
-  const pill  = document.getElementById('levelPill');
-  pill.textContent = names[currentLevel] + (selectedPeriod?' · '+selectedPeriod:'');
-  pill.className = 'level-pill '+cls[currentLevel];
-  document.getElementById('btnUp').disabled   = currentLevel==='quarterly';
-  document.getElementById('btnDown').disabled = currentLevel==='weekly';
+    if (!RAW.length) {
+      document.getElementById('chartsCol').innerHTML = '<div class="loading-overlay" style="color:var(--muted)">Nenhum dado encontrado para o período selecionado.</div>';
+      document.getElementById('dreList').innerHTML = '';
+      updateKPIs([]);
+      return;
+    }
 
-  const bc = document.getElementById('breadcrumb');
-  if (currentLevel==='quarterly') {
-    bc.innerHTML = '<span class="bc-item active">Trimestral</span>';
-  } else if (currentLevel==='monthly') {
-    bc.innerHTML = '<span class="bc-item" onclick="setLevel(&#39;quarterly&#39;)">Trimestral</span><span class="bc-sep">›</span><span class="bc-item active">Mensal</span>';
-  } else {
-    bc.innerHTML = '<span class="bc-item" onclick="setLevel(&#39;quarterly&#39;)">Trimestral</span><span class="bc-sep">›</span><span class="bc-item" onclick="setLevel(&#39;monthly&#39;)">Mensal</span><span class="bc-sep">›</span><span class="bc-item active">' + (selectedPeriod||'Semanal') + '</span>';
+    updateKPIs(RAW);
+
+    var monthly = aggregateByMonth(RAW);
+    renderCharts(monthly);
+
+    var dre = computeDRE(RAW);
+    renderDRE(dre);
+
+  } catch (err) {
+    showError('Erro ao carregar dados: ' + err.message);
   }
 }
 
-async function changeAno(ano) {
-  currentAno = parseInt(ano);
-  document.getElementById('chartsArea').innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Carregando...</div>';
-  RAW = await fetchData(ano);
-  normalizeRAW();
-  buildCharts();
-}
-
-function normalizeRAW() {
-  RAW = RAW.map(r => ({
-    ...r,
-    valor: r.valor !== undefined ? r.valor :
-           (r.nValorEntrada || 0) - (r.nValorSaida || 0),
-    data_lancamento: r.data_lancamento || r.dDataLancamento || '',
-    conciliado: r.conciliado !== undefined ? r.conciliado :
-                (r.lLancConciliado === 'S' || r.conciliado === true),
-  }));
+function applyFilter() {
+  var dtIni = toApiBR(document.getElementById('dtInicio').value);
+  var dtFim = toApiBR(document.getElementById('dtFim').value);
+  loadData(dtIni, dtFim);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-(async () => {
-  try {
-    RAW = await fetchData(currentAno);
-    normalizeRAW();
-    updateUI();
-    buildCharts();
-  } catch(e) {
-    document.getElementById('chartsArea').innerHTML = '<div class="loading-overlay" style="color:var(--red)">Erro ao carregar: ' + e.message + '</div>';
-  }
+(function init() {
+  var today = new Date();
+  var sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+
+  document.getElementById('dtInicio').value = toDateInput(sixMonthsAgo);
+  document.getElementById('dtFim').value = toDateInput(today);
+
+  var dtIni = toApiBR(toDateInput(sixMonthsAgo));
+  var dtFim = toApiBR(toDateInput(today));
+  loadData(dtIni, dtFim);
 })();
-</script>
+<\/script>
 </body>
 </html>`
 
-    const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'width:100%;height:calc(100vh - 48px);border:none;display:block'
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts')
-    iframe.srcdoc = html
-    ref.current!.innerHTML = ''
-    ref.current!.appendChild(iframe)
-  }, [empresaAtiva, token])
+    ref.current.srcdoc = html
+  }, [token, empresaAtiva])
 
-  return <div ref={ref} style={{ width: '100%', height: 'calc(100vh - 48px)' }} />
+  return (
+    <iframe
+      ref={ref}
+      sandbox="allow-same-origin allow-scripts"
+      style={{ width: '100%', height: 'calc(100vh - 48px)', border: 'none' }}
+    />
+  )
 }
