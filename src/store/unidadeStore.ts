@@ -15,38 +15,45 @@ export interface Projeto {
  * Se a empresa não está no mapa, o dropdown de unidade fica oculto.
  */
 const PROJETOS_POR_EMPRESA: Record<string, Projeto[]> = {
-  // Apenas "Alt Max Transportes" (id=1) usa projetos/filiais
   '1': [
     { id: 'proj_1', nome: 'Matriz Goiânia', codigo: 'MTZ-GYN' },
     { id: 'proj_2', nome: 'Filial Araguaína', codigo: 'FIL-ARA' },
     { id: 'proj_3', nome: 'Filial São Paulo', codigo: 'FIL-SP' },
     { id: 'proj_4', nome: 'Filial Inhumas', codigo: 'FIL-INH' },
   ],
-  // '2' (Alt Max Logística) não usa projetos → dropdown oculto
 }
 
 interface UnidadeState {
   projetos: Projeto[]
-  activeProjetoId: string | null // null = "Todas as unidades"
+  /** IDs selecionados. Vazio = "Todas as unidades" */
+  selectedIds: string[]
   loading: boolean
 
-  /** Carrega projetos para a empresa. Em produção: fetch da API */
   fetchProjetos: (empresaId: string) => Promise<void>
 
-  /** Seleciona um projeto (ou null para "Todas") */
-  setActive: (projetoId: string | null) => void
+  /** Toggle individual: adiciona ou remove do array */
+  toggle: (projetoId: string) => void
 
-  /** Retorna o projeto ativo ou null */
-  getActive: () => Projeto | null
+  /** Seleciona todas (limpa seleção) */
+  selectAll: () => void
+
+  /** Retorna os projetos selecionados (vazio = todos) */
+  getSelected: () => Projeto[]
+
+  /** Helper: checa se um projeto está selecionado */
+  isSelected: (projetoId: string) => boolean
+
+  /** Helper: retorna true se TODOS estão selecionados (ou nenhum filtro ativo) */
+  isAllSelected: () => boolean
 }
 
 export const useUnidadeStore = create<UnidadeState>((set, get) => ({
   projetos: [],
-  activeProjetoId: null,
+  selectedIds: [],
   loading: false,
 
   fetchProjetos: async (empresaId: string) => {
-    set({ loading: true, activeProjetoId: null })
+    set({ loading: true, selectedIds: [] })
 
     // TODO: Em produção, substituir por:
     // const res = await api.get(`/projetos?empresa_id=${empresaId}`)
@@ -56,11 +63,23 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
     set({ projetos, loading: false })
   },
 
-  setActive: (projetoId) => set({ activeProjetoId: projetoId }),
+  toggle: (projetoId) => set((s) => {
+    const has = s.selectedIds.includes(projetoId)
+    const next = has
+      ? s.selectedIds.filter((id) => id !== projetoId)
+      : [...s.selectedIds, projetoId]
+    return { selectedIds: next }
+  }),
 
-  getActive: () => {
-    const { projetos, activeProjetoId } = get()
-    if (!activeProjetoId) return null
-    return projetos.find((p) => p.id === activeProjetoId) || null
+  selectAll: () => set({ selectedIds: [] }),
+
+  getSelected: () => {
+    const { projetos, selectedIds } = get()
+    if (selectedIds.length === 0) return projetos
+    return projetos.filter((p) => selectedIds.includes(p.id))
   },
+
+  isSelected: (projetoId) => get().selectedIds.includes(projetoId),
+
+  isAllSelected: () => get().selectedIds.length === 0,
 }))
