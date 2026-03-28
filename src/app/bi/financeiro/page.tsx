@@ -14,6 +14,9 @@ import { fmtK, fmtBRL } from '@/lib/formatters'
 import { CAIXA_DATA, DRE_ROWS, getDREColor } from '@/lib/mocks/caixaData'
 import { mockExtrato, mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull, mockCRFull } from '@/lib/mocks/cpcrData'
+import { useExtrato, useSaldos, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
+import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { transformCPCR, transformSaldos } from '@/lib/transformers'
 
 /* ── KPI card data ─────────────────────────── */
 interface KPICardData {
@@ -36,27 +39,39 @@ interface WaterfallItem {
 
 export default function DashboardExecutivo() {
   const t = useThemeStore((s) => s.tokens)
+  const empresaId = useEmpresaId()
+
+  // API calls
+  const { data: saldosRaw } = useSaldos(empresaId)
+  const { data: cpRaw } = useCP(empresaId, { registros: 100 })
+  const { data: crRaw } = useCR(empresaId, { registros: 100 })
+  const { data: concilResumoAPI } = useConcilResumo(empresaId)
+  const { data: fluxoAPI } = useFluxoCaixa(empresaId)
+
+  // Transform API or fallback
+  const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : mockCPFull), [cpRaw])
+  const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : mockCRFull), [crRaw])
 
   /* ── Computed values ──────────────────────── */
-  const saldoCaixa = useMemo(
-    () => mockContas.reduce((s, c) => s + c.saldo, 0),
-    [],
-  )
+  const saldoCaixa = useMemo(() => {
+    if (saldosRaw) return saldosRaw.reduce((s, c) => s + c.saldo, 0)
+    return mockContas.reduce((s, c) => s + c.saldo, 0)
+  }, [saldosRaw])
 
   const ebt2 = useMemo(() => DRE_ROWS.find((r) => r.name === 'EBT2')?.val ?? 0, [])
 
   const cpAtrasado = useMemo(
-    () => mockCPFull.filter((c) => c.status === 'ATRASADO').reduce((s, c) => s + c.valor, 0),
-    [],
+    () => cpData.filter((c) => c.status === 'ATRASADO').reduce((s, c) => s + c.valor, 0),
+    [cpData],
   )
 
   const crPrevisto = useMemo(
-    () => mockCRFull.filter((c) => c.status === 'A RECEBER').reduce((s, c) => s + c.valor, 0),
-    [],
+    () => crData.filter((c) => c.status === 'A RECEBER').reduce((s, c) => s + c.valor, 0),
+    [crData],
   )
 
-  const concilPct = 87
-  const fluxo30d = 38400
+  const concilPct = concilResumoAPI?.percentual_conciliado ?? 87
+  const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 38400
 
   const kpis: KPICardData[] = useMemo(() => [
     { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, trend: 4.2, trendUp: true, route: '/portal/extrato' },
@@ -118,7 +133,7 @@ export default function DashboardExecutivo() {
       { label: '31-60d', min: 31, max: 60, total: 0 },
       { label: '60+d', min: 61, max: 9999, total: 0 },
     ]
-    mockCPFull.filter((c) => c.status === 'A VENCER' || c.status === 'ATRASADO').forEach((c) => {
+    cpData.filter((c) => c.status === 'A VENCER' || c.status === 'ATRASADO').forEach((c) => {
       const [d, m, y] = c.vcto.split('/')
       const vcto = new Date(Number(y), Number(m) - 1, Number(d))
       const dias = Math.max(0, Math.round((vcto.getTime() - today.getTime()) / 86400000))
@@ -127,14 +142,14 @@ export default function DashboardExecutivo() {
     })
     const maxBucket = Math.max(...buckets.map((b) => b.total), 1)
     return buckets.map((b) => ({ ...b, pct: (b.total / maxBucket) * 100 }))
-  }, [])
+  }, [cpData])
 
   /* ── Top Clientes (CR) ─────────────────────── */
   const topClientes = useMemo(() => {
-    const sorted = [...mockCRFull].sort((a, b) => b.valor - a.valor).slice(0, 5)
+    const sorted = [...crData].sort((a, b) => b.valor - a.valor).slice(0, 5)
     const maxVal = sorted[0]?.valor ?? 1
     return sorted.map((c) => ({ nome: c.fav, valor: c.valor, pct: (c.valor / maxVal) * 100 }))
-  }, [])
+  }, [crData])
 
   /* ── Ultimas movimentacoes ─────────────────── */
   const ultimasMov = useMemo(() => mockExtrato.slice(0, 5), [])

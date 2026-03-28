@@ -1,7 +1,8 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useThemeStore } from '@/store/themeStore'
 import { Bell, AlertCircle, AlertTriangle, Info, ChevronRight } from 'lucide-react'
+import { useNotificacoes, useNotificacoesContagem, marcarTodasLidas } from '@/hooks/useAPI'
 
 interface Notification {
   id: string
@@ -17,14 +18,14 @@ interface Notification {
 const NOW = new Date()
 const YESTERDAY = new Date(NOW.getTime() - 86400000)
 
-const INITIAL_NOTIFICATIONS: Notification[] = [
+const FALLBACK_NOTIFICATIONS: Notification[] = [
   {
     id: '1',
     type: 'critical',
     title: '3 contas atrasadas',
     description: 'ENERGIA, INTERNET, SEGURO',
     value: 'R$ 27.100',
-    action: { label: 'Ver detalhes', route: '/portal/cp-cr' },
+    action: { label: 'Ver detalhes', route: '/bi/financeiro/cp-cr' },
     createdAt: NOW,
     read: false,
   },
@@ -33,7 +34,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
     type: 'warning',
     title: 'Conciliacao: 5 dias fora SLA',
     description: 'Maior atraso: 12d uteis',
-    action: { label: 'Ir para Conciliacao', route: '/portal/conciliacao' },
+    action: { label: 'Ir para Conciliacao', route: '/bi/financeiro/conciliacao' },
     createdAt: NOW,
     read: false,
   },
@@ -42,27 +43,9 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
     type: 'info',
     title: 'Cobertura de caixa: 0.8x',
     description: 'Saidas previstas > entradas',
-    action: { label: 'Ver Fluxo de Caixa', route: '/portal/fluxo' },
+    action: { label: 'Ver Fluxo de Caixa', route: '/bi/financeiro/fluxo' },
     createdAt: NOW,
     read: false,
-  },
-  {
-    id: '4',
-    type: 'warning',
-    title: 'Vencimento amanha: FGTS',
-    description: 'R$ 9.600 — Itau',
-    action: { label: 'Ver detalhes', route: '/portal/cp-cr' },
-    createdAt: YESTERDAY,
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'info',
-    title: '12 lancamentos nao conciliados',
-    description: 'Novos lancamentos identificados hoje',
-    action: { label: 'Conciliar', route: '/portal/conciliacao' },
-    createdAt: YESTERDAY,
-    read: true,
   },
 ]
 
@@ -80,10 +63,29 @@ function isYesterday(d: Date) {
 export function NotificationBell() {
   const t = useThemeStore((s) => s.tokens)
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  // API calls
+  const { data: notifsAPI, refetch: refetchNotifs } = useNotificacoes(20)
+  const { data: contagemAPI, refetch: refetchContagem } = useNotificacoesContagem()
+
+  // Transform API data or fallback
+  const notifications: Notification[] = useMemo(() => {
+    if (notifsAPI?.length) {
+      return notifsAPI.map((n) => ({
+        id: String(n.id),
+        type: (n.tipo === 'critical' ? 'critical' : n.tipo === 'warning' ? 'warning' : 'info') as Notification['type'],
+        title: n.titulo,
+        description: n.mensagem,
+        action: n.link ? { label: 'Ver detalhes', route: n.link } : undefined,
+        createdAt: n.criado_em ? new Date(n.criado_em) : new Date(),
+        read: n.lida,
+      }))
+    }
+    return FALLBACK_NOTIFICATIONS
+  }, [notifsAPI])
+
+  const unreadCount = contagemAPI?.nao_lidas ?? notifications.filter((n) => !n.read).length
 
   // Close on outside click
   useEffect(() => {
@@ -97,8 +99,14 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  const markAllRead = async () => {
+    try {
+      await marcarTodasLidas()
+      refetchNotifs()
+      refetchContagem()
+    } catch {
+      // Silently fail — fallback notifications won't persist anyway
+    }
   }
 
   const typeConfig = {

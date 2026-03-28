@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { Calendar, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { ThemeTokens } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
@@ -9,19 +9,29 @@ import { KPICard } from '@/components/ui/KPICard'
 import { fmtBRL, fmtK, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
 import { CONCIL_DATA, type ConcilEntry } from '@/lib/mocks/concilData'
+import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/useAPI'
+import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { transformConcilMovimento } from '@/lib/transformers'
 
 // ---------- constants ----------
-const MOCK_TODAY = new Date(2025, 10, 27) // Nov 27, 2025
-const MOCK_TODAY_KEY = '2025-11-27'
+const TODAY = new Date()
+const TODAY_KEY = `${TODAY.getFullYear()}-${String(TODAY.getMonth() + 1).padStart(2, '0')}-${String(TODAY.getDate()).padStart(2, '0')}`
 
-const MONTHS: { year: number; month: number; label: string }[] = [
-  { year: 2025, month: 9, label: 'Out/25' },
-  { year: 2025, month: 10, label: 'Nov/25' },
-  { year: 2025, month: 11, label: 'Dez/25' },
-  { year: 2026, month: 0, label: 'Jan/26' },
-  { year: 2026, month: 1, label: 'Fev/26' },
-  { year: 2026, month: 2, label: 'Mar/26' },
-]
+// Generate 6 months ending at current month
+const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const MONTHS: { year: number; month: number; label: string }[] = (() => {
+  const result: { year: number; month: number; label: string }[] = []
+  const now = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    result.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: `${MONTH_NAMES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,
+    })
+  }
+  return result
+})()
 
 const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
 
@@ -106,9 +116,9 @@ function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t
 
           const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const entry = entries[key]
-          const isToday = key === MOCK_TODAY_KEY
+          const isToday = key === TODAY_KEY
           const isSelected = key === selectedDay
-          const isFuture = new Date(year, month, day) > MOCK_TODAY
+          const isFuture = new Date(year, month, day) > TODAY
           const isWeekend = new Date(year, month, day).getDay() === 0 || new Date(year, month, day).getDay() === 6
 
           let bg = 'transparent'
@@ -123,7 +133,7 @@ function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t
             } else {
               // Check SLA
               const slaDate = nextBusinessDay(key)
-              const isOutSLA = MOCK_TODAY > slaDate
+              const isOutSLA = TODAY > slaDate
               if (isOutSLA) {
                 bg = `${t.red}28`
                 textColor = t.red
@@ -159,19 +169,31 @@ function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t
 // ---------- Main page ----------
 export default function PageConciliacao() {
   const t = useThemeStore((s) => s.tokens)
+  const empresaId = useEmpresaId()
   const [bankFilter, setBankFilter] = useState<string>('Todos')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState>({ field: 'date', dir: 'desc' })
 
+  // API calls
+  const { data: concilAPI, loading: loadingConcil } = useConcilMovimentacao(empresaId)
+  const { data: resumoAPI } = useConcilResumo(empresaId)
+  const { data: diaAPI } = useConcilDia(empresaId, selectedDay)
+
+  // Use API data or fallback to mock
+  const baseData: Record<string, ConcilEntry> = useMemo(() => {
+    if (concilAPI?.length) return transformConcilMovimento(concilAPI)
+    return CONCIL_DATA
+  }, [concilAPI])
+
   // --- filtered entries by bank ---
   const filteredEntries = useMemo(() => {
-    if (bankFilter === 'Todos') return CONCIL_DATA
+    if (bankFilter === 'Todos') return baseData
     const out: Record<string, ConcilEntry> = {}
-    for (const [k, v] of Object.entries(CONCIL_DATA)) {
+    for (const [k, v] of Object.entries(baseData)) {
       if (v.banco === bankFilter) out[k] = v
     }
     return out
-  }, [bankFilter])
+  }, [bankFilter, baseData])
 
   // --- all entries as sorted array for table ---
   const allEntries = useMemo(() => Object.values(filteredEntries), [filteredEntries])
@@ -189,9 +211,30 @@ export default function PageConciliacao() {
     [allEntries, sort],
   )
 
-  // --- stats ---
+  // --- stats (use API resumo when available) ---
   const stats = useMemo(() => {
-    const entries = allEntries.filter((e) => new Date(e.date) <= MOCK_TODAY)
+    if (resumoAPI) {
+      // streak still computed locally
+      let streak = 0
+      const cur = new Date(TODAY)
+      for (let i = 0; i < 90; i++) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+        if (isBusinessDay(cur)) {
+          const e = filteredEntries[key]
+          if (e && !e.conciliado) streak++
+          else if (e && e.conciliado) break
+        }
+        cur.setDate(cur.getDate() - 1)
+      }
+      return {
+        pctConcil: resumoAPI.percentual_conciliado,
+        sumDif: resumoAPI.total_divergencias,
+        maiorDif: resumoAPI.maior_diferenca,
+        streak: resumoAPI.dias_sem_conciliar ?? streak,
+        mediaExtrato: resumoAPI.media_diaria_extrato,
+      }
+    }
+    const entries = allEntries.filter((e) => new Date(e.date) <= TODAY)
     const total = entries.length
     const conciliados = entries.filter((e) => e.conciliado).length
     const pctConcil = total > 0 ? (conciliados / total) * 100 : 0
@@ -200,37 +243,32 @@ export default function PageConciliacao() {
     const sumDif = abertos.reduce((s, e) => s + Math.abs(e.dif), 0)
     const maiorDif = abertos.length > 0 ? Math.max(...abertos.map((e) => Math.abs(e.dif))) : 0
 
-    // streak: consecutive days without conciliation from today backwards
     let streak = 0
-    const cur = new Date(MOCK_TODAY)
+    const cur = new Date(TODAY)
     for (let i = 0; i < 90; i++) {
       const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
       if (isBusinessDay(cur)) {
         const e = filteredEntries[key]
-        if (e && !e.conciliado) {
-          streak++
-        } else if (e && e.conciliado) {
-          break
-        }
+        if (e && !e.conciliado) streak++
+        else if (e && e.conciliado) break
       }
       cur.setDate(cur.getDate() - 1)
     }
 
-    // media diaria extrato
     const mediaExtrato = total > 0 ? entries.reduce((s, e) => s + Math.abs(e.extrato), 0) / total : 0
 
     return { pctConcil, sumDif, maiorDif, streak, mediaExtrato }
-  }, [allEntries, filteredEntries])
+  }, [allEntries, filteredEntries, resumoAPI])
 
   // --- SLA analysis for footer ---
   const slaInfo = useMemo(() => {
-    const entries = allEntries.filter((e) => new Date(e.date) <= MOCK_TODAY)
+    const entries = allEntries.filter((e) => new Date(e.date) <= TODAY)
     const pendentes = entries.filter((e) => !e.conciliado)
     let foraSLA = 0
     let emDia = 0
     for (const e of pendentes) {
       const slaDate = nextBusinessDay(e.date)
-      if (MOCK_TODAY > slaDate) foraSLA++
+      if (TODAY > slaDate) foraSLA++
       else emDia++
     }
 
@@ -243,7 +281,7 @@ export default function PageConciliacao() {
 
     // dias sem movimento (backwards from today)
     let diasSemMov = 0
-    const cur = new Date(MOCK_TODAY)
+    const cur = new Date(TODAY)
     for (let i = 0; i < 90; i++) {
       const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
       if (isBusinessDay(cur)) {
@@ -259,11 +297,19 @@ export default function PageConciliacao() {
     return { foraSLA, emDia, ultimoConcil, movTotal, diasSemMov }
   }, [allEntries, filteredEntries])
 
-  // --- day entries for left table ---
+  // --- day entries for left table (API or mock) ---
   const dayEntries = useMemo(() => {
     if (!selectedDay) return []
+    // Use API day detail when available
+    if (diaAPI?.lancamentos?.length) {
+      return diaAPI.lancamentos.map((l) => ({
+        hora: '',
+        desc: l.descricao,
+        valor: l.valor,
+      }))
+    }
     return genDayEntries(selectedDay)
-  }, [selectedDay])
+  }, [selectedDay, diaAPI])
 
   const handleSort = (field: string) => setSort((s) => toggleSort(s, field))
 
@@ -492,7 +538,7 @@ export default function PageConciliacao() {
               </thead>
               <tbody>
                 {sortedEntries.map((entry) => {
-                  const isOutSLA = !entry.conciliado && MOCK_TODAY > nextBusinessDay(entry.date)
+                  const isOutSLA = !entry.conciliado && TODAY > nextBusinessDay(entry.date)
                   const isPendSLA = !entry.conciliado && !isOutSLA
                   const barColor = entry.conciliado ? t.green : isOutSLA ? t.red : t.amber
 
@@ -500,7 +546,7 @@ export default function PageConciliacao() {
                   let diasAtraso = 0
                   if (isOutSLA) {
                     const slaDate = nextBusinessDay(entry.date)
-                    diasAtraso = Math.round((MOCK_TODAY.getTime() - slaDate.getTime()) / 86400000)
+                    diasAtraso = Math.round((TODAY.getTime() - slaDate.getTime()) / 86400000)
                   }
 
                   return (

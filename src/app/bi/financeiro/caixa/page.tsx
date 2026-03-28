@@ -1,23 +1,39 @@
 'use client'
-import { useState, useCallback } from 'react'
-import { BarChart3, Sparkles } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { CAIXA_DATA, WEEKLY } from '@/lib/mocks/caixaData'
-import { fmtK } from '@/lib/formatters'
+import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
 import { DrillBar } from '@/components/caixa/DrillBar'
 import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
+import { useExtrato, useSaldos } from '@/hooks/useAPI'
+import { useEmpresaId } from '@/hooks/useEmpresaId'
 
 type Level = 'quarterly' | 'monthly' | 'weekly'
 
 export default function PageCaixa() {
   const t = useThemeStore((s) => s.tokens)
+  const empresaId = useEmpresaId()
   const [level, setLevel] = useState<Level>('monthly')
   const [selMonth, setSelMonth] = useState<string | null>(null)
   const [caixaView, setCaixaView] = useState<'dashboard' | 'analise'>('dashboard')
   const [detailView, setDetailView] = useState<string | null>(null)
+
+  // API calls for KPI strip (saldo data)
+  const { data: saldosRaw } = useSaldos(empresaId)
+  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId)
+
+  // Compute KPI values from API data
+  const kpiValues = useMemo(() => {
+    if (!extratoRaw?.length) return null
+    const entradas = extratoRaw.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0)
+    const saidas = extratoRaw.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0)
+    const saldoFinal = entradas - saidas
+    return { entradas, saidas, saldoFinal }
+  }, [extratoRaw])
 
   const getLevelData = useCallback(() => {
     if (level === 'quarterly') return CAIXA_DATA.quarterly
@@ -92,10 +108,10 @@ export default function PageCaixa() {
           <KPIStrip
             items={[
               { label: 'Saldo Inicial', value: '0,00', color: t.text, accent: t.blue, sub: 'Base do período' },
-              { label: 'Entradas', value: '303.453,50', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
-              { label: 'Saídas', value: '297.552,49', color: t.red, accent: t.red, sub: 'Custos + despesas' },
-              { label: 'Saldo Final', value: '5.901,01', color: t.green, accent: t.green, sub: 'Posição atual' },
-              { label: 'Balanço', value: '5.901,01', color: t.green, accent: t.green, sub: '2,8% sobre RoB' },
+              { label: 'Entradas', value: kpiValues ? fmtBRL(kpiValues.entradas) : '303.453,50', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
+              { label: 'Saídas', value: kpiValues ? fmtBRL(kpiValues.saidas) : '297.552,49', color: t.red, accent: t.red, sub: 'Custos + despesas' },
+              { label: 'Saldo Final', value: kpiValues ? fmtBRL(kpiValues.saldoFinal) : '5.901,01', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.green, accent: t.green, sub: 'Posição atual' },
+              { label: 'Balanço', value: kpiValues ? fmtBRL(kpiValues.saldoFinal) : '5.901,01', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.green, accent: t.green, sub: kpiValues ? `${((kpiValues.saldoFinal / (kpiValues.entradas || 1)) * 100).toFixed(1)}% sobre RoB` : '2,8% sobre RoB' },
             ]}
           />
 

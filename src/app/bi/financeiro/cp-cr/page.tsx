@@ -4,25 +4,48 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { Search } from 'lucide-react'
+import { Search, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { Badge } from '@/components/ui/Badge'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { mockCPFull, mockCRFull, cpTemporalData } from '@/lib/mocks/cpcrData'
+import { mockCPFull as fallbackCP, mockCRFull as fallbackCR, cpTemporalData as fallbackTemporal } from '@/lib/mocks/cpcrData'
+import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { getCatDesc } from '@/lib/mocks/extratoData'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
+import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
+import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { transformCPCR } from '@/lib/transformers'
 
 export default function PageCPCR() {
   const t = useThemeStore((s) => s.tokens)
+  const empresaId = useEmpresaId()
   const [tab, setTab] = useState<'CP' | 'CR'>('CP')
   const [view, setView] = useState<'lanc' | 'temp' | 'repr'>('lanc')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
 
-  const rawData = tab === 'CP' ? mockCPFull : mockCRFull
+  // API calls
+  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 100 })
+  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 100 })
+  const { data: cpResumo } = useCPResumo(empresaId)
+  const { data: crResumo } = useCRResumo(empresaId)
+
+  // Transform API → component shape, fallback to mock
+  const cpData: ContaPagarReceber[] = useMemo(
+    () => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : fallbackCP),
+    [cpRaw],
+  )
+  const crData: ContaPagarReceber[] = useMemo(
+    () => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : fallbackCR),
+    [crRaw],
+  )
+
+  const rawData = tab === 'CP' ? cpData : crData
+  const loading = tab === 'CP' ? loadingCP : loadingCR
+  const resumo = tab === 'CP' ? cpResumo : crResumo
   const isCP = tab === 'CP'
   const accent = isCP ? t.red : t.green
   const accentDim = isCP ? t.redDim : t.greenDim
@@ -48,19 +71,22 @@ export default function PageCPCR() {
     [data, sort],
   )
 
-  const aberto = useMemo(() => data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO'), [data])
-  const totalAberto = useMemo(() => aberto.reduce((s, r) => s + r.valor, 0), [aberto])
-  const atrasado = useMemo(() => data.filter((r) => r.status === 'ATRASADO').reduce((s, r) => s + r.valor, 0), [data])
-  const aVencer = useMemo(() => aberto.filter((r) => r.status !== 'ATRASADO').reduce((s, r) => s + r.valor, 0), [aberto])
-  const pago = useMemo(() => data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO').reduce((s, r) => s + r.valor, 0), [data])
+  // Use API KPIs when available, otherwise compute from data
+  const totalAberto = resumo?.total_aberto ?? data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
+  const aVencer = resumo?.total_a_vencer ?? data.filter((r) => r.status === 'A VENCER' || r.status === 'A RECEBER').reduce((s, r) => s + r.valor, 0)
+  const atrasado = resumo?.total_atrasado ?? data.filter((r) => r.status === 'ATRASADO').reduce((s, r) => s + r.valor, 0)
+  const pago = resumo?.total_realizado ?? data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
+  const aberto = data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO')
   const pmDias = isCP ? 24.7 : 19.3
 
   // Aging buckets
-  const today = new Date(2025, 10, 27)
+  const today = new Date()
   const aging = useMemo(() => {
     const ag: Record<string, number> = { '0-15': 0, '16-30': 0, '31-60': 0, '60+': 0 }
     aberto.forEach((r) => {
-      const diff = Math.round((parseDMY(r.vcto).getTime() - today.getTime()) / 86400000)
+      const dt = parseDMY(r.vcto)
+      if (isNaN(dt.getTime())) return
+      const diff = Math.round((dt.getTime() - today.getTime()) / 86400000)
       if (diff <= 15) ag['0-15'] += r.valor
       else if (diff <= 30) ag['16-30'] += r.valor
       else if (diff <= 60) ag['31-60'] += r.valor
@@ -72,10 +98,14 @@ export default function PageCPCR() {
 
   // Category breakdown
   const catSorted = useMemo(() => {
+    // Use API category data when available
+    if (resumo?.por_categoria?.length) {
+      return resumo.por_categoria.map((c) => [getCatDesc(c.categoria) || c.categoria, c.valor] as [string, number])
+    }
     const catBreak: Record<string, number> = {}
     data.forEach((r) => { const desc = getCatDesc(r.cat); catBreak[desc] = (catBreak[desc] || 0) + r.valor })
     return Object.entries(catBreak).sort((a, b) => b[1] - a[1])
-  }, [data])
+  }, [data, resumo])
   const catMax = catSorted[0]?.[1] || 1
   const catTotal = catSorted.reduce((s, [, v]) => s + v, 0) || 1
 
@@ -93,8 +123,38 @@ export default function PageCPCR() {
     { id: 'repr' as const, label: '◫ Representatividade' },
   ]
 
-  const crTotal = mockCRFull.reduce((s, r) => s + r.valor, 0)
-  const cpTotal = mockCPFull.reduce((s, r) => s + r.valor, 0)
+  // Temporal chart data — derive from actual data when available
+  const temporalData = useMemo(() => {
+    if (!cpRaw?.dados && !crRaw?.dados) return fallbackTemporal
+    const months: Record<string, { cp: number; cr: number }> = {}
+    const fmt = (d: string | null) => {
+      if (!d) return null
+      const dt = parseDMY(d)
+      if (isNaN(dt.getTime())) return null
+      const m = dt.getMonth()
+      const y = dt.getFullYear()
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+      return `${monthNames[m]}/${String(y).slice(2)}`
+    }
+    for (const r of cpData) {
+      const key = fmt(r.vcto)
+      if (!key) continue
+      if (!months[key]) months[key] = { cp: 0, cr: 0 }
+      months[key].cp += r.valor
+    }
+    for (const r of crData) {
+      const key = fmt(r.vcto)
+      if (!key) continue
+      if (!months[key]) months[key] = { cp: 0, cr: 0 }
+      months[key].cr += r.valor
+    }
+    const entries = Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]))
+    if (entries.length === 0) return fallbackTemporal
+    return entries.map(([mes, v]) => ({ mes, cp: Math.round(v.cp), cr: Math.round(v.cr) }))
+  }, [cpData, crData, cpRaw, crRaw])
+
+  const crTotal = crData.reduce((s, r) => s + r.valor, 0)
+  const cpTotal = cpData.reduce((s, r) => s + r.valor, 0)
 
   return (
     <div className="flex flex-col min-h-full">
@@ -103,7 +163,8 @@ export default function PageCPCR() {
         {(['CP', 'CR'] as const).map((tb) => {
           const tbColor = tb === 'CP' ? t.red : t.green
           const tbDim = tb === 'CP' ? t.redDim : t.greenDim
-          const count = (tb === 'CP' ? mockCPFull : mockCRFull).filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO').length
+          const tbData = tb === 'CP' ? cpData : crData
+          const count = tbData.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO').length
           return (
             <button
               key={tb}
@@ -155,7 +216,7 @@ export default function PageCPCR() {
           { label: 'A Vencer', value: fmtK(aVencer), color: t.text, accent: t.green, sub: 'Dentro do prazo' },
           { label: 'Atrasado', value: fmtK(atrasado), color: atrasado > 0 ? t.red : t.text, accent: t.red, sub: atrasado > 0 ? 'Atenção necessária' : 'Nenhum em atraso' },
           { label: 'Prazo Médio', value: `${pmDias} dias`, color: t.text, accent: t.amber, sub: isCP ? 'Pagamento' : 'Recebimento' },
-          { label: 'Saldo Líquido', value: fmtK(crTotal - cpTotal), color: t.green, accent: t.blue, sub: 'CR − CP total' },
+          { label: 'Saldo Líquido', value: fmtK(crTotal - cpTotal), color: crTotal - cpTotal >= 0 ? t.green : t.red, accent: t.blue, sub: 'CR − CP total' },
         ].map((k, i) => (
           <KPICard key={i} label={k.label} value={k.value} color={k.color} accent={k.accent} sub={k.sub} borderRight={i < 4} />
         ))}
@@ -175,7 +236,7 @@ export default function PageCPCR() {
                     className="w-full rounded-lg pl-8 pr-2.5 py-2 text-[11px] outline-none"
                     style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }} />
                 </div>
-                <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{data.length} itens</span>
+                <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{loading ? '...' : `${data.length} itens`}</span>
               </div>
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-2.5 px-4 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
@@ -195,30 +256,41 @@ export default function PageCPCR() {
               </div>
               {/* Table */}
               <div className="flex-1 overflow-y-auto">
-                <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
-                      <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                      <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                      <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                      <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                      <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
-                      <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dataSorted.map((r, i) => (
-                      <tr key={i} className="transition-colors hover:bg-surface-hover" style={{ borderBottom: `1px solid ${t.border}22` }}>
-                        <td className="px-3.5 py-2.5 font-medium">{r.fav}</td>
-                        <td className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate" style={{ color: t.muted }} title={`${r.cat} — ${getCatDesc(r.cat)}`}>{getCatDesc(r.cat)}</td>
-                        <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{r.banco}</td>
-                        <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
-                        <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{isCP ? '−' : '+'} {fmtBRL(r.valor)}</td>
-                        <td className="px-3.5 py-2.5 text-center"><Badge status={r.status} /></td>
+                {loading ? (
+                  <div className="flex items-center justify-center h-48 gap-2">
+                    <Loader2 size={18} className="animate-spin" style={{ color: t.blue }} />
+                    <span className="text-[11px]" style={{ color: t.muted }}>Carregando {isCP ? 'contas a pagar' : 'contas a receber'}...</span>
+                  </div>
+                ) : dataSorted.length === 0 ? (
+                  <div className="flex items-center justify-center h-48">
+                    <span className="text-[11px]" style={{ color: t.muted }}>Nenhum lançamento encontrado</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
+                        <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
+                        <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {dataSorted.map((r, i) => (
+                        <tr key={i} className="transition-colors hover:bg-surface-hover" style={{ borderBottom: `1px solid ${t.border}22` }}>
+                          <td className="px-3.5 py-2.5 font-medium">{r.fav}</td>
+                          <td className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate" style={{ color: t.muted }} title={`${r.cat} — ${getCatDesc(r.cat)}`}>{getCatDesc(r.cat)}</td>
+                          <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{r.banco}</td>
+                          <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{isCP ? '−' : '+'} {fmtBRL(r.valor)}</td>
+                          <td className="px-3.5 py-2.5 text-center"><Badge status={r.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </>
           )}
@@ -233,7 +305,7 @@ export default function PageCPCR() {
                   Vencimentos por Mês — CP × CR
                 </div>
                 <ResponsiveContainer width="100%" height={200}>
-                  <ComposedChart data={cpTemporalData.map((r) => ({ ...r, saldo: r.cr - r.cp }))} barSize={28} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
+                  <ComposedChart data={temporalData.map((r) => ({ ...r, saldo: r.cr - r.cp }))} barSize={28} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}06`} />
                     <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
@@ -395,7 +467,10 @@ export default function PageCPCR() {
             <div className="text-[9px] uppercase tracking-wider mb-2" style={{ color: t.muted }}>Próximos Vencimentos</div>
             {[...rawData]
               .filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO')
-              .sort((a, b) => parseDMY(a.vcto).getTime() - parseDMY(b.vcto).getTime())
+              .sort((a, b) => {
+                const da = parseDMY(a.vcto), db = parseDMY(b.vcto)
+                return (isNaN(da.getTime()) ? Infinity : da.getTime()) - (isNaN(db.getTime()) ? Infinity : db.getTime())
+              })
               .slice(0, 4)
               .map((r, i) => (
                 <div key={i} className="flex justify-between text-[10px] py-1" style={{ borderBottom: i < 3 ? `1px solid ${t.text}06` : 'none' }}>
