@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
@@ -10,6 +10,8 @@ import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
+import { ExportButton } from '@/components/export/ExportButton'
+import { ExportModal } from '@/components/export/ExportModal'
 import { Settings, Building2 } from 'lucide-react'
 
 const NAV = [
@@ -28,6 +30,7 @@ export function Navbar() {
   const activeId = useEmpresaStore((s) => s.activeId)
   const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
   const logo = getLogo(active, t.isDark)
+  const [exportOpen, setExportOpen] = useState(false)
 
   // Carrega projetos/unidades sempre que a empresa muda
   useEffect(() => {
@@ -86,6 +89,7 @@ export function Navbar() {
 
       {/* Right: Controls */}
       <div className="flex items-center gap-2">
+        <ExportButton onClick={() => setExportOpen(true)} />
         <DateRangePicker />
         <NotificationBell />
         <UnidadeDropdown />
@@ -110,6 +114,8 @@ export function Navbar() {
           />
         </Link>
       </div>
+
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </nav>
   )
 }
