@@ -24,8 +24,8 @@ export default function LoginPage() {
       const { data } = await api.post('/auth/login', form, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
-      setAuth(data.access_token, data.user, data.empresas || [])
-      router.push('/dashboard/caixa')
+      setAuth(data.access_token, data.user, data.empresas || [], data.grupos || [], data.permissoes || [])
+      router.push('/portal')
     } catch (err: any) {
       if (err?.response?.status === 400 || err?.response?.status === 401) {
         setError('Email ou senha inválidos.')
