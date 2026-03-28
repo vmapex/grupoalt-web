@@ -22,6 +22,7 @@ type ExportStatus = 'idle' | 'exporting' | 'success'
 
 export function ExportModal({ open, onClose }: ExportModalProps) {
   const t = useThemeStore((s) => s.tokens)
+  const isDark = useThemeStore((s) => s.mode === 'dark')
   const activeEmpresa = useEmpresaStore((s) => s.getActive())
 
   const [page, setPage] = useState<string>('caixa')
@@ -30,10 +31,17 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
   const [includeIA, setIncludeIA] = useState(false)
   const [status, setStatus] = useState<ExportStatus>('idle')
 
-  // Reset state when modal opens
+  // Auto-detect current page on open
   useEffect(() => {
     if (open) {
       setStatus('idle')
+      const path = window.location.pathname
+      if (path === '/portal') setPage('dashboard')
+      else {
+        const seg = path.replace('/portal/', '')
+        const match = PAGE_OPTIONS.find(p => p.value === seg)
+        if (match) setPage(match.value)
+      }
     }
   }, [open])
 
@@ -57,120 +65,112 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
       const html2canvas = html2canvasModule.default
       const { jsPDF } = jsPDFModule
 
-      // Navigate to the selected page if different from current
-      const targetPath = page === 'dashboard' ? '/portal' : `/portal/${page}`
-      const currentPath = window.location.pathname
-      const needsNav = currentPath !== targetPath
-
-      if (needsNav) {
-        window.history.pushState(null, '', targetPath)
-        // Dispatch popstate so Next.js picks up the route change
-        window.dispatchEvent(new PopStateEvent('popstate'))
-        // Wait for page render
-        await new Promise((r) => setTimeout(r, 1500))
-      }
-
       const mainEl = document.querySelector('main')
       if (!mainEl) throw new Error('Main element not found')
 
-      // Capture full scrollable content (not just visible viewport)
+      // Save original styles
+      const origH = mainEl.style.height
+      const origOverflow = mainEl.style.overflow
+      const origMaxH = mainEl.style.maxHeight
+
+      // Expand to full scroll height for complete capture
       const scrollH = mainEl.scrollHeight
       const scrollW = mainEl.scrollWidth
-      const originalH = mainEl.style.height
-      const originalOverflow = mainEl.style.overflow
-
-      // Temporarily expand main to its full scroll height
       mainEl.style.height = `${scrollH}px`
+      mainEl.style.maxHeight = 'none'
       mainEl.style.overflow = 'visible'
+
+      // Use theme-aware background
+      const bgColor = isDark ? '#05091A' : '#F4F6F8'
 
       const canvas = await html2canvas(mainEl as HTMLElement, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#05091A',
+        backgroundColor: bgColor,
         logging: false,
         width: scrollW,
         height: scrollH,
         windowWidth: scrollW,
         windowHeight: scrollH,
+        scrollX: 0,
+        scrollY: 0,
       })
 
-      // Restore original styles
-      mainEl.style.height = originalH
-      mainEl.style.overflow = originalOverflow
-
-      // Navigate back if we changed pages
-      if (needsNav) {
-        window.history.pushState(null, '', currentPath)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-      }
+      // Restore styles
+      mainEl.style.height = origH
+      mainEl.style.overflow = origOverflow
+      mainEl.style.maxHeight = origMaxH
 
       const imgData = canvas.toDataURL('image/png')
       const pageLabel = PAGE_OPTIONS.find(p => p.value === page)?.label || 'Relatório'
       const now = new Date()
       const timestamp = `Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ALT MAX Portal BI`
 
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      })
+      // PDF colors based on theme
+      const pdfBgR = isDark ? 5 : 244
+      const pdfBgG = isDark ? 9 : 246
+      const pdfBgB = isDark ? 26 : 248
+      const pdfTextR = isDark ? 241 : 15
+      const pdfTextG = isDark ? 245 : 23
+      const pdfTextB = isDark ? 249 : 42
 
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
       const pdfW = pdf.internal.pageSize.getWidth()
       const pdfH = pdf.internal.pageSize.getHeight()
-      const headerH = 22
-      const footerH = 10
-      const contentH = pdfH - headerH - footerH
-      const imgW = pdfW - 20
-      const totalImgH = (canvas.height / canvas.width) * imgW
-      const totalPages = Math.ceil(totalImgH / contentH)
+      const headerH = 20
+      const footerH = 8
+      const margin = 8
+      const contentW = pdfW - margin * 2
+      const contentAreaH = pdfH - headerH - footerH
+      const totalImgH = (canvas.height / canvas.width) * contentW
+      const totalPages = Math.max(1, Math.ceil(totalImgH / contentAreaH))
 
       for (let pg = 0; pg < totalPages; pg++) {
         if (pg > 0) pdf.addPage()
 
         // Background
-        pdf.setFillColor(5, 9, 26)
+        pdf.setFillColor(pdfBgR, pdfBgG, pdfBgB)
         pdf.rect(0, 0, pdfW, pdfH, 'F')
 
+        // Clip: only show the slice for this page
+        const srcY = (pg * contentAreaH / totalImgH) * canvas.height
+        const srcH = Math.min((contentAreaH / totalImgH) * canvas.height, canvas.height - srcY)
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = srcH
+        const ctx = sliceCanvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+        }
+        const sliceImg = sliceCanvas.toDataURL('image/png')
+        const sliceH = (srcH / canvas.width) * contentW
+
+        pdf.addImage(sliceImg, 'PNG', margin, headerH, contentW, sliceH)
+
         // Header
+        pdf.setFillColor(pdfBgR, pdfBgG, pdfBgB)
+        pdf.rect(0, 0, pdfW, headerH, 'F')
         pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(12)
-        pdf.setTextColor(241, 245, 249)
-        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, 10, 10)
-        pdf.setFontSize(8)
+        pdf.setFontSize(11)
+        pdf.setTextColor(pdfTextR, pdfTextG, pdfTextB)
+        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, margin, 9)
+        pdf.setFontSize(7)
         pdf.setFont('helvetica', 'normal')
         pdf.setTextColor(100, 116, 139)
-        pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 16)
+        pdf.text('Período: 01/10/2025 → 31/03/2026', margin, 14)
 
-        // Content slice — offset the image for each page
-        const yOffset = pg * contentH
-        pdf.addImage(
-          imgData, 'PNG',
-          10, headerH - yOffset,
-          imgW, totalImgH,
-          undefined, 'FAST',
-          0,
-        )
-
-        // Clip content area (white-out outside)
-        pdf.setFillColor(5, 9, 26)
-        pdf.rect(0, 0, pdfW, headerH, 'F') // cover above content
-        pdf.rect(0, pdfH - footerH, pdfW, footerH, 'F') // cover below content
-
-        // Re-draw header on top of clip
-        pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(12)
-        pdf.setTextColor(241, 245, 249)
-        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, 10, 10)
-        pdf.setFontSize(8)
-        pdf.setFont('helvetica', 'normal')
-        pdf.setTextColor(100, 116, 139)
-        pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 16)
+        // Separator line
+        pdf.setDrawColor(100, 116, 139)
+        pdf.setLineWidth(0.2)
+        pdf.line(margin, headerH - 1, pdfW - margin, headerH - 1)
 
         // Footer
-        pdf.setFontSize(7)
+        pdf.setFillColor(pdfBgR, pdfBgG, pdfBgB)
+        pdf.rect(0, pdfH - footerH, pdfW, footerH, 'F')
+        pdf.setFontSize(6)
         pdf.setTextColor(100, 116, 139)
-        pdf.text(timestamp, 10, pdfH - 4)
-        pdf.text(`Página ${pg + 1} de ${totalPages}`, pdfW - 30, pdfH - 4)
+        pdf.text(timestamp, margin, pdfH - 3)
+        pdf.text(`Página ${pg + 1} de ${totalPages}`, pdfW - margin - 20, pdfH - 3)
       }
 
       pdf.save(`altmax-${pageLabel.toLowerCase().replace(/\s+/g, '-')}-${now.toISOString().slice(0, 10)}.pdf`)
@@ -181,7 +181,7 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
       console.error('Export error:', err)
       setStatus('idle')
     }
-  }, [onClose, page, activeEmpresa.nome])
+  }, [onClose, page, activeEmpresa.nome, isDark])
 
   if (!open) return null
 
@@ -259,26 +259,17 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
         <div className="px-5 py-4 flex flex-col gap-3.5">
           {/* Página */}
           <div className="flex flex-col gap-1.5">
-            <label style={labelStyle}>Página</label>
-            <select
-              value={page}
-              onChange={(e) => setPage(e.target.value)}
-              style={{
-                ...fieldStyle,
-                appearance: 'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(t.muted)}' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
-                paddingRight: 32,
-                cursor: 'pointer',
-              }}
+            <label style={labelStyle}>Página atual</label>
+            <div
+              className="flex items-center gap-2"
+              style={{ ...fieldStyle, color: t.textSec }}
             >
-              {PAGE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value} style={{ background: '#1a1f36', color: '#F1F5F9' }}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <FileText size={12} style={{ color: t.muted, flexShrink: 0 }} />
+              <span>{PAGE_OPTIONS.find(p => p.value === page)?.label || 'Página atual'}</span>
+              <span className="ml-auto text-[8px] font-mono" style={{ color: t.mutedDim }}>
+                Navege até a página desejada antes de exportar
+              </span>
+            </div>
           </div>
 
           {/* Período */}
