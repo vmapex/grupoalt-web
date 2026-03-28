@@ -1,2 +1,2 @@
 import { redirect } from 'next/navigation'
-export default function Home() { redirect('/portal/caixa') }
+export default function Home() { redirect('/login') }

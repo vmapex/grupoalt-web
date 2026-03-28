@@ -15,12 +15,12 @@ import { ExportModal } from '@/components/export/ExportModal'
 import { Settings, Building2 } from 'lucide-react'
 
 const NAV = [
-  { href: '/portal', label: 'Home', exact: true },
-  { href: '/portal/caixa', label: 'Caixa Realizado' },
-  { href: '/portal/extrato', label: 'Extrato' },
-  { href: '/portal/cp-cr', label: 'A Pagar/Receber' },
-  { href: '/portal/fluxo', label: 'Fluxo de Caixa' },
-  { href: '/portal/conciliacao', label: 'Conciliação' },
+  { href: '/bi/financeiro', label: 'Home', exact: true },
+  { href: '/bi/financeiro/caixa', label: 'Caixa Realizado' },
+  { href: '/bi/financeiro/extrato', label: 'Extrato' },
+  { href: '/bi/financeiro/cp-cr', label: 'A Pagar/Receber' },
+  { href: '/bi/financeiro/fluxo', label: 'Fluxo de Caixa' },
+  { href: '/bi/financeiro/conciliacao', label: 'Conciliação' },
 ]
 
 export function Navbar() {
@@ -96,12 +96,12 @@ export function Navbar() {
         <ThemeToggle />
         <EmpresaDropdown />
         <Link
-          href="/portal/admin"
+          href="/bi/financeiro/admin"
           className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
           style={{
             background: t.surface,
             border: `1px solid ${t.border}`,
-            color: pathname === '/portal/admin' ? t.blue : t.muted,
+            color: pathname === '/bi/financeiro/admin' ? t.blue : t.muted,
           }}
           aria-label="Configurações"
         >
@@ -109,7 +109,7 @@ export function Navbar() {
             size={13}
             className="transition-transform"
             style={{
-              transform: pathname === '/portal/admin' ? 'rotate(90deg)' : 'none',
+              transform: pathname === '/bi/financeiro/admin' ? 'rotate(90deg)' : 'none',
             }}
           />
         </Link>

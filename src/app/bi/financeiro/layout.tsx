@@ -1,16 +1,27 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import Cookies from 'js-cookie'
 import { useThemeStore } from '@/store/themeStore'
 import { Navbar } from '@/components/nav/Navbar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function BIFinanceiroLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const { mode, tokens: t } = useThemeStore()
   const [chatOpen, setChatOpen] = useState(false)
   const pathname = usePathname()
 
+  // Auth guard: verify token exists (cookie shared across same origin)
+  useEffect(() => {
+    const token = Cookies.get('access_token')
+    if (!token) {
+      router.push('/login')
+    }
+  }, [router])
+
+  // Theme class on root
   useEffect(() => {
     const root = document.documentElement
     if (mode === 'dark') {
