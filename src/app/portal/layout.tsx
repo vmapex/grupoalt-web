@@ -26,6 +26,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     ])
       .then(([meRes, notifRes]) => {
         const data = meRes.data
+        if (!data || !data.id) throw new Error('Resposta inválida do /auth/me')
         setAuth(
           token,
           { id: data.id, nome: data.nome, email: data.email, is_admin: data.is_admin },
@@ -36,8 +37,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         setNotifCount(notifRes.data.nao_lidas || 0)
         setLoading(false)
       })
-      .catch(() => {
-        router.push('/login')
+      .catch((err) => {
+        console.error('Portal auth failed:', err?.response?.status, err?.message)
+        // Só redireciona para login se for erro de auth (401), não erro de rede
+        if (err?.response?.status === 401 || !err?.response) {
+          router.push('/login')
+        } else {
+          // Erro do servidor (500, etc.) — tenta continuar com dados mínimos
+          setLoading(false)
+        }
       })
   }, [])
 

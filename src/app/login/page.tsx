@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
+import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
 
 export default function LoginPage() {
@@ -17,14 +18,30 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      // OAuth2PasswordRequestForm — envia como form-urlencoded com campo "username"
       const form = new URLSearchParams()
       form.append('username', email)
       form.append('password', password)
       const { data } = await api.post('/auth/login', form, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
-      setAuth(data.access_token, data.user, data.empresas || [], data.grupos || [], data.permissoes || [])
+
+      // Login retorna apenas tokens. Salvar token e carregar dados via /auth/me
+      const token = data.access_token
+      Cookies.set('access_token', token, { expires: 1 })
+
+      // Carregar dados completos do usuário
+      const meRes = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const me = meRes.data
+
+      setAuth(
+        token,
+        { id: me.id, nome: me.nome, email: me.email, is_admin: me.is_admin },
+        me.empresas || [],
+        me.grupos || [],
+        me.permissoes || [],
+      )
       router.push('/portal')
     } catch (err: any) {
       if (err?.response?.status === 400 || err?.response?.status === 401) {
