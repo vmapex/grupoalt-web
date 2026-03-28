@@ -12,6 +12,7 @@ import { DateRangePicker } from './DateRangePicker'
 import { Settings, Building2 } from 'lucide-react'
 
 const NAV = [
+  { href: '/portal', label: 'Home', exact: true },
   { href: '/portal/caixa', label: 'Caixa Realizado' },
   { href: '/portal/extrato', label: 'Extrato' },
   { href: '/portal/cp-cr', label: 'A Pagar/Receber' },
@@ -63,8 +64,8 @@ export function Navbar() {
         className="flex gap-0.5 rounded-lg p-0.5"
         style={{ background: `${t.text}06` }}
       >
-        {NAV.map(({ href, label }) => {
-          const isActive = pathname === href || pathname?.startsWith(href + '/')
+        {NAV.map(({ href, label, exact }: { href: string; label: string; exact?: boolean }) => {
+          const isActive = exact ? pathname === href : (pathname === href || pathname?.startsWith(href + '/'))
           return (
             <Link
               key={href}

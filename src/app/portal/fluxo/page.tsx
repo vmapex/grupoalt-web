@@ -51,7 +51,7 @@ export default function PageFluxo() {
   )
 
   const fluxoDiario = useMemo(() => {
-    const data: { dia: string; saldo: number }[] = []
+    const data: { dia: string; saldo: number; saldoPos: number | null; saldoNeg: number | null }[] = []
     let saldo = saldoAtual
     const base = new Date(2025, 10, 27) // 27/Nov/2025
     for (let i = 0; i < hz; i++) {
@@ -61,7 +61,13 @@ export default function PageFluxo() {
       const entDia = seed(i * 2) * 18000 + 2000
       const saiDia = seed(i * 2 + 1) * 15000 + 3000
       saldo += entDia - saiDia
-      data.push({ dia: label, saldo: Math.round(saldo) })
+      const rounded = Math.round(saldo)
+      data.push({
+        dia: label,
+        saldo: rounded,
+        saldoPos: rounded >= 0 ? rounded : 0,
+        saldoNeg: rounded < 0 ? rounded : 0,
+      })
     }
     return data
   }, [hz, saldoAtual])
@@ -278,9 +284,13 @@ export default function PageFluxo() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={fluxoDiario} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
                   <defs>
-                    <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={t.blue} stopOpacity={0.25} />
-                      <stop offset="95%" stopColor={t.blue} stopOpacity={0.02} />
+                    <linearGradient id="saldoGradGreen" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={t.green} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={t.green} stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="saldoGradRed" x1="0" y1="1" x2="0" y2="0">
+                      <stop offset="5%" stopColor={t.red} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={t.red} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={t.gridLine} />
@@ -302,11 +312,21 @@ export default function PageFluxo() {
                   <ReferenceLine y={0} stroke={t.red} strokeDasharray="4 4" strokeOpacity={0.5} />
                   <Area
                     type="monotone"
-                    dataKey="saldo"
-                    name="Saldo"
-                    stroke={t.blue}
+                    dataKey="saldoPos"
+                    name="Saldo +"
+                    stroke={t.green}
                     strokeWidth={2}
-                    fill="url(#saldoGrad)"
+                    fill="url(#saldoGradGreen)"
+                    connectNulls={false}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="saldoNeg"
+                    name="Saldo −"
+                    stroke={t.red}
+                    strokeWidth={2}
+                    fill="url(#saldoGradRed)"
+                    connectNulls={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
