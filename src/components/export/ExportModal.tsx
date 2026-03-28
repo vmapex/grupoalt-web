@@ -47,16 +47,77 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
     return () => window.removeEventListener('keydown', handler)
   }, [open, onClose])
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     setStatus('exporting')
-    // Simulated export — in production, use html2canvas + jsPDF or server-side Puppeteer
-    setTimeout(() => {
+    try {
+      const [html2canvasModule, jsPDFModule] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+      const html2canvas = html2canvasModule.default
+      const { jsPDF } = jsPDFModule
+
+      // Capture the main content area
+      const mainEl = document.querySelector('main')
+      if (!mainEl) throw new Error('Main element not found')
+
+      const canvas = await html2canvas(mainEl as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#05091A',
+        logging: false,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const pdfW = pdf.internal.pageSize.getWidth()
+      const pdfH = pdf.internal.pageSize.getHeight()
+
+      // Header
+      pdf.setFillColor(5, 9, 26)
+      pdf.rect(0, 0, pdfW, pdfH, 'F')
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(14)
+      pdf.setTextColor(241, 245, 249)
+      pdf.text(`${activeEmpresa.nome} — ${PAGE_OPTIONS.find(p => p.value === page)?.label || ''}`, 10, 12)
+      pdf.setFontSize(8)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 17)
+
+      // Content image
+      const imgW = pdfW - 20
+      const imgH = (canvas.height / canvas.width) * imgW
+      const maxImgH = pdfH - 30
+      const finalH = Math.min(imgH, maxImgH)
+      pdf.addImage(imgData, 'PNG', 10, 22, imgW, finalH)
+
+      // Footer
+      pdf.setFontSize(7)
+      pdf.setTextColor(100, 116, 139)
+      const now = new Date()
+      pdf.text(
+        `Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ALT MAX Portal BI`,
+        10,
+        pdfH - 5,
+      )
+      pdf.text(`Página 1`, pdfW - 20, pdfH - 5)
+
+      // Download
+      const pageLabel = PAGE_OPTIONS.find(p => p.value === page)?.label || 'relatorio'
+      pdf.save(`altmax-${pageLabel.toLowerCase().replace(/\s+/g, '-')}-${now.toISOString().slice(0, 10)}.pdf`)
+
       setStatus('success')
-      setTimeout(() => {
-        onClose()
-      }, 1200)
-    }, 2000)
-  }, [onClose])
+      setTimeout(() => onClose(), 1500)
+    } catch (err) {
+      console.error('Export error:', err)
+      setStatus('idle')
+    }
+  }, [onClose, page, activeEmpresa.nome])
 
   if (!open) return null
 
@@ -149,7 +210,7 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
               }}
             >
               {PAGE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option key={opt.value} value={opt.value} style={{ background: '#1a1f36', color: '#F1F5F9' }}>
                   {opt.label}
                 </option>
               ))}
