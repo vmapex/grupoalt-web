@@ -54,12 +54,12 @@ const navigation: NavItem[] = [
     icon: <Wallet size={20} />,
     modulo: 'financeiro',
     children: [
-      { label: 'Portal BI', href: '/bi/financeiro', external: true },
-      { label: 'Caixa Realizado', href: '/bi/financeiro/caixa', external: true },
-      { label: 'Extrato', href: '/bi/financeiro/extrato', external: true },
-      { label: 'A Pagar/Receber', href: '/bi/financeiro/cp-cr', external: true },
-      { label: 'Fluxo de Caixa', href: '/bi/financeiro/fluxo', external: true },
-      { label: 'Conciliação', href: '/bi/financeiro/conciliacao', external: true },
+      { label: 'Portal BI', href: '/bi/financeiro' },
+      { label: 'Caixa Realizado', href: '/bi/financeiro/caixa' },
+      { label: 'Extrato', href: '/bi/financeiro/extrato' },
+      { label: 'A Pagar/Receber', href: '/bi/financeiro/cp-cr' },
+      { label: 'Fluxo de Caixa', href: '/bi/financeiro/fluxo' },
+      { label: 'Conciliação', href: '/bi/financeiro/conciliacao' },
     ],
   },
   {
@@ -87,7 +87,7 @@ export default function Sidebar() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
     const active = new Set<string>()
     navigation.forEach(item => {
-      if (item.children?.some(c => !c.external && pathname.startsWith(c.href))) {
+      if (item.children?.some(c => pathname.startsWith(c.href))) {
         active.add(item.label)
       }
     })
@@ -177,7 +177,7 @@ export default function Sidebar() {
                 <button
                   onClick={() => toggleSection(item.label)}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                    item.children.some(c => !c.external && isActive(c.href))
+                    item.children.some(c => isActive(c.href))
                       ? 'text-[#38BDF8]'
                       : 'text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-white/[0.034]'
                   }`}

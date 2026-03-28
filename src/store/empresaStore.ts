@@ -1,5 +1,6 @@
 'use client'
 import { create } from 'zustand'
+import { useAuthStore } from './authStore'
 
 export interface Empresa {
   id: string
@@ -29,11 +30,15 @@ const EMPRESAS_DEFAULT: Empresa[] = [
   },
 ]
 
+const CORES = ['#38BDF8', '#34D399', '#FBBF24', '#F87171', '#C084FC', '#FB923C']
+
 interface EmpresaState {
   empresas: Empresa[]
   activeId: string
+  _synced: boolean
   setActive: (id: string) => void
   getActive: () => Empresa
+  syncFromAuth: () => void
   updateEmpresa: (id: string, data: Partial<Empresa>) => void
   addEmpresa: () => void
   removeEmpresa: (id: string) => void
@@ -42,15 +47,44 @@ interface EmpresaState {
 export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   empresas: EMPRESAS_DEFAULT,
   activeId: EMPRESAS_DEFAULT[0].id,
-  setActive: (id) => set({ activeId: id }),
+  _synced: false,
+
+  setActive: (id) => {
+    set({ activeId: id })
+    // Also sync to authStore if empresa exists there
+    const auth = useAuthStore.getState()
+    const emp = auth.empresas.find((e) => e.id === Number(id))
+    if (emp) auth.setEmpresaAtiva(emp)
+  },
+
   getActive: () => {
     const state = get()
     return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0]
   },
+
+  /** Pull empresas from authStore (populated by /auth/me) */
+  syncFromAuth: () => {
+    const auth = useAuthStore.getState()
+    if (!auth.empresas.length) return
+
+    const empresas: Empresa[] = auth.empresas.map((e, i) => ({
+      id: String(e.id),
+      nome: e.nome,
+      cnpj: e.cnpj || '',
+      logoDark: null,
+      logoLight: null,
+      cor: CORES[i % CORES.length],
+    }))
+
+    const activeId = auth.empresaAtiva ? String(auth.empresaAtiva.id) : empresas[0]?.id || '1'
+    set({ empresas, activeId, _synced: true })
+  },
+
   updateEmpresa: (id, data) =>
     set((s) => ({
       empresas: s.empresas.map((e) => (e.id === id ? { ...e, ...data } : e)),
     })),
+
   addEmpresa: () =>
     set((s) => {
       const newId = String(Date.now())
@@ -68,6 +102,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
         ],
       }
     }),
+
   removeEmpresa: (id) =>
     set((s) => {
       if (s.empresas.length <= 1) return s

@@ -12,7 +12,7 @@ import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
 import { ExportButton } from '@/components/export/ExportButton'
 import { ExportModal } from '@/components/export/ExportModal'
-import { Settings, Building2 } from 'lucide-react'
+import { Settings, Building2, ArrowLeft } from 'lucide-react'
 
 const NAV = [
   { href: '/bi/financeiro', label: 'Home', exact: true },
@@ -46,21 +46,36 @@ export function Navbar() {
         background: t.surfaceElevated,
       }}
     >
-      {/* Left: Logo */}
-      <div className="flex items-baseline gap-2">
-        {logo ? (
-          <img src={logo} alt={active.nome} style={{ height: 30 }} />
-        ) : (
-          <div className="flex items-baseline gap-2">
-            <Building2 size={16} style={{ color: active.cor }} className="self-center" />
-            <span className="font-mono text-[13px] text-white tracking-widest font-bold">
-              ALT MAX
-            </span>
-          </div>
-        )}
-        <span className="text-[8px] tracking-[3px] font-mono" style={{ color: t.blue }}>
-          PORTAL BI
-        </span>
+      {/* Left: Back to Portal + Logo */}
+      <div className="flex items-center gap-3">
+        <Link
+          href="/portal/grupo"
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] no-underline transition-all"
+          style={{
+            color: t.muted,
+            background: t.surface,
+            border: `1px solid ${t.border}`,
+          }}
+          title="Voltar ao Portal"
+        >
+          <ArrowLeft size={11} />
+          Portal
+        </Link>
+        <div className="flex items-baseline gap-2">
+          {logo ? (
+            <img src={logo} alt={active.nome} style={{ height: 30 }} />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <Building2 size={16} style={{ color: active.cor }} className="self-center" />
+              <span className="font-mono text-[13px] tracking-widest font-bold" style={{ color: t.text }}>
+                ALT MAX
+              </span>
+            </div>
+          )}
+          <span className="text-[8px] tracking-[3px] font-mono" style={{ color: t.blue }}>
+            PORTAL BI
+          </span>
+        </div>
       </div>
 
       {/* Center: Tabs */}
