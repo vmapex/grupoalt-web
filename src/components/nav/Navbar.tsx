@@ -1,10 +1,13 @@
 'use client'
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, getLogo } from '@/store/empresaStore'
+import { useUnidadeStore } from '@/store/unidadeStore'
 import { ThemeToggle } from './ThemeToggle'
 import { EmpresaDropdown } from './EmpresaDropdown'
+import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { Settings, Building2 } from 'lucide-react'
 
@@ -20,7 +23,14 @@ export function Navbar() {
   const t = useThemeStore((s) => s.tokens)
   const pathname = usePathname()
   const active = useEmpresaStore((s) => s.getActive())
+  const activeId = useEmpresaStore((s) => s.activeId)
+  const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
   const logo = getLogo(active, t.isDark)
+
+  // Carrega projetos/unidades sempre que a empresa muda
+  useEffect(() => {
+    fetchProjetos(activeId)
+  }, [activeId, fetchProjetos])
 
   return (
     <nav
@@ -75,6 +85,7 @@ export function Navbar() {
       {/* Right: Controls */}
       <div className="flex items-center gap-2">
         <DateRangePicker />
+        <UnidadeDropdown />
         <ThemeToggle />
         <EmpresaDropdown />
         <Link
