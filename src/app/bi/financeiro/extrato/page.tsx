@@ -151,7 +151,7 @@ export default function PageExtrato() {
                   <SortHeader label="Data" field="data" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
-                  <SortHeader label="Descrição" field="descricao" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                  <SortHeader label="Favorecido" field="descricao" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
                 </tr>
