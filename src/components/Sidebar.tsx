@@ -6,16 +6,23 @@ import { usePathname } from 'next/navigation'
 import {
   Building2, BarChart3, Wallet, FileText,
   ChevronDown, ChevronRight, LogOut, PanelLeftClose,
-  PanelLeft, CheckSquare, Shield,
+  PanelLeft, CheckSquare, Shield, ExternalLink,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+
+interface NavChild {
+  label: string
+  href: string
+  modulo?: string
+  external?: boolean
+}
 
 interface NavItem {
   label: string
   href?: string
   icon: React.ReactNode
   modulo?: string
-  children?: { label: string; href: string; modulo?: string }[]
+  children?: NavChild[]
 }
 
 const navigation: NavItem[] = [
@@ -47,12 +54,12 @@ const navigation: NavItem[] = [
     icon: <Wallet size={20} />,
     modulo: 'financeiro',
     children: [
-      { label: 'Caixa Realizado', href: '/portal/financeiro/caixa' },
-      { label: 'Extrato', href: '/portal/financeiro/extrato' },
-      { label: 'Contas a Pagar', href: '/portal/financeiro/cp' },
-      { label: 'Contas a Receber', href: '/portal/financeiro/cr' },
-      { label: 'Fluxo de Caixa', href: '/portal/financeiro/fluxo' },
-      { label: 'Conciliação', href: '/portal/financeiro/conciliacao' },
+      { label: 'Portal BI', href: '/bi/financeiro', external: true },
+      { label: 'Caixa Realizado', href: '/bi/financeiro/caixa', external: true },
+      { label: 'Extrato', href: '/bi/financeiro/extrato', external: true },
+      { label: 'A Pagar/Receber', href: '/bi/financeiro/cp-cr', external: true },
+      { label: 'Fluxo de Caixa', href: '/bi/financeiro/fluxo', external: true },
+      { label: 'Conciliação', href: '/bi/financeiro/conciliacao', external: true },
     ],
   },
   {
@@ -78,10 +85,9 @@ export default function Sidebar() {
   const { user, empresas, empresaAtiva, grupos, grupoAtivo, hasPermissao, setEmpresaAtiva, setGrupoAtivo, logout } = useAuthStore()
   const [collapsed, setCollapsed] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
-    // Auto-expand active section
     const active = new Set<string>()
     navigation.forEach(item => {
-      if (item.children?.some(c => pathname.startsWith(c.href))) {
+      if (item.children?.some(c => !c.external && pathname.startsWith(c.href))) {
         active.add(item.label)
       }
     })
@@ -171,7 +177,7 @@ export default function Sidebar() {
                 <button
                   onClick={() => toggleSection(item.label)}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                    item.children.some(c => isActive(c.href))
+                    item.children.some(c => !c.external && isActive(c.href))
                       ? 'text-[#38BDF8]'
                       : 'text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-white/[0.034]'
                   }`}
@@ -189,19 +195,32 @@ export default function Sidebar() {
                 </button>
                 {!collapsed && expandedSections.has(item.label) && (
                   <div className="ml-8 border-l border-white/[0.07]">
-                    {item.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={`block pl-3 py-1.5 text-xs transition-colors ${
-                          isActive(child.href)
-                            ? 'text-[#38BDF8] border-l-2 border-[#38BDF8] -ml-px'
-                            : 'text-[#64748B] hover:text-[#F1F5F9]'
-                        }`}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
+                    {item.children.map(child =>
+                      child.external ? (
+                        <a
+                          key={child.href}
+                          href={child.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 pl-3 py-1.5 text-xs text-[#64748B] hover:text-[#38BDF8] transition-colors"
+                        >
+                          {child.label}
+                          <ExternalLink size={9} className="opacity-50" />
+                        </a>
+                      ) : (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`block pl-3 py-1.5 text-xs transition-colors ${
+                            isActive(child.href)
+                              ? 'text-[#38BDF8] border-l-2 border-[#38BDF8] -ml-px'
+                              : 'text-[#64748B] hover:text-[#F1F5F9]'
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      )
+                    )}
                   </div>
                 )}
               </>

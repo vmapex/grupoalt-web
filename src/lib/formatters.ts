@@ -1,0 +1,62 @@
+/** Format as BRL without R$ prefix — absolute value, 2 decimals */
+export function fmtBRL(v: number): string {
+  return Math.abs(v).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+/** Abbreviate to K/M with sign */
+export function fmtK(v: number): string {
+  if (!v || v === 0) return '0'
+  const a = Math.abs(v)
+  const s = v < 0 ? '\u2212' : ''
+  if (a >= 1e6) return s + (a / 1e6).toFixed(1).replace('.', ',') + 'M'
+  if (a >= 1e3) return s + (a / 1e3).toFixed(1).replace('.', ',') + 'K'
+  return s + a.toFixed(0)
+}
+
+/** Format percentage */
+export function fmtPct(v: number): string {
+  return (v >= 0 ? '' : '\u2212') + Math.abs(v).toFixed(1).replace('.', ',') + '%'
+}
+
+/** Parse DD/MM/YYYY to Date */
+export function parseDMY(s: string): Date {
+  const [d, m, y] = s.split('/')
+  return new Date(Number(y), Number(m) - 1, Number(d))
+}
+
+/** Generic sort toggle */
+export function toggleSort(prev: SortState, field: string): SortState {
+  if (prev.field === field) return { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+  return { field, dir: 'asc' }
+}
+
+/** Generic row sorter */
+export function sortRows<T>(
+  rows: T[],
+  sort: SortState,
+  getVal: (row: T, field: string) => number | string | Date,
+): T[] {
+  if (!sort.field) return rows
+  return [...rows].sort((a, b) => {
+    const va = getVal(a, sort.field)
+    const vb = getVal(b, sort.field)
+    if (va === vb) return 0
+    let cmp: number
+    if (va instanceof Date && vb instanceof Date) {
+      cmp = va.getTime() - vb.getTime()
+    } else if (typeof va === 'number' && typeof vb === 'number') {
+      cmp = va - vb
+    } else {
+      cmp = String(va).localeCompare(String(vb), 'pt-BR')
+    }
+    return sort.dir === 'asc' ? cmp : -cmp
+  })
+}
+
+export interface SortState {
+  field: string
+  dir: 'asc' | 'desc'
+}
