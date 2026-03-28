@@ -9,6 +9,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
+import { NotificationBell } from './NotificationBell'
 import { Settings, Building2 } from 'lucide-react'
 
 const NAV = [
@@ -86,6 +87,7 @@ export function Navbar() {
       {/* Right: Controls */}
       <div className="flex items-center gap-2">
         <DateRangePicker />
+        <NotificationBell />
         <UnidadeDropdown />
         <ThemeToggle />
         <EmpresaDropdown />

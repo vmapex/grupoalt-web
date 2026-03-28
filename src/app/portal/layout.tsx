@@ -1,10 +1,15 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { Navbar } from '@/components/nav/Navbar'
+import { ChatPanel } from '@/components/chat/ChatPanel'
+import { OrbitButton } from '@/components/chat/OrbitButton'
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const { mode, tokens: t } = useThemeStore()
+  const [chatOpen, setChatOpen] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     const root = document.documentElement
@@ -21,6 +26,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
+      {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}
     </div>
   )
 }
