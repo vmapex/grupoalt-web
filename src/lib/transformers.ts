@@ -55,6 +55,7 @@ export function transformExtrato(items: ExtratoAPI[], contas: Map<number, string
   return items.map((r) => ({
     data: r.data_lancamento || '',
     descricao: r.descricao || '',
+    favorecido: r.favorecido || r.descricao || '',
     valor: r.valor,
     catCod: r.categoria || '',
     conciliado: r.conciliado,

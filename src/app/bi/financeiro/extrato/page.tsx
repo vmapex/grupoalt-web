@@ -41,6 +41,7 @@ export default function PageExtrato() {
       extrato.filter((r) => {
         if (
           search &&
+          !r.favorecido.toLowerCase().includes(search.toLowerCase()) &&
           !r.descricao.toLowerCase().includes(search.toLowerCase()) &&
           !getCatDesc(r.catCod).toLowerCase().includes(search.toLowerCase())
         )
@@ -58,7 +59,7 @@ export default function PageExtrato() {
         if (f === 'data') return parseDMY(r.data)
         if (f === 'banco') return r.banco
         if (f === 'valor') return r.valor
-        if (f === 'descricao') return r.descricao
+        if (f === 'descricao') return r.favorecido
         if (f === 'categoria') return getCatDesc(r.catCod)
         if (f === 'status') return r.conciliado ? 1 : 0
         return 0
@@ -180,7 +181,7 @@ export default function PageExtrato() {
                       <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: isE ? t.green : t.red }}>
                         {isE ? '+' : '\u2212'} {fmtBRL(r.valor)}
                       </td>
-                      <td className="px-3.5 py-2.5 max-w-[200px] truncate">{r.descricao}</td>
+                      <td className="px-3.5 py-2.5 max-w-[200px] truncate" title={r.descricao}>{r.favorecido}</td>
                       <td
                         className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate"
                         style={{ color: t.muted }}

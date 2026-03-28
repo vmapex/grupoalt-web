@@ -9,6 +9,7 @@ export interface ExtratoAPI {
   data_lancamento: string | null  // DD/MM/YYYY
   data_conciliacao: string | null
   descricao: string
+  favorecido: string | null
   valor: number
   tipo: string | null
   conciliado: boolean

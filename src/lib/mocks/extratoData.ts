@@ -35,6 +35,7 @@ export function getCatDesc(code: string): string {
 export interface ExtratoLancamento {
   data: string
   descricao: string
+  favorecido: string
   valor: number
   catCod: string
   conciliado: boolean
@@ -59,6 +60,7 @@ const bancos = ['Itaú', 'Banco do Brasil', 'Itaú', 'Banco do Brasil', 'Bradesc
 export const mockExtrato: ExtratoLancamento[] = Array.from({ length: 20 }, (_, i) => ({
   data: `${String(25 - i).padStart(2, '0')}/11/2025`,
   descricao: descricoes[i % 12],
+  favorecido: descricoes[i % 12],
   valor: valores[i % 12],
   catCod: catCods[i % 12],
   conciliado: i % 3 !== 0,
