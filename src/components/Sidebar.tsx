@@ -4,9 +4,9 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, BarChart3, Wallet, FileText,
+  Building2, BarChart3, FileText,
   ChevronDown, ChevronRight, LogOut, PanelLeftClose,
-  PanelLeft, CheckSquare, Shield, ExternalLink,
+  PanelLeft, CheckSquare, Shield,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -14,7 +14,6 @@ interface NavChild {
   label: string
   href: string
   modulo?: string
-  external?: boolean
 }
 
 interface NavItem {
@@ -42,24 +41,12 @@ const navigation: NavItem[] = [
     modulo: 'indicadores',
     children: [
       { label: 'Dashboard', href: '/portal/indicadores' },
+      { label: 'Portal BI', href: '/bi/financeiro' },
       { label: 'Financeiro', href: '/portal/indicadores/financeiro' },
       { label: 'Contábil', href: '/portal/indicadores/contabil' },
       { label: 'Faturamento', href: '/portal/indicadores/faturamento' },
       { label: 'Custos', href: '/portal/indicadores/custos' },
       { label: 'Controladoria', href: '/portal/indicadores/controladoria' },
-    ],
-  },
-  {
-    label: 'Financeiro',
-    icon: <Wallet size={20} />,
-    modulo: 'financeiro',
-    children: [
-      { label: 'Portal BI', href: '/bi/financeiro' },
-      { label: 'Caixa Realizado', href: '/bi/financeiro/caixa' },
-      { label: 'Extrato', href: '/bi/financeiro/extrato' },
-      { label: 'A Pagar/Receber', href: '/bi/financeiro/cp-cr' },
-      { label: 'Fluxo de Caixa', href: '/bi/financeiro/fluxo' },
-      { label: 'Conciliação', href: '/bi/financeiro/conciliacao' },
     ],
   },
   {
@@ -195,32 +182,19 @@ export default function Sidebar() {
                 </button>
                 {!collapsed && expandedSections.has(item.label) && (
                   <div className="ml-8 border-l border-white/[0.07]">
-                    {item.children.map(child =>
-                      child.external ? (
-                        <a
-                          key={child.href}
-                          href={child.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 pl-3 py-1.5 text-xs text-[#64748B] hover:text-[#38BDF8] transition-colors"
-                        >
-                          {child.label}
-                          <ExternalLink size={9} className="opacity-50" />
-                        </a>
-                      ) : (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={`block pl-3 py-1.5 text-xs transition-colors ${
-                            isActive(child.href)
-                              ? 'text-[#38BDF8] border-l-2 border-[#38BDF8] -ml-px'
-                              : 'text-[#64748B] hover:text-[#F1F5F9]'
-                          }`}
-                        >
-                          {child.label}
-                        </Link>
-                      )
-                    )}
+                    {item.children.map(child => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`block pl-3 py-1.5 text-xs transition-colors ${
+                          isActive(child.href)
+                            ? 'text-[#38BDF8] border-l-2 border-[#38BDF8] -ml-px'
+                            : 'text-[#64748B] hover:text-[#F1F5F9]'
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
                   </div>
                 )}
               </>
