@@ -57,18 +57,58 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
       const html2canvas = html2canvasModule.default
       const { jsPDF } = jsPDFModule
 
-      // Capture the main content area
+      // Navigate to the selected page if different from current
+      const targetPath = page === 'dashboard' ? '/portal' : `/portal/${page}`
+      const currentPath = window.location.pathname
+      const needsNav = currentPath !== targetPath
+
+      if (needsNav) {
+        window.history.pushState(null, '', targetPath)
+        // Dispatch popstate so Next.js picks up the route change
+        window.dispatchEvent(new PopStateEvent('popstate'))
+        // Wait for page render
+        await new Promise((r) => setTimeout(r, 1500))
+      }
+
       const mainEl = document.querySelector('main')
       if (!mainEl) throw new Error('Main element not found')
+
+      // Capture full scrollable content (not just visible viewport)
+      const scrollH = mainEl.scrollHeight
+      const scrollW = mainEl.scrollWidth
+      const originalH = mainEl.style.height
+      const originalOverflow = mainEl.style.overflow
+
+      // Temporarily expand main to its full scroll height
+      mainEl.style.height = `${scrollH}px`
+      mainEl.style.overflow = 'visible'
 
       const canvas = await html2canvas(mainEl as HTMLElement, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#05091A',
         logging: false,
+        width: scrollW,
+        height: scrollH,
+        windowWidth: scrollW,
+        windowHeight: scrollH,
       })
 
+      // Restore original styles
+      mainEl.style.height = originalH
+      mainEl.style.overflow = originalOverflow
+
+      // Navigate back if we changed pages
+      if (needsNav) {
+        window.history.pushState(null, '', currentPath)
+        window.dispatchEvent(new PopStateEvent('popstate'))
+      }
+
       const imgData = canvas.toDataURL('image/png')
+      const pageLabel = PAGE_OPTIONS.find(p => p.value === page)?.label || 'Relatório'
+      const now = new Date()
+      const timestamp = `Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ALT MAX Portal BI`
+
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -77,38 +117,62 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
 
       const pdfW = pdf.internal.pageSize.getWidth()
       const pdfH = pdf.internal.pageSize.getHeight()
-
-      // Header
-      pdf.setFillColor(5, 9, 26)
-      pdf.rect(0, 0, pdfW, pdfH, 'F')
-      pdf.setFont('helvetica', 'bold')
-      pdf.setFontSize(14)
-      pdf.setTextColor(241, 245, 249)
-      pdf.text(`${activeEmpresa.nome} — ${PAGE_OPTIONS.find(p => p.value === page)?.label || ''}`, 10, 12)
-      pdf.setFontSize(8)
-      pdf.setTextColor(100, 116, 139)
-      pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 17)
-
-      // Content image
+      const headerH = 22
+      const footerH = 10
+      const contentH = pdfH - headerH - footerH
       const imgW = pdfW - 20
-      const imgH = (canvas.height / canvas.width) * imgW
-      const maxImgH = pdfH - 30
-      const finalH = Math.min(imgH, maxImgH)
-      pdf.addImage(imgData, 'PNG', 10, 22, imgW, finalH)
+      const totalImgH = (canvas.height / canvas.width) * imgW
+      const totalPages = Math.ceil(totalImgH / contentH)
 
-      // Footer
-      pdf.setFontSize(7)
-      pdf.setTextColor(100, 116, 139)
-      const now = new Date()
-      pdf.text(
-        `Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ALT MAX Portal BI`,
-        10,
-        pdfH - 5,
-      )
-      pdf.text(`Página 1`, pdfW - 20, pdfH - 5)
+      for (let pg = 0; pg < totalPages; pg++) {
+        if (pg > 0) pdf.addPage()
 
-      // Download
-      const pageLabel = PAGE_OPTIONS.find(p => p.value === page)?.label || 'relatorio'
+        // Background
+        pdf.setFillColor(5, 9, 26)
+        pdf.rect(0, 0, pdfW, pdfH, 'F')
+
+        // Header
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(12)
+        pdf.setTextColor(241, 245, 249)
+        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, 10, 10)
+        pdf.setFontSize(8)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(100, 116, 139)
+        pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 16)
+
+        // Content slice — offset the image for each page
+        const yOffset = pg * contentH
+        pdf.addImage(
+          imgData, 'PNG',
+          10, headerH - yOffset,
+          imgW, totalImgH,
+          undefined, 'FAST',
+          0,
+        )
+
+        // Clip content area (white-out outside)
+        pdf.setFillColor(5, 9, 26)
+        pdf.rect(0, 0, pdfW, headerH, 'F') // cover above content
+        pdf.rect(0, pdfH - footerH, pdfW, footerH, 'F') // cover below content
+
+        // Re-draw header on top of clip
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(12)
+        pdf.setTextColor(241, 245, 249)
+        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, 10, 10)
+        pdf.setFontSize(8)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(100, 116, 139)
+        pdf.text('Período: 01/10/2025 → 31/03/2026', 10, 16)
+
+        // Footer
+        pdf.setFontSize(7)
+        pdf.setTextColor(100, 116, 139)
+        pdf.text(timestamp, 10, pdfH - 4)
+        pdf.text(`Página ${pg + 1} de ${totalPages}`, pdfW - 30, pdfH - 4)
+      }
+
       pdf.save(`altmax-${pageLabel.toLowerCase().replace(/\s+/g, '-')}-${now.toISOString().slice(0, 10)}.pdf`)
 
       setStatus('success')
