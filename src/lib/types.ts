@@ -17,6 +17,7 @@ export interface ExtratoAPI {
   categoria: string | null
   documento: string | null
   origem: string | null
+  banco: string | null
 }
 
 // ── Contas (GET /empresas/{id}/contas) ────────────────────────

@@ -59,7 +59,7 @@ export function transformExtrato(items: ExtratoAPI[], contas: Map<number, string
     valor: r.valor,
     catCod: r.categoria || '',
     conciliado: r.conciliado,
-    banco: contas.get(r.conta_id ?? 0) || 'N/D',
+    banco: r.banco || contas.get(r.conta_id ?? 0) || 'N/D',
   }))
 }
 
