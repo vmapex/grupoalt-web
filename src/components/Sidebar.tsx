@@ -1,15 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, BarChart3, Wallet, FileText, Settings,
-  ChevronDown, ChevronRight, LogOut, Bell, PanelLeftClose,
-  PanelLeft, LayoutDashboard, GitBranch, Tags, DollarSign,
-  Receipt, ArrowDownCircle, ArrowUpCircle, TrendingUp,
-  Scale, Calculator, PieChart, Briefcase, CheckSquare,
-  Shield,
+  Building2, BarChart3, Wallet, FileText,
+  ChevronDown, ChevronRight, LogOut, PanelLeftClose,
+  PanelLeft, CheckSquare, Shield,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -102,11 +99,11 @@ export default function Sidebar() {
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  const visibleNav = navigation.filter(item => {
+  const visibleNav = useMemo(() => navigation.filter(item => {
     if (user?.is_admin) return true
     if (!item.modulo) return true
     return hasPermissao(item.modulo, 'visualizar')
-  })
+  }), [user?.is_admin, hasPermissao])
 
   return (
     <aside

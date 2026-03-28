@@ -19,7 +19,7 @@ export default function GrupoPage() {
             <span className="text-sm text-[#64748B]">Empresas Ativas</span>
           </div>
           <p className="text-2xl font-bold text-[#F1F5F9] font-mono">
-            {empresas.filter(e => true).length}
+            {empresas.length}
           </p>
         </div>
 

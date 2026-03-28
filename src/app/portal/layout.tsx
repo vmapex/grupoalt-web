@@ -19,10 +19,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       return
     }
 
-    // Carregar dados do usuário
-    api.get('/auth/me')
-      .then(res => {
-        const data = res.data
+    // Carregar dados do usuário e notificações em paralelo
+    Promise.all([
+      api.get('/auth/me'),
+      api.get('/notificacoes/contagem').catch(() => ({ data: { nao_lidas: 0 } })),
+    ])
+      .then(([meRes, notifRes]) => {
+        const data = meRes.data
         setAuth(
           token,
           { id: data.id, nome: data.nome, email: data.email, is_admin: data.is_admin },
@@ -30,16 +33,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           data.grupos || [],
           data.permissoes || [],
         )
+        setNotifCount(notifRes.data.nao_lidas || 0)
         setLoading(false)
       })
       .catch(() => {
         router.push('/login')
       })
-
-    // Carregar contagem de notificações
-    api.get('/notificacoes/contagem')
-      .then(res => setNotifCount(res.data.nao_lidas || 0))
-      .catch(() => {})
   }, [])
 
   if (loading) {
