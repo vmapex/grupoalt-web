@@ -9,22 +9,31 @@ import { DrillBar } from '@/components/caixa/DrillBar'
 import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
-import { useExtrato, useSaldos } from '@/hooks/useAPI'
+import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDateRangeStore } from '@/store/dateRangeStore'
+
+function isoToDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
 
 type Level = 'quarterly' | 'monthly' | 'weekly'
 
 export default function PageCaixa() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dt_inicio = isoToDMY(dateFrom)
+  const dt_fim = isoToDMY(dateTo)
   const [level, setLevel] = useState<Level>('monthly')
   const [selMonth, setSelMonth] = useState<string | null>(null)
   const [caixaView, setCaixaView] = useState<'dashboard' | 'analise'>('dashboard')
   const [detailView, setDetailView] = useState<string | null>(null)
 
-  // API calls for KPI strip (saldo data)
-  const { data: saldosRaw } = useSaldos(empresaId)
-  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId)
+  // API calls for KPI strip with date range
+  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
 
   // Compute KPI values from API data
   const kpiValues = useMemo(() => {

@@ -17,21 +17,31 @@ import { getCatDesc } from '@/lib/mocks/extratoData'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
+
+function isoToDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
 
 export default function PageCPCR() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dt_inicio = isoToDMY(dateFrom)
+  const dt_fim = isoToDMY(dateTo)
   const [tab, setTab] = useState<'CP' | 'CR'>('CP')
   const [view, setView] = useState<'lanc' | 'temp' | 'repr'>('lanc')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
 
-  // API calls
-  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 100 })
-  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 100 })
-  const { data: cpResumo } = useCPResumo(empresaId)
-  const { data: crResumo } = useCRResumo(empresaId)
+  // API calls with date range
+  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
+  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
+  const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim)
+  const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim)
 
   // Transform API → component shape, fallback to mock
   const cpData: ContaPagarReceber[] = useMemo(

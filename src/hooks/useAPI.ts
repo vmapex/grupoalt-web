@@ -103,32 +103,38 @@ export function useSaldos(empresaId: number | null, dtInicio?: string, dtFim?: s
 
 export function useCP(
   empresaId: number | null,
-  opts?: { status?: string; pagina?: number; registros?: number; favorecido?: string },
+  opts?: { status?: string; pagina?: number; registros?: number; favorecido?: string; dtInicio?: string; dtFim?: string },
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cp` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim },
   )
 }
 
-export function useCPResumo(empresaId: number | null) {
-  return useApi<ResumoKPIsAPI>(empresaId ? `/empresas/${empresaId}/cp/resumo` : null)
+export function useCPResumo(empresaId: number | null, dtInicio?: string, dtFim?: string) {
+  return useApi<ResumoKPIsAPI>(
+    empresaId ? `/empresas/${empresaId}/cp/resumo` : null,
+    { data_inicio: dtInicio, data_fim: dtFim },
+  )
 }
 
 // ── CR (Contas a Receber) ────────────────────────────────────
 
 export function useCR(
   empresaId: number | null,
-  opts?: { status?: string; pagina?: number; registros?: number; favorecido?: string },
+  opts?: { status?: string; pagina?: number; registros?: number; favorecido?: string; dtInicio?: string; dtFim?: string },
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cr` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim },
   )
 }
 
-export function useCRResumo(empresaId: number | null) {
-  return useApi<ResumoKPIsAPI>(empresaId ? `/empresas/${empresaId}/cr/resumo` : null)
+export function useCRResumo(empresaId: number | null, dtInicio?: string, dtFim?: string) {
+  return useApi<ResumoKPIsAPI>(
+    empresaId ? `/empresas/${empresaId}/cr/resumo` : null,
+    { data_inicio: dtInicio, data_fim: dtFim },
+  )
 }
 
 // ── Fluxo de Caixa ───────────────────────────────────────────

@@ -16,7 +16,13 @@ import { mockExtrato, mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull, mockCRFull } from '@/lib/mocks/cpcrData'
 import { useExtrato, useSaldos, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR, transformSaldos } from '@/lib/transformers'
+
+function isoToDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
 
 /* ── KPI card data ─────────────────────────── */
 interface KPICardData {
@@ -40,13 +46,17 @@ interface WaterfallItem {
 export default function DashboardExecutivo() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dt_inicio = isoToDMY(dateFrom)
+  const dt_fim = isoToDMY(dateTo)
 
-  // API calls
-  const { data: saldosRaw } = useSaldos(empresaId)
-  const { data: cpRaw } = useCP(empresaId, { registros: 100 })
-  const { data: crRaw } = useCR(empresaId, { registros: 100 })
+  // API calls with date range
+  const { data: saldosRaw } = useSaldos(empresaId, dt_inicio, dt_fim)
+  const { data: cpRaw } = useCP(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
+  const { data: crRaw } = useCR(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
-  const { data: fluxoAPI } = useFluxoCaixa(empresaId)
+  const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
   // Transform API or fallback
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : mockCPFull), [cpRaw])

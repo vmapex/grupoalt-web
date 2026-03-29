@@ -69,7 +69,7 @@ export function transformSaldos(items: SaldoAPI[]): ContaSaldo[] {
   return items.map((s) => {
     const nome = bankName(s.descricao, s.banco)
     return {
-      nome: `${nome} ${s.descricao.replace(/.*-/, '').trim()}`.trim(),
+      nome: nome,
       saldo: s.saldo,
       cor: bankColor(nome),
     }

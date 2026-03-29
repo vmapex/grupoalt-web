@@ -16,7 +16,13 @@ import { mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull as fallbackCP, mockCRFull as fallbackCR } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa, useCP, useCR, useSaldos } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
+
+function isoToDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
 
 const seed = (i: number) => Math.abs(Math.sin(i * 9301 + 49297) * 233280) % 1
 
@@ -30,10 +36,12 @@ const HZ_OPTIONS = [
 export default function PageFluxo() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dt_fim = isoToDMY(dateTo)
   const [hz, setHz] = useState(30)
 
-  // API calls
-  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId)
+  // API calls with date range
+  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
   const { data: saldosRaw } = useSaldos(empresaId)
   const { data: cpRaw } = useCP(empresaId, { registros: 100 })
   const { data: crRaw } = useCR(empresaId, { registros: 100 })
