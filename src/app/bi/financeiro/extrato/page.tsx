@@ -13,10 +13,18 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformExtrato, transformSaldos, buildContaMap } from '@/lib/transformers'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
+function isoToDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 export default function PageExtrato() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
-  const { dt_inicio, dt_fim } = useDateRangeStore((s) => s.getApiDates())
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dateTo = useDateRangeStore((s) => s.to)
+  const dt_inicio = isoToDMY(dateFrom)
+  const dt_fim = isoToDMY(dateTo)
   const [search, setSearch] = useState('')
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })

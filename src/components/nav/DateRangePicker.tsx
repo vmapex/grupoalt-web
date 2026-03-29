@@ -85,6 +85,8 @@ export function DateRangePicker() {
                 onClick={() => {
                   setLocalFrom(p.from)
                   setLocalTo(p.to)
+                  setRange(p.from, p.to)
+                  setOpen(false)
                 }}
                 className="text-left px-2 py-1.5 rounded text-[10px] transition-all cursor-pointer"
                 style={{
