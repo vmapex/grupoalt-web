@@ -7,10 +7,10 @@ import { ConcilBadge } from '@/components/ui/ConcilBadge'
 import { getCatDesc } from '@/lib/mocks/extratoData'
 import { mockExtrato as fallbackExtrato, mockContas as fallbackContas } from '@/lib/mocks/extratoData'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
-import { useExtrato, useSaldos } from '@/hooks/useAPI'
+import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { transformExtrato, transformSaldos, buildContaMap } from '@/lib/transformers'
+import { transformExtrato, transformSaldos } from '@/lib/transformers'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
 function isoToDMY(iso: string): string {
@@ -29,22 +29,20 @@ export default function PageExtrato() {
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
-  // API calls with date range
-  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
-  const { data: saldosRaw, loading: loadingSaldos } = useSaldos(empresaId, dt_inicio, dt_fim)
+  // API call with date range (returns {saldo_inicial, saldo_atual, lancamentos, saldos_contas})
+  const { data: extratoResponse, loading } = useExtrato(empresaId, dt_inicio, dt_fim)
 
-  // Transform API data or fallback to mock
-  const contaMap = useMemo(() => (saldosRaw ? buildContaMap(saldosRaw) : new Map()), [saldosRaw])
+  // Extract data from response or fallback
   const extrato: ExtratoLancamento[] = useMemo(
-    () => (extratoRaw ? transformExtrato(extratoRaw, contaMap) : fallbackExtrato),
-    [extratoRaw, contaMap],
+    () => (extratoResponse?.lancamentos ? transformExtrato(extratoResponse.lancamentos, new Map()) : fallbackExtrato),
+    [extratoResponse],
   )
   const contas: ContaSaldo[] = useMemo(
-    () => (saldosRaw ? transformSaldos(saldosRaw) : fallbackContas),
-    [saldosRaw],
+    () => (extratoResponse?.saldos_contas ? transformSaldos(extratoResponse.saldos_contas) : fallbackContas),
+    [extratoResponse],
   )
-
-  const loading = loadingExtrato || loadingSaldos
+  const saldoInicial = extratoResponse?.saldo_inicial ?? 0
+  const saldoAtual = extratoResponse?.saldo_atual ?? 0
 
   const filtered = useMemo(
     () =>
@@ -79,10 +77,9 @@ export default function PageExtrato() {
 
   const totEnt = useMemo(() => filtered.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0), [filtered])
   const totSai = useMemo(() => filtered.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0), [filtered])
-  const saldoInicial = useMemo(() => contas.reduce((s, c) => s + c.saldo, 0), [contas])
   const balanco = totEnt - totSai
   const saldoFinal = saldoInicial + balanco
-  const maxSaldo = useMemo(() => Math.max(...contas.map((c) => Math.abs(c.saldo)), 1), [contas])
+  const maxSaldo = useMemo(() => Math.max(...contas.filter((c) => c.saldo !== 0).map((c) => Math.abs(c.saldo)), 1), [contas])
 
   return (
     <div className="grid min-h-full" style={{ gridTemplateColumns: '1fr 240px' }}>
@@ -93,7 +90,9 @@ export default function PageExtrato() {
           {/* Saldo Inicial */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saldo Inicial</div>
-            <div className="font-mono text-[17px]" style={{ color: t.blue }}>{fmtK(saldoInicial)}</div>
+            <div className="font-mono text-[17px]" style={{ color: saldoInicial >= 0 ? t.blue : t.red }}>
+              {saldoInicial < 0 ? '−' : ''}{fmtK(Math.abs(saldoInicial))}
+            </div>
           </div>
           {/* Entradas */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
@@ -108,9 +107,13 @@ export default function PageExtrato() {
           {/* Resultado: Saldo Final + Balanço */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.muted }}>Saldo Final</div>
-            <div className="font-mono text-[15px]" style={{ color: saldoFinal >= 0 ? t.green : t.red }}>{fmtK(saldoFinal)}</div>
+            <div className="font-mono text-[15px]" style={{ color: saldoFinal >= 0 ? t.green : t.red }}>
+              {saldoFinal < 0 ? '−' : ''}{fmtK(Math.abs(saldoFinal))}
+            </div>
             <div className="text-[8px] uppercase tracking-wider mt-1.5 mb-0.5" style={{ color: t.muted }}>Balanço</div>
-            <div className="font-mono text-[13px]" style={{ color: balanco >= 0 ? t.green : t.red }}>{balanco >= 0 ? '+' : ''}{fmtK(balanco)}</div>
+            <div className="font-mono text-[13px]" style={{ color: balanco >= 0 ? t.green : t.red }}>
+              {balanco >= 0 ? '+' : '−'}{fmtK(Math.abs(balanco))}
+            </div>
           </div>
           {/* Lançamentos */}
           <div className="px-4 py-3.5">
@@ -232,7 +235,7 @@ export default function PageExtrato() {
         <div className="text-[10px] uppercase tracking-[1.5px] font-medium" style={{ color: t.muted }}>
           Saldo por Conta
         </div>
-        {loadingSaldos ? (
+        {loading ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 size={14} className="animate-spin" style={{ color: t.blue }} />
           </div>

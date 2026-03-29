@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '@/lib/api'
 import type {
   ExtratoAPI,
+  ExtratoResponseAPI,
   SaldoAPI,
   PaginatedResponseAPI,
   ResumoKPIsAPI,
@@ -83,9 +84,9 @@ function useApi<T>(
 // ── Extrato ───────────────────────────────────────────────────
 
 export function useExtrato(empresaId: number | null, dtInicio?: string, dtFim?: string) {
-  return useApi<ExtratoAPI[]>(
+  return useApi<ExtratoResponseAPI>(
     empresaId ? `/empresas/${empresaId}/extrato` : null,
-    { dt_inicio: dtInicio, dt_fim: dtFim },
+    { dt_inicio: dtInicio, dt_fim: dtFim, refresh: 'true' },
   )
 }
 

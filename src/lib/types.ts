@@ -20,6 +20,13 @@ export interface ExtratoAPI {
   banco: string | null
 }
 
+export interface ExtratoResponseAPI {
+  saldo_inicial: number
+  saldo_atual: number
+  lancamentos: ExtratoAPI[]
+  saldos_contas: SaldoAPI[]
+}
+
 // ── Contas (GET /empresas/{id}/contas) ────────────────────────
 
 export interface ContaAPI {

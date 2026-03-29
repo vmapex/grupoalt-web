@@ -28,9 +28,10 @@ export default function PageCaixa() {
 
   // Compute KPI values from API data
   const kpiValues = useMemo(() => {
-    if (!extratoRaw?.length) return null
-    const entradas = extratoRaw.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0)
-    const saidas = extratoRaw.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0)
+    const lancs = extratoRaw?.lancamentos
+    if (!lancs?.length) return null
+    const entradas = lancs.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0)
+    const saidas = lancs.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0)
     const saldoFinal = entradas - saidas
     return { entradas, saidas, saldoFinal }
   }, [extratoRaw])
