@@ -1,26 +1,38 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Calendar } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
-
-const PRESETS = [
-  { label: 'Último mês', from: '2025-11-01', to: '2025-11-30', days: 30 },
-  { label: 'Último trimestre', from: '2025-10-01', to: '2025-12-31', days: 92 },
-  { label: 'Últimos 6 meses', from: '2025-10-01', to: '2026-03-31', days: 182 },
-  { label: 'Ano atual', from: '2026-01-01', to: '2026-03-31', days: 90 },
-  { label: 'Personalizado', from: '', to: '', days: 0 },
-]
+import { useDateRangeStore } from '@/store/dateRangeStore'
 
 export function DateRangePicker() {
   const t = useThemeStore((s) => s.tokens)
+  const { from, to, setRange, days } = useDateRangeStore()
   const [open, setOpen] = useState(false)
-  const [from, setFrom] = useState('2025-10-01')
-  const [to, setTo] = useState('2026-03-31')
+  const [localFrom, setLocalFrom] = useState(from)
+  const [localTo, setLocalTo] = useState(to)
   const ref = useRef<HTMLDivElement>(null)
 
-  const days = Math.round(
-    (new Date(to).getTime() - new Date(from).getTime()) / 86400000,
-  )
+  // Sync local state when store changes
+  useEffect(() => { setLocalFrom(from); setLocalTo(to) }, [from, to])
+
+  const currentDays = days()
+
+  const presets = useMemo(() => {
+    const now = new Date()
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const quarter = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+    const sixMonths = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+    const yearStart = new Date(now.getFullYear(), 0, 1)
+    return [
+      { label: 'Último mês', from: fmt(lastMonth), to: fmt(endLastMonth) },
+      { label: 'Último trimestre', from: fmt(quarter), to: fmt(now) },
+      { label: 'Últimos 6 meses', from: fmt(sixMonths), to: fmt(now) },
+      { label: 'Ano atual', from: fmt(yearStart), to: fmt(now) },
+    ]
+  }, [])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -29,6 +41,15 @@ export function DateRangePicker() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  const applyRange = () => {
+    setRange(localFrom, localTo)
+    setOpen(false)
+  }
+
+  const localDays = Math.round(
+    (new Date(localTo).getTime() - new Date(localFrom).getTime()) / 86400000,
+  )
 
   return (
     <div ref={ref} className="relative">
@@ -43,7 +64,7 @@ export function DateRangePicker() {
         }}
       >
         <Calendar size={11} />
-        <span className="font-mono">{days}d</span>
+        <span className="font-mono">{currentDays}d</span>
       </button>
       {open && (
         <div
@@ -58,17 +79,17 @@ export function DateRangePicker() {
             Período
           </div>
           <div className="flex flex-col gap-1 mb-3">
-            {PRESETS.slice(0, 4).map((p) => (
+            {presets.map((p) => (
               <button
                 key={p.label}
                 onClick={() => {
-                  setFrom(p.from)
-                  setTo(p.to)
+                  setLocalFrom(p.from)
+                  setLocalTo(p.to)
                 }}
                 className="text-left px-2 py-1.5 rounded text-[10px] transition-all cursor-pointer"
                 style={{
-                  background: from === p.from && to === p.to ? t.blueDim : 'transparent',
-                  color: from === p.from && to === p.to ? t.blue : t.textSec,
+                  background: localFrom === p.from && localTo === p.to ? t.blueDim : 'transparent',
+                  color: localFrom === p.from && localTo === p.to ? t.blue : t.textSec,
                   border: 'none',
                   fontFamily: 'inherit',
                 }}
@@ -80,8 +101,8 @@ export function DateRangePicker() {
           <div className="flex gap-2 mb-3">
             <input
               type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
+              value={localFrom}
+              onChange={(e) => setLocalFrom(e.target.value)}
               className="flex-1 rounded px-2 py-1 text-[10px] font-mono outline-none"
               style={{
                 background: t.surface,
@@ -91,8 +112,8 @@ export function DateRangePicker() {
             />
             <input
               type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
+              value={localTo}
+              onChange={(e) => setLocalTo(e.target.value)}
               className="flex-1 rounded px-2 py-1 text-[10px] font-mono outline-none"
               style={{
                 background: t.surface,
@@ -102,7 +123,7 @@ export function DateRangePicker() {
             />
           </div>
           <button
-            onClick={() => setOpen(false)}
+            onClick={applyRange}
             className="w-full py-1.5 rounded-md text-[10px] font-semibold cursor-pointer transition-all"
             style={{
               background: t.blueDim,
@@ -110,7 +131,7 @@ export function DateRangePicker() {
               color: t.blue,
             }}
           >
-            Aplicar Período · {days} dias
+            Aplicar Período · {localDays} dias
           </button>
         </div>
       )}

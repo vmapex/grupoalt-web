@@ -9,19 +9,21 @@ import { mockExtrato as fallbackExtrato, mockContas as fallbackContas } from '@/
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato, useSaldos } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformExtrato, transformSaldos, buildContaMap } from '@/lib/transformers'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
 export default function PageExtrato() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const { dt_inicio, dt_fim } = useDateRangeStore((s) => s.getApiDates())
   const [search, setSearch] = useState('')
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
-  // API calls
-  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId)
-  const { data: saldosRaw, loading: loadingSaldos } = useSaldos(empresaId)
+  // API calls with date range
+  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: saldosRaw, loading: loadingSaldos } = useSaldos(empresaId, dt_inicio, dt_fim)
 
   // Transform API data or fallback to mock
   const contaMap = useMemo(() => (saldosRaw ? buildContaMap(saldosRaw) : new Map()), [saldosRaw])
