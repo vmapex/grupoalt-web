@@ -14,6 +14,13 @@ import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { mockCPFull as fallbackCP, mockCRFull as fallbackCR, cpTemporalData as fallbackTemporal } from '@/lib/mocks/cpcrData'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { getCatDesc } from '@/lib/mocks/extratoData'
+import { CATEGORIAS } from '@/lib/planoContas'
+
+function getCatNivel2(catCode: string): string {
+  const info = CATEGORIAS[catCode]
+  if (info) return info.nivel2
+  return getCatDesc(catCode)
+}
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
@@ -72,7 +79,7 @@ export default function PageCPCR() {
     () => sortRows(data, sort, (r, f) => {
       if (f === 'fav') return r.fav
       if (f === 'categoria') return getCatDesc(r.cat)
-      if (f === 'banco') return r.banco
+      if (f === 'grupo') return getCatNivel2(r.cat)
       if (f === 'vcto') return parseDMY(r.vcto)
       if (f === 'valor') return r.valor
       if (f === 'status') return r.status
@@ -281,7 +288,7 @@ export default function PageCPCR() {
                       <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
                         <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                        <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Grupo" field="grupo" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
@@ -292,7 +299,7 @@ export default function PageCPCR() {
                         <tr key={i} className="transition-colors hover:bg-surface-hover" style={{ borderBottom: `1px solid ${t.border}22` }}>
                           <td className="px-3.5 py-2.5 font-medium">{r.fav}</td>
                           <td className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate" style={{ color: t.muted }} title={`${r.cat} — ${getCatDesc(r.cat)}`}>{getCatDesc(r.cat)}</td>
-                          <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{r.banco}</td>
+                          <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
                           <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{isCP ? '−' : '+'} {fmtBRL(r.valor)}</td>
                           <td className="px-3.5 py-2.5 text-center"><Badge status={r.status} /></td>
