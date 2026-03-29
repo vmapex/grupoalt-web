@@ -211,31 +211,35 @@ export default function PageExtrato() {
             <Loader2 size={14} className="animate-spin" style={{ color: t.blue }} />
           </div>
         ) : (
-          contas.map((c, i) => (
-            <div
-              key={i}
-              className="rounded-lg p-3"
-              style={{ background: t.surface, border: `1px solid ${t.border}` }}
-            >
-              <div className="flex items-center gap-1.5 text-[10px] mb-1.5" style={{ color: t.muted }}>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: c.cor }} />
-                {c.nome}
+          contas.filter((c) => c.saldo !== 0).length === 0 ? (
+            <div className="text-[10px]" style={{ color: t.muted }}>Nenhuma conta com movimento</div>
+          ) : (
+            contas.filter((c) => c.saldo !== 0).map((c, i) => (
+              <div
+                key={i}
+                className="rounded-lg p-3"
+                style={{ background: t.surface, border: `1px solid ${t.border}` }}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] mb-1.5" style={{ color: t.muted }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: c.cor }} />
+                  {c.nome}
+                </div>
+                <div className="font-mono text-base" style={{ color: c.saldo >= 0 ? t.text : t.red }}>
+                  {fmtBRL(c.saldo)}
+                </div>
+                <div className="h-0.5 rounded-sm mt-2 overflow-hidden" style={{ background: `${t.text}08` }}>
+                  <div
+                    className="h-full rounded-sm"
+                    style={{
+                      width: `${(Math.abs(c.saldo) / maxSaldo) * 100}%`,
+                      background: c.cor,
+                      opacity: 0.6,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="font-mono text-base" style={{ color: c.saldo >= 0 ? t.text : t.red }}>
-                {fmtBRL(c.saldo)}
-              </div>
-              <div className="h-0.5 rounded-sm mt-2 overflow-hidden" style={{ background: `${t.text}08` }}>
-                <div
-                  className="h-full rounded-sm"
-                  style={{
-                    width: `${(Math.abs(c.saldo) / maxSaldo) * 100}%`,
-                    background: c.cor,
-                    opacity: 0.6,
-                  }}
-                />
-              </div>
-            </div>
-          ))
+            ))
+          )
         )}
       </div>
     </div>
