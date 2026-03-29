@@ -69,15 +69,10 @@ export default function PageExtrato() {
 
   const totEnt = useMemo(() => filtered.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0), [filtered])
   const totSai = useMemo(() => filtered.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0), [filtered])
+  const saldoInicial = useMemo(() => contas.reduce((s, c) => s + c.saldo, 0), [contas])
+  const balanco = totEnt - totSai
+  const saldoFinal = saldoInicial + balanco
   const maxSaldo = useMemo(() => Math.max(...contas.map((c) => Math.abs(c.saldo)), 1), [contas])
-
-  const kpis = [
-    { l: 'Saldo Total', v: fmtK(contas.reduce((s, c) => s + c.saldo, 0)), c: t.blue },
-    { l: 'Entradas', v: fmtK(totEnt), c: t.green },
-    { l: 'Saídas', v: fmtK(totSai), c: t.red },
-    { l: 'Resultado', v: fmtK(totEnt - totSai), c: totEnt - totSai >= 0 ? t.green : t.red },
-    { l: 'Lançamentos', v: String(filtered.length), c: t.text },
-  ]
 
   return (
     <div className="grid min-h-full" style={{ gridTemplateColumns: '1fr 240px' }}>
@@ -85,12 +80,33 @@ export default function PageExtrato() {
       <div className="flex flex-col min-h-0" style={{ borderRight: `1px solid ${t.border}` }}>
         {/* KPIs */}
         <div className="grid grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-          {kpis.map((k, i) => (
-            <div key={i} className="px-4 py-3.5" style={{ borderRight: i < 4 ? `1px solid ${t.border}` : 'none' }}>
-              <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>{k.l}</div>
-              <div className="font-mono text-[17px]" style={{ color: k.c }}>{k.v}</div>
-            </div>
-          ))}
+          {/* Saldo Inicial */}
+          <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
+            <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saldo Inicial</div>
+            <div className="font-mono text-[17px]" style={{ color: t.blue }}>{fmtK(saldoInicial)}</div>
+          </div>
+          {/* Entradas */}
+          <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
+            <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Entradas</div>
+            <div className="font-mono text-[17px]" style={{ color: t.green }}>{fmtK(totEnt)}</div>
+          </div>
+          {/* Saídas */}
+          <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
+            <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saídas</div>
+            <div className="font-mono text-[17px]" style={{ color: t.red }}>{fmtK(totSai)}</div>
+          </div>
+          {/* Resultado: Saldo Final + Balanço */}
+          <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
+            <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.muted }}>Saldo Final</div>
+            <div className="font-mono text-[15px]" style={{ color: saldoFinal >= 0 ? t.green : t.red }}>{fmtK(saldoFinal)}</div>
+            <div className="text-[8px] uppercase tracking-wider mt-1.5 mb-0.5" style={{ color: t.muted }}>Balanço</div>
+            <div className="font-mono text-[13px]" style={{ color: balanco >= 0 ? t.green : t.red }}>{balanco >= 0 ? '+' : ''}{fmtK(balanco)}</div>
+          </div>
+          {/* Lançamentos */}
+          <div className="px-4 py-3.5">
+            <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Lançamentos</div>
+            <div className="font-mono text-[17px]" style={{ color: t.text }}>{String(filtered.length)}</div>
+          </div>
         </div>
 
         {/* Filters */}
