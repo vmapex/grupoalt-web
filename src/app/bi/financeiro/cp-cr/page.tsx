@@ -24,31 +24,22 @@ function getCatNivel2(catCode: string): string {
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
-
-function isoToDMY(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
 
 export default function PageCPCR() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
-  const dateFrom = useDateRangeStore((s) => s.from)
-  const dateTo = useDateRangeStore((s) => s.to)
-  const dt_inicio = isoToDMY(dateFrom)
-  const dt_fim = isoToDMY(dateTo)
   const [tab, setTab] = useState<'CP' | 'CR'>('CP')
   const [view, setView] = useState<'lanc' | 'temp' | 'repr'>('lanc')
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('TODOS')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
 
-  // API calls with date range
-  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
-  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
-  const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim)
-  const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim)
+  // CP/CR: sem filtro de data do dateRangeStore — busca todos os títulos
+  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 100 })
+  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 100 })
+  const { data: cpResumo } = useCPResumo(empresaId)
+  const { data: crResumo } = useCRResumo(empresaId)
 
   // Transform API → component shape, fallback to mock
   const cpData: ContaPagarReceber[] = useMemo(
@@ -70,9 +61,10 @@ export default function PageCPCR() {
   const data = useMemo(
     () => rawData.filter((r) => {
       if (search && !r.fav.toLowerCase().includes(search.toLowerCase()) && !getCatDesc(r.cat).toLowerCase().includes(search.toLowerCase())) return false
+      if (statusFilter !== 'TODOS' && r.status !== statusFilter) return false
       return true
     }),
-    [rawData, search],
+    [rawData, search, statusFilter],
   )
 
   const dataSorted = useMemo(
@@ -253,6 +245,17 @@ export default function PageCPCR() {
                     className="w-full rounded-lg pl-8 pr-2.5 py-2 text-[11px] outline-none"
                     style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }} />
                 </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-lg px-2.5 py-2 text-[10px] outline-none cursor-pointer"
+                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }}
+                >
+                  <option value="TODOS">Todos</option>
+                  <option value="A VENCER">A Vencer</option>
+                  <option value="ATRASADO">Atrasado</option>
+                  <option value={isCP ? 'PAGO' : 'RECEBIDO'}>{isCP ? 'Pago' : 'Recebido'}</option>
+                </select>
                 <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{loading ? '...' : `${data.length} itens`}</span>
               </div>
               {/* Summary row */}
