@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
+  ComposedChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { Search, Loader2 } from 'lucide-react'
@@ -125,6 +125,7 @@ export default function PageCPCR() {
     return Object.entries(favBreak).sort((a, b) => b[1] - a[1])
   }, [data])
   const favMax = favSorted[0]?.[1] || 1
+  const favTotal = favSorted.reduce((s, [, v]) => s + v, 0) || 1
 
   const viewBtns = [
     { id: 'lanc' as const, label: '☰ Lançamentos' },
@@ -161,9 +162,6 @@ export default function PageCPCR() {
     if (entries.length === 0) return fallbackTemporal
     return entries.map(([mes, v]) => ({ mes, cp: Math.round(v.cp), cr: Math.round(v.cr) }))
   }, [cpData, crData, cpRaw, crRaw])
-
-  const crTotal = crData.reduce((s, r) => s + r.valor, 0)
-  const cpTotal = cpData.reduce((s, r) => s + r.valor, 0)
 
   return (
     <div className="flex flex-col min-h-full">
@@ -225,7 +223,7 @@ export default function PageCPCR() {
           { label: 'A Vencer', value: fmtK(aVencer), color: t.text, accent: t.green, sub: 'Dentro do prazo' },
           { label: 'Atrasado', value: fmtK(atrasado), color: atrasado > 0 ? t.red : t.text, accent: t.red, sub: atrasado > 0 ? 'Atenção necessária' : 'Nenhum em atraso' },
           { label: 'Prazo Médio', value: `${pmDias} dias`, color: t.text, accent: t.amber, sub: isCP ? 'Pagamento' : 'Recebimento' },
-          { label: 'Saldo Líquido', value: fmtK(crTotal - cpTotal), color: crTotal - cpTotal >= 0 ? t.green : t.red, accent: t.blue, sub: 'CR − CP total' },
+          { label: isCP ? 'Pago' : 'Recebido', value: fmtK(pago), color: t.muted, accent: t.blue, sub: `${resumo?.quantidade_realizado ?? 0} títulos` },
         ].map((k, i) => (
           <KPICard key={i} label={k.label} value={k.value} color={k.color} accent={k.accent} sub={k.sub} borderRight={i < 4} />
         ))}
@@ -245,17 +243,27 @@ export default function PageCPCR() {
                     className="w-full rounded-lg pl-8 pr-2.5 py-2 text-[11px] outline-none"
                     style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }} />
                 </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg px-2.5 py-2 text-[10px] outline-none cursor-pointer appearance-none"
-                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit', colorScheme: 'dark' }}
-                >
-                  <option value="TODOS">Todos</option>
-                  <option value="A VENCER">A Vencer</option>
-                  <option value="ATRASADO">Atrasado</option>
-                  <option value={isCP ? 'PAGO' : 'RECEBIDO'}>{isCP ? 'Pago' : 'Recebido'}</option>
-                </select>
+                {[
+                  { value: 'TODOS', label: 'Todos' },
+                  { value: 'A VENCER', label: 'A Vencer' },
+                  { value: 'ATRASADO', label: 'Atrasado' },
+                  { value: isCP ? 'PAGO' : 'RECEBIDO', label: isCP ? 'Pago' : 'Recebido' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setStatusFilter(opt.value)}
+                    className="px-2.5 py-1.5 rounded-md text-[10px] cursor-pointer transition-all"
+                    style={{
+                      background: statusFilter === opt.value ? t.blueDim : 'transparent',
+                      color: statusFilter === opt.value ? t.blue : t.muted,
+                      border: `1px solid ${statusFilter === opt.value ? `${t.blue}44` : t.border}`,
+                      fontWeight: statusFilter === opt.value ? 600 : 400,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
                 <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{loading ? '...' : `${data.length} itens`}</span>
               </div>
               {/* Summary row */}
@@ -325,14 +333,13 @@ export default function PageCPCR() {
                   Vencimentos por Mês — CP × CR
                 </div>
                 <ResponsiveContainer width="100%" height={200}>
-                  <ComposedChart data={temporalData.map((r) => ({ ...r, saldo: r.cr - r.cp }))} barSize={28} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
+                  <ComposedChart data={temporalData} barSize={28} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}06`} />
                     <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
                     <Tooltip content={<CustomTooltip />} cursor={false} />
                     <Bar dataKey="cp" name="A Pagar" fill={`${t.red}25`} stroke={t.red} strokeWidth={1.5} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="cr" name="A Receber" fill={`${t.green}25`} stroke={t.green} strokeWidth={1.5} radius={[4, 4, 0, 0]} />
-                    <Line type="monotone" dataKey="saldo" name="Saldo" stroke={`${t.blue}88`} strokeWidth={2} strokeDasharray="4 4" dot={{ fill: t.blue, r: 4 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -407,7 +414,7 @@ export default function PageCPCR() {
                       </div>
                       <div className="flex gap-2.5">
                         <span className="font-mono" style={{ color: t.text }}>{fmtK(valor)}</span>
-                        <span className="font-mono min-w-[36px] text-right" style={{ color: accent }}>{((valor / catTotal) * 100).toFixed(0)}%</span>
+                        <span className="font-mono min-w-[36px] text-right" style={{ color: accent }}>{((valor / favTotal) * 100).toFixed(0)}%</span>
                       </div>
                     </div>
                     <div className="h-1.5 rounded-sm overflow-hidden" style={{ background: `${t.text}08` }}>
