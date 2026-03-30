@@ -248,8 +248,8 @@ export default function PageCPCR() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg px-2.5 py-2 text-[10px] outline-none cursor-pointer"
-                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }}
+                  className="rounded-lg px-2.5 py-2 text-[10px] outline-none cursor-pointer appearance-none"
+                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit', colorScheme: 'dark' }}
                 >
                   <option value="TODOS">Todos</option>
                   <option value="A VENCER">A Vencer</option>
