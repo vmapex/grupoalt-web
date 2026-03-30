@@ -86,7 +86,7 @@ export default function PageCPCR() {
   const atrasado = resumo?.total_atrasado ?? data.filter((r) => r.status === 'ATRASADO').reduce((s, r) => s + r.valor, 0)
   const pago = resumo?.total_realizado ?? data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
   const aberto = data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO')
-  const pmDias = isCP ? 24.7 : 19.3
+  const pmDias = resumo?.prazo_medio ?? (isCP ? 24.7 : 19.3)
 
   // Aging buckets
   const today = new Date()

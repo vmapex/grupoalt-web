@@ -73,6 +73,7 @@ export interface ResumoKPIsAPI {
   quantidade_a_vencer: number
   quantidade_atrasado: number
   quantidade_realizado: number
+  prazo_medio: number
   por_categoria: Array<{ categoria: string; valor: number }>
 }
 
