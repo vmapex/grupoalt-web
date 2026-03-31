@@ -107,7 +107,7 @@ export function useCP(
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cp` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
   )
 }
 
@@ -126,7 +126,7 @@ export function useCR(
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cr` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 100, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
   )
 }
 
