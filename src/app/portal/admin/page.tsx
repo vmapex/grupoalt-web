@@ -34,6 +34,7 @@ export default function AdminPage() {
   const [unidades, setUnidades] = useState<UnidadeData[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedUser, setExpandedUser] = useState<number | null>(null)
+  const [expandedEmpresa, setExpandedEmpresa] = useState<number | null>(null)
   const [showModal, setShowModal] = useState<'user' | 'empresa' | 'unidade' | null>(null)
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -41,7 +42,7 @@ export default function AdminPage() {
 
   // Forms
   const [userForm, setUserForm] = useState({ nome: '', email: '', senha: '', is_admin: false })
-  const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', slug: '' })
+  const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', slug: '', app_key: '', app_secret: '' })
   const [unidadeForm, setUnidadeForm] = useState({ nome: '', codigo: '' })
 
   const loadData = async () => {
@@ -101,10 +102,26 @@ export default function AdminPage() {
   const handleCreateEmpresa = async () => {
     setSaving(true); setError('')
     try {
-      await api.post('/admin/empresas', empresaForm)
-      setShowModal(null); setEmpresaForm({ nome: '', cnpj: '', slug: '' }); loadData()
+      const { app_key, app_secret, ...empresaData } = empresaForm
+      const res = await api.post('/admin/empresas', empresaData)
+      const empresaId = res.data.id
+
+      // Se credenciais Omie foram preenchidas, salvar
+      if (app_key && app_secret && empresaId) {
+        await api.put(`/admin/empresas/${empresaId}/credenciais`, { app_key, app_secret })
+      }
+
+      setShowModal(null); setEmpresaForm({ nome: '', cnpj: '', slug: '', app_key: '', app_secret: '' }); loadData()
     } catch (err: any) { setError(err?.response?.data?.detail || 'Erro') }
     finally { setSaving(false) }
+  }
+
+  // Salvar credenciais para empresa existente
+  const saveCredenciais = async (empresaId: number, appKey: string, appSecret: string) => {
+    try {
+      await api.put(`/admin/empresas/${empresaId}/credenciais`, { app_key: appKey, app_secret: appSecret })
+      alert('Credenciais salvas com sucesso!')
+    } catch (err: any) { alert(err?.response?.data?.detail || 'Erro ao salvar credenciais') }
   }
 
   // Unidade actions
@@ -233,18 +250,59 @@ export default function AdminPage() {
       {/* ═══ TAB: EMPRESAS ═══ */}
       {tab === 'Empresas' && (
         <div className="space-y-3">
-          {empresas.map(emp => (
-            <div key={emp.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-[#CCA000]" />
+          {empresas.map(emp => {
+            const isExp = expandedEmpresa === emp.id
+            return (
+              <div key={emp.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                <button onClick={() => setExpandedEmpresa(isExp ? null : emp.id)} className="w-full flex items-center gap-4 p-5 hover:bg-zinc-800/50 transition-colors text-left">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-[#CCA000]" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-white">{emp.nome}</div>
+                    {emp.cnpj && <div className="text-xs text-zinc-500 font-mono">{emp.cnpj}</div>}
+                  </div>
+                  <span className="text-xs text-zinc-500">ID: {emp.id}</span>
+                  {isExp ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+                </button>
+                {isExp && (
+                  <div className="border-t border-zinc-800 p-5">
+                    <h4 className="text-xs font-medium text-[#CCA000] uppercase tracking-wider mb-3">Credenciais Omie</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Key</label>
+                        <input
+                          id={`appkey-${emp.id}`}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono"
+                          placeholder="Insira o App Key da Omie"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Secret</label>
+                        <input
+                          id={`appsecret-${emp.id}`}
+                          type="password"
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono"
+                          placeholder="Insira o App Secret da Omie"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
+                          const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
+                          if (key && secret) saveCredenciais(emp.id, key, secret)
+                          else alert('Preencha App Key e App Secret')
+                        }}
+                        className="bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2 text-sm font-bold transition-all"
+                      >
+                        Salvar Credenciais
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-white">{emp.nome}</div>
-                {emp.cnpj && <div className="text-xs text-zinc-500 font-mono">{emp.cnpj}</div>}
-              </div>
-              <span className="text-xs text-zinc-500">ID: {emp.id}</span>
-            </div>
-          ))}
+            )
+          })}
           {empresas.length === 0 && <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-12 text-center"><Building2 className="w-10 h-10 text-zinc-600 mx-auto mb-4" /><p className="text-zinc-500">Nenhuma empresa cadastrada</p></div>}
         </div>
       )}
@@ -322,6 +380,19 @@ export default function AdminPage() {
                   <label className="block text-xs font-medium text-zinc-400 mb-1.5">Slug (identificador único)</label>
                   <input value={empresaForm.slug} onChange={e => setEmpresaForm({ ...empresaForm, slug: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="alt_transportes" />
                   <p className="text-[11px] text-zinc-500 mt-1">Usado para identificação interna. Sem espaços ou acentos.</p>
+                </div>
+                <div className="pt-2 border-t border-zinc-800">
+                  <p className="text-xs font-medium text-[#CCA000] mb-3">Credenciais Omie (opcional)</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Key</label>
+                      <input value={empresaForm.app_key} onChange={e => setEmpresaForm({ ...empresaForm, app_key: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="1234567890" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Secret</label>
+                      <input type="password" value={empresaForm.app_secret} onChange={e => setEmpresaForm({ ...empresaForm, app_secret: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="••••••••••••••••" />
+                    </div>
+                  </div>
                 </div>
               </>}
 
