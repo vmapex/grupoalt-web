@@ -11,13 +11,13 @@ import { useThemeStore } from '@/store/themeStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
-import { CAIXA_DATA, DRE_ROWS, getDREColor } from '@/lib/mocks/caixaData'
+import { CATEGORIAS } from '@/lib/planoContas'
 import { mockExtrato, mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull, mockCRFull } from '@/lib/mocks/cpcrData'
-import { useExtrato, useSaldos, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
+import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { transformCPCR, transformSaldos } from '@/lib/transformers'
+import { transformCPCR } from '@/lib/transformers'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -52,23 +52,43 @@ export default function DashboardExecutivo() {
   const dt_fim = isoToDMY(dateTo)
 
   // API calls with date range
-  const { data: saldosRaw } = useSaldos(empresaId, dt_inicio, dt_fim)
-  const { data: cpRaw } = useCP(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
-  const { data: crRaw } = useCR(empresaId, { registros: 100, dtInicio: dt_inicio, dtFim: dt_fim })
+  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: cpRaw } = useCP(empresaId, { registros: 100 })
+  const { data: crRaw } = useCR(empresaId, { registros: 100 })
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
   // Transform API or fallback
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : mockCPFull), [cpRaw])
   const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : mockCRFull), [crRaw])
+  const lancamentos = extratoResponse?.lancamentos ?? []
 
   /* ── Computed values ──────────────────────── */
-  const saldoCaixa = useMemo(() => {
-    if (saldosRaw) return saldosRaw.reduce((s, c) => s + c.saldo, 0)
-    return mockContas.reduce((s, c) => s + c.saldo, 0)
-  }, [saldosRaw])
+  const saldoCaixa = extratoResponse?.saldo_atual ?? mockContas.reduce((s, c) => s + c.saldo, 0)
 
-  const ebt2 = useMemo(() => DRE_ROWS.find((r) => r.name === 'EBT2')?.val ?? 0, [])
+  // Calcular DRE real do extrato usando planoContas
+  const dreData = useMemo(() => {
+    if (!lancamentos.length) return null
+    const groups: Record<string, number> = {}
+    for (const l of lancamentos) {
+      const cat = CATEGORIAS[l.categoria || '']
+      if (!cat) continue
+      const grupo = cat.grupoDRE
+      const val = Math.abs(l.valor)
+      groups[grupo] = (groups[grupo] || 0) + val
+    }
+    const rob = groups['RoB'] || 0
+    const tdcf = groups['TDCF'] || 0
+    const cv = groups['CV'] || 0
+    const cf = groups['CF'] || 0
+    const rnop = groups['RNOP'] || 0
+    const dnop = groups['DNOP'] || 0
+    const ebt1 = rob - tdcf - cv - cf
+    const ebt2 = ebt1 + rnop - dnop
+    return { rob, tdcf, cv, cf, rnop, dnop, ebt1, ebt2 }
+  }, [lancamentos])
+
+  const ebt2 = dreData?.ebt2 ?? 0
 
   const cpAtrasado = useMemo(
     () => cpData.filter((c) => c.status === 'ATRASADO').reduce((s, c) => s + c.valor, 0),
@@ -76,7 +96,7 @@ export default function DashboardExecutivo() {
   )
 
   const crPrevisto = useMemo(
-    () => crData.filter((c) => c.status === 'A RECEBER').reduce((s, c) => s + c.valor, 0),
+    () => crData.filter((c) => c.status === 'A VENCER' || c.status === 'A RECEBER').reduce((s, c) => s + c.valor, 0),
     [crData],
   )
 
@@ -84,55 +104,67 @@ export default function DashboardExecutivo() {
   const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 38400
 
   const kpis: KPICardData[] = useMemo(() => [
-    { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, trend: 4.2, trendUp: true, route: '/portal/extrato' },
-    { label: 'Resultado (EBT2)', value: `R$ ${fmtK(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, trend: 2.8, trendUp: true, route: '/portal/caixa' },
-    { label: 'CP Atrasado', value: `R$ ${fmtK(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, trend: 12.3, trendUp: false, route: '/portal/cp-cr' },
-    { label: 'CR Previsto', value: `R$ ${fmtK(crPrevisto)}`, color: t.green, dim: t.greenDim, trend: 8.1, trendUp: true, route: '/portal/cp-cr' },
-    { label: 'Conciliacao', value: `${concilPct}%`, color: t.green, dim: t.greenDim, trend: 3.0, trendUp: true, route: '/portal/conciliacao' },
-    { label: 'Fluxo 30d', value: `+R$ ${fmtK(fluxo30d)}`, color: t.green, dim: t.greenDim, trend: 5.4, trendUp: true, route: '/portal/fluxo' },
+    { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, trend: 0, trendUp: true, route: '/bi/financeiro/extrato' },
+    { label: 'Resultado (EBT2)', value: `R$ ${fmtK(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, trend: 0, trendUp: ebt2 >= 0, route: '/bi/financeiro/caixa' },
+    { label: 'CP Atrasado', value: `R$ ${fmtK(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, trend: 0, trendUp: cpAtrasado === 0, route: '/bi/financeiro/cp-cr' },
+    { label: 'CR Previsto', value: `R$ ${fmtK(crPrevisto)}`, color: t.green, dim: t.greenDim, trend: 0, trendUp: true, route: '/bi/financeiro/cp-cr' },
+    { label: 'Conciliacao', value: `${concilPct}%`, color: concilPct >= 80 ? t.green : t.amber, dim: concilPct >= 80 ? t.greenDim : t.amberDim, trend: 0, trendUp: concilPct >= 80, route: '/bi/financeiro/conciliacao' },
+    { label: 'Fluxo 30d', value: `R$ ${fmtK(fluxo30d)}`, color: fluxo30d >= 0 ? t.green : t.red, dim: fluxo30d >= 0 ? t.greenDim : t.redDim, trend: 0, trendUp: fluxo30d >= 0, route: '/bi/financeiro/fluxo' },
   ], [t, saldoCaixa, ebt2, cpAtrasado, crPrevisto])
 
-  /* ── Receita vs Custos chart data ──────────── */
+  /* ── Receita vs Custos chart data (from extrato) ──── */
   const receitaCustosData = useMemo(() => {
-    const m = CAIXA_DATA.monthly
-    return m.labels.map((label, i) => ({
-      name: label,
-      receita: m.RB[i],
-      custos: m.CV[i] + m.CF[i] + m.TD[i],
-    }))
-  }, [])
+    if (!lancamentos.length) return []
+    const months: Record<string, { receita: number; custos: number }> = {}
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    for (const l of lancamentos) {
+      const d = l.data_lancamento
+      if (!d) continue
+      const [dd, mm, yy] = d.split('/')
+      const key = `${monthNames[Number(mm) - 1]}/${yy?.slice(2)}`
+      if (!months[key]) months[key] = { receita: 0, custos: 0 }
+      if (l.valor > 0) months[key].receita += l.valor
+      else months[key].custos += Math.abs(l.valor)
+    }
+    return Object.entries(months)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, v]) => ({ name, receita: Math.round(v.receita), custos: Math.round(v.custos) }))
+  }, [lancamentos])
 
-  /* ── Waterfall mini ────────────────────────── */
+  /* ── Waterfall mini (from real DRE) ──────── */
   const waterfallItems: WaterfallItem[] = useMemo(() => {
-    const rob = DRE_ROWS.find((r) => r.name === 'RoB')?.val ?? 0
-    const custos = (DRE_ROWS.find((r) => r.name === 'Cust. Var.')?.val ?? 0)
-      + (DRE_ROWS.find((r) => r.name === 'Cust. Fixo')?.val ?? 0)
-      + (DRE_ROWS.find((r) => r.name === 'T.D.C.F.')?.val ?? 0)
-    const ebt1 = DRE_ROWS.find((r) => r.name === 'EBT1')?.val ?? 0
-    const nop = (DRE_ROWS.find((r) => r.name === 'RNOP')?.val ?? 0)
-      - (DRE_ROWS.find((r) => r.name === 'DNOP')?.val ?? 0)
-    const ebt2v = DRE_ROWS.find((r) => r.name === 'EBT2')?.val ?? 0
-    const maxVal = Math.max(rob, Math.abs(custos), Math.abs(ebt1), Math.abs(nop), Math.abs(ebt2v))
+    const d = dreData ?? { rob: 0, tdcf: 0, cv: 0, cf: 0, rnop: 0, dnop: 0, ebt1: 0, ebt2: 0 }
+    const custos = d.tdcf + d.cv + d.cf
+    const nop = d.rnop - d.dnop
+    const maxVal = Math.max(d.rob, custos, Math.abs(d.ebt1), Math.abs(nop), Math.abs(d.ebt2), 1)
     return [
-      { name: 'RoB', value: rob, color: t.blue, pctOfMax: (rob / maxVal) * 100 },
+      { name: 'RoB', value: d.rob, color: t.blue, pctOfMax: (d.rob / maxVal) * 100 },
       { name: 'Custos', value: -custos, color: t.red, pctOfMax: (custos / maxVal) * 100 },
-      { name: 'EBT1', value: ebt1, color: ebt1 >= 0 ? t.green : t.red, pctOfMax: (Math.abs(ebt1) / maxVal) * 100 },
+      { name: 'EBT1', value: d.ebt1, color: d.ebt1 >= 0 ? t.green : t.red, pctOfMax: (Math.abs(d.ebt1) / maxVal) * 100 },
       { name: 'NOP', value: nop, color: nop >= 0 ? t.green : t.purple, pctOfMax: (Math.abs(nop) / maxVal) * 100 },
-      { name: 'EBT2', value: ebt2v, color: ebt2v >= 0 ? t.green : t.red, pctOfMax: (Math.abs(ebt2v) / maxVal) * 100 },
+      { name: 'EBT2', value: d.ebt2, color: d.ebt2 >= 0 ? t.green : t.red, pctOfMax: (Math.abs(d.ebt2) / maxVal) * 100 },
     ]
-  }, [t])
+  }, [t, dreData])
 
-  /* ── Fluxo projetado 30d ───────────────────── */
+  /* ── Fluxo projetado 30d (from API or CP/CR) ── */
   const fluxoData = useMemo(() => {
+    if (fluxoAPI?.diario?.length) {
+      return fluxoAPI.diario.slice(0, 30).map((d, i) => ({
+        dia: `D${i + 1}`,
+        saldo: Math.round(d.saldo_acumulado),
+      }))
+    }
+    // Fallback: simple projection from saldo + CP/CR schedule
     let saldo = saldoCaixa
+    const cpOpen = cpData.filter((c) => c.status === 'A VENCER' || c.status === 'ATRASADO')
+    const crOpen = crData.filter((c) => c.status === 'A VENCER' || c.status === 'A RECEBER')
+    const avgDailyCR = crOpen.reduce((s, r) => s + r.valor, 0) / 30
+    const avgDailyCP = cpOpen.reduce((s, r) => s + r.valor, 0) / 30
     return Array.from({ length: 30 }, (_, i) => {
-      // deterministic seed-based variation
-      const seed = ((i + 1) * 7919) % 100
-      const delta = seed < 50 ? -1200 + seed * 80 : 800 + (seed - 50) * 60
-      saldo += delta
+      saldo += avgDailyCR - avgDailyCP
       return { dia: `D${i + 1}`, saldo: Math.round(saldo) }
     })
-  }, [saldoCaixa])
+  }, [saldoCaixa, fluxoAPI, cpData, crData])
 
   /* ── Aging CP ──────────────────────────────── */
   const agingData = useMemo(() => {
@@ -162,7 +194,22 @@ export default function DashboardExecutivo() {
   }, [crData])
 
   /* ── Ultimas movimentacoes ─────────────────── */
-  const ultimasMov = useMemo(() => mockExtrato.slice(0, 5), [])
+  const ultimasMov = useMemo(() => {
+    if (lancamentos.length) {
+      return lancamentos.slice(0, 5).map((l) => ({
+        data_lancamento: (l as any).data_lancamento || '',
+        favorecido: (l as any).favorecido || (l as any).descricao || '',
+        valor: (l as any).valor || 0,
+        banco: (l as any).banco || '',
+      }))
+    }
+    return mockExtrato.slice(0, 5).map((e) => ({
+      data_lancamento: e.data,
+      favorecido: e.favorecido || e.descricao,
+      valor: e.valor,
+      banco: e.banco,
+    }))
+  }, [lancamentos])
 
   /* ── Progress ring vars ────────────────────── */
   const ringR = 45
@@ -171,10 +218,10 @@ export default function DashboardExecutivo() {
   /* ── SLA data ──────────────────────────────── */
   const slaStatus = useMemo(() => ({
     dentroSLA: 42,
-    foraSLA: 3,
-    ultimoConcil: '27/03/2026',
-    streak: 0,
-  }), [])
+    foraSLA: concilResumoAPI?.total_divergencias ?? 3,
+    ultimoConcil: '',
+    streak: concilResumoAPI?.dias_sem_conciliar ?? 0,
+  }), [concilResumoAPI])
 
   return (
     <div className="flex flex-col gap-5 p-5 min-h-full">
@@ -599,19 +646,19 @@ export default function DashboardExecutivo() {
                   className="py-2 text-[10px] font-mono"
                   style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
                 >
-                  {row.data}
+                  {row.data_lancamento}
                 </td>
                 <td
                   className="py-2 text-[11px]"
                   style={{ color: t.textSec, borderBottom: `1px solid ${t.border}` }}
                 >
-                  {row.descricao}
+                  {row.favorecido}
                 </td>
                 <td
                   className="py-2 text-[10px]"
                   style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
                 >
-                  {row.banco}
+                  {row.banco || ''}
                 </td>
                 <td
                   className="py-2 text-[11px] font-mono font-medium text-right"
