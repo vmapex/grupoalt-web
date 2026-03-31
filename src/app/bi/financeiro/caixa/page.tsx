@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { CAIXA_DATA, WEEKLY } from '@/lib/mocks/caixaData'
+import { CATEGORIAS } from '@/lib/planoContas'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
 import { DrillBar } from '@/components/caixa/DrillBar'
@@ -35,15 +36,38 @@ export default function PageCaixa() {
   // API calls for KPI strip with date range
   const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
 
-  // Compute KPI values from API data
+  const lancamentos = extratoRaw?.lancamentos ?? []
+  const saldoInicial = extratoRaw?.saldo_inicial ?? 0
+
+  // Compute KPI and DRE values from API data
   const kpiValues = useMemo(() => {
-    const lancs = extratoRaw?.lancamentos
-    if (!lancs?.length) return null
-    const entradas = lancs.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0)
-    const saidas = lancs.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0)
-    const saldoFinal = entradas - saidas
+    if (!lancamentos.length) return null
+    const entradas = lancamentos.filter((r: any) => r.valor > 0).reduce((s: number, r: any) => s + r.valor, 0)
+    const saidas = lancamentos.filter((r: any) => r.valor < 0).reduce((s: number, r: any) => s + Math.abs(r.valor), 0)
+    const saldoFinal = saldoInicial + entradas - saidas
     return { entradas, saidas, saldoFinal }
-  }, [extratoRaw])
+  }, [lancamentos, saldoInicial])
+
+  // DRE from extrato
+  const dreData = useMemo(() => {
+    if (!lancamentos.length) return null
+    const groups: Record<string, number> = {}
+    for (const l of lancamentos) {
+      const cat = CATEGORIAS[(l as any).categoria || '']
+      if (!cat) continue
+      groups[cat.grupoDRE] = (groups[cat.grupoDRE] || 0) + Math.abs((l as any).valor)
+    }
+    const rob = groups['RoB'] || 0
+    const tdcf = groups['TDCF'] || 0
+    const cv = groups['CV'] || 0
+    const cf = groups['CF'] || 0
+    const rnop = groups['RNOP'] || 0
+    const dnop = groups['DNOP'] || 0
+    const mc = rob - tdcf - cv
+    const ebt1 = mc - cf
+    const ebt2 = ebt1 + rnop - dnop
+    return { rob, tdcf, cv, cf, mc, rnop, dnop, ebt1, ebt2 }
+  }, [lancamentos])
 
   const getLevelData = useCallback(() => {
     if (level === 'quarterly') return CAIXA_DATA.quarterly
@@ -117,11 +141,11 @@ export default function PageCaixa() {
           {/* KPI Strip */}
           <KPIStrip
             items={[
-              { label: 'Saldo Inicial', value: '0,00', color: t.text, accent: t.blue, sub: 'Base do período' },
-              { label: 'Entradas', value: kpiValues ? fmtBRL(kpiValues.entradas) : '303.453,50', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
-              { label: 'Saídas', value: kpiValues ? fmtBRL(kpiValues.saidas) : '297.552,49', color: t.red, accent: t.red, sub: 'Custos + despesas' },
-              { label: 'Saldo Final', value: kpiValues ? fmtBRL(kpiValues.saldoFinal) : '5.901,01', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.green, accent: t.green, sub: 'Posição atual' },
-              { label: 'Balanço', value: kpiValues ? fmtBRL(kpiValues.saldoFinal) : '5.901,01', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.green, accent: t.green, sub: kpiValues ? `${((kpiValues.saldoFinal / (kpiValues.entradas || 1)) * 100).toFixed(1)}% sobre RoB` : '2,8% sobre RoB' },
+              { label: 'Saldo Inicial', value: fmtBRL(saldoInicial), color: saldoInicial >= 0 ? t.blue : t.red, accent: t.blue, sub: 'Base do período' },
+              { label: 'Entradas', value: kpiValues ? fmtK(kpiValues.entradas) : '0', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
+              { label: 'Saídas', value: kpiValues ? fmtK(kpiValues.saidas) : '0', color: t.red, accent: t.red, sub: 'Custos + despesas' },
+              { label: 'Saldo Final', value: kpiValues ? fmtK(kpiValues.saldoFinal) : '0', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: 'Posição atual' },
+              { label: 'Resultado (EBT2)', value: dreData ? fmtK(dreData.ebt2) : '0', color: dreData ? (dreData.ebt2 >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: dreData ? `${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
             ]}
           />
 
@@ -151,11 +175,11 @@ export default function PageCaixa() {
           {/* Footer strip */}
           <div className="grid grid-cols-5 shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
             {[
-              { l: 'Resultado Líquido', v: '+5.901,01', c: t.green, sub: 'EBT2 = 2,8% RoB' },
-              { l: 'Margem de Contribuição', v: '25.232', c: t.blue, sub: '12,0% sobre RoB' },
-              { l: 'Cobertura CF', v: '−65.248', c: t.red, sub: 'EBT1 = −31,0%' },
-              { l: 'Receitas NOP', v: '+71.149', c: t.green, sub: 'Salvou o resultado' },
-              { l: 'Taxa TDCF', v: '14,79%', c: t.amber, sub: 'Sobre receita bruta' },
+              { l: 'Resultado Líquido', v: dreData ? fmtK(dreData.ebt2) : '0', c: dreData && dreData.ebt2 >= 0 ? t.green : t.red, sub: dreData ? `EBT2 = ${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% RoB` : '' },
+              { l: 'Margem Contribuição', v: dreData ? fmtK(dreData.mc) : '0', c: t.blue, sub: dreData ? `${((dreData.mc / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
+              { l: 'Cobertura CF (EBT1)', v: dreData ? fmtK(dreData.ebt1) : '0', c: dreData && dreData.ebt1 >= 0 ? t.green : t.red, sub: dreData ? `${((dreData.ebt1 / (dreData.rob || 1)) * 100).toFixed(1)}%` : '' },
+              { l: 'Receitas NOP', v: dreData ? fmtK(dreData.rnop - dreData.dnop) : '0', c: dreData && (dreData.rnop - dreData.dnop) >= 0 ? t.green : t.red, sub: 'Saldo não operacional' },
+              { l: 'Taxa TDCF', v: dreData ? `${((dreData.tdcf / (dreData.rob || 1)) * 100).toFixed(1)}%` : '0%', c: t.amber, sub: 'Sobre receita bruta' },
             ].map((f, i) => (
               <div
                 key={i}
