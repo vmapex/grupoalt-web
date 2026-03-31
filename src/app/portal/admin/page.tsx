@@ -1,408 +1,239 @@
 'use client'
 
-import { useState, useRef, type ChangeEvent } from 'react'
-import { Settings, Upload, Trash2, Pencil, Plus, X } from 'lucide-react'
-import { useThemeStore } from '@/store/themeStore'
-import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
+import { useEffect, useState } from 'react'
+import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X } from 'lucide-react'
+import api from '@/lib/api'
 
-/* ------------------------------------------------------------------ */
-/*  LogoUploadBox                                                      */
-/* ------------------------------------------------------------------ */
-
-interface LogoUploadBoxProps {
-  label: string
-  previewBg: string
-  logoSrc: string | null
-  onUpload: (base64: string) => void
-  onRemove: () => void
-  borderColor: string
-  mutedColor: string
-  surfaceColor: string
-  redColor: string
-}
-
-function LogoUploadBox({
-  label,
-  previewBg,
-  logoSrc,
-  onUpload,
-  onRemove,
-  borderColor,
-  mutedColor,
-  surfaceColor,
-  redColor,
-}: LogoUploadBoxProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') onUpload(reader.result)
-    }
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
-
-  return (
-    <div style={{ flex: 1, minWidth: 160 }}>
-      <div
-        style={{
-          fontSize: 10,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          color: mutedColor,
-          marginBottom: 6,
-          fontFamily: "'DM Mono', monospace",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          background: previewBg,
-          border: `1px solid ${borderColor}`,
-          borderRadius: 8,
-          height: 80,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {logoSrc ? (
-          <>
-            <img
-              src={logoSrc}
-              alt={label}
-              style={{ maxHeight: 48, maxWidth: '80%', objectFit: 'contain' }}
-            />
-            <button
-              onClick={onRemove}
-              aria-label={`Remover logo ${label}`}
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                background: redColor,
-                border: 'none',
-                borderRadius: '50%',
-                width: 20,
-                height: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: '#fff',
-              }}
-            >
-              <X size={12} />
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => inputRef.current?.click()}
-            aria-label={`Upload logo ${label}`}
-            style={{
-              background: surfaceColor,
-              border: `1px dashed ${borderColor}`,
-              borderRadius: 6,
-              padding: '10px 16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              color: mutedColor,
-              fontSize: 11,
-            }}
-          >
-            <Upload size={14} />
-            Upload
-          </button>
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".png,.jpg,.jpeg,.svg,.webp"
-          onChange={handleFile}
-          style={{ display: 'none' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  PageAdmin                                                          */
-/* ------------------------------------------------------------------ */
-
-interface EditFormData {
+interface UserData {
+  id: number
   nome: string
-  cnpj: string
-  cor: string
+  email: string
+  ativo: boolean
+  is_admin: boolean
+  empresas: { id: number; nome: string; role: string }[]
+  permissoes: { id: number; modulo: string; acao: string; empresa_id: number | null }[]
+  unidades: { id: number; nome: string; empresa_id: number }[]
 }
 
-export default function PageAdmin() {
-  const t = useThemeStore((s) => s.tokens)
-  const empresas = useEmpresaStore((s) => s.empresas)
-  const updateEmpresa = useEmpresaStore((s) => s.updateEmpresa)
-  const addEmpresa = useEmpresaStore((s) => s.addEmpresa)
-  const removeEmpresa = useEmpresaStore((s) => s.removeEmpresa)
+interface EmpresaOption { id: number; nome: string; cnpj: string | null }
 
-  const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<EditFormData>({ nome: '', cnpj: '', cor: '' })
+const MODULOS: Record<string, string[]> = {
+  indicadores: ['visualizar', 'exportar'],
+  documentos: ['visualizar', 'editar', 'aprovar'],
+  fechamento: ['visualizar', 'editar', 'aprovar'],
+  grupo: ['visualizar', 'editar'],
+  admin: ['visualizar', 'editar'],
+}
 
-  const startEdit = (emp: Empresa) => {
-    setEditId(emp.id)
-    setEditForm({ nome: emp.nome, cnpj: emp.cnpj, cor: emp.cor })
+const ROLES = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'gestor', label: 'Gestor' },
+  { value: 'viewer', label: 'Visualizador' },
+]
+
+export default function AdminPage() {
+  const [usuarios, setUsuarios] = useState<UserData[]>([])
+  const [empresas, setEmpresas] = useState<EmpresaOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [expandedUser, setExpandedUser] = useState<number | null>(null)
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', is_admin: false })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const loadData = () => {
+    Promise.all([
+      api.get('/gestao/usuarios'),
+      api.get('/gestao/empresas'),
+    ]).then(([usersRes, empresasRes]) => {
+      setUsuarios(usersRes.data)
+      setEmpresas(empresasRes.data)
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }
 
-  const saveEdit = () => {
-    if (!editId) return
-    updateEmpresa(editId, editForm)
-    setEditId(null)
+  useEffect(() => { loadData() }, [])
+
+  const handleCreate = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      await api.post('/gestao/usuarios', form)
+      setShowCreate(false)
+      setForm({ nome: '', email: '', senha: '', is_admin: false })
+      loadData()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Erro ao criar usuário')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const cancelEdit = () => setEditId(null)
+  const toggleEmpresa = async (userId: number, empresaId: number, currentlyLinked: boolean) => {
+    if (currentlyLinked) {
+      await api.delete(`/gestao/usuarios/${userId}/empresas/${empresaId}`)
+    } else {
+      await api.post(`/gestao/usuarios/${userId}/empresas`, { empresa_id: empresaId, role: 'viewer' })
+    }
+    loadData()
+  }
+
+  const updateRole = async (userId: number, empresaId: number, role: string) => {
+    await api.post(`/gestao/usuarios/${userId}/empresas`, { empresa_id: empresaId, role })
+    loadData()
+  }
+
+  const togglePermissao = async (userId: number, modulo: string, acao: string, has: boolean) => {
+    const user = usuarios.find(u => u.id === userId)
+    if (!user) return
+    const newPerms = user.permissoes
+      .filter(p => !(p.modulo === modulo && p.acao === acao))
+      .map(p => ({ modulo: p.modulo, acao: p.acao, empresa_id: p.empresa_id }))
+    if (!has) {
+      newPerms.push({ modulo, acao, empresa_id: null })
+    }
+    await api.put(`/gestao/usuarios/${userId}/permissoes`, newPerms)
+    loadData()
+  }
+
+  const toggleAtivo = async (userId: number, ativo: boolean) => {
+    await api.patch(`/gestao/usuarios/${userId}`, { ativo: !ativo })
+    loadData()
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><span className="text-zinc-500 text-sm">Carregando...</span></div>
+  }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <Settings size={22} style={{ color: t.blue }} />
-        <h1
-          style={{
-            fontSize: 20,
-            fontWeight: 700,
-            color: t.text,
-            margin: 0,
-            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-          }}
-        >
-          Configurações
-        </h1>
-      </div>
-      <p style={{ fontSize: 13, color: t.textSec, margin: '0 0 24px 0' }}>
-        Gerencie as empresas cadastradas, logos e informações.
-      </p>
-
-      {/* Add button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button
-          onClick={addEmpresa}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: t.blueDim,
-            color: t.blue,
-            border: `1px solid ${t.blue}33`,
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          <Plus size={16} />
-          Adicionar Empresa
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">Administração</h1>
+          <p className="text-sm text-zinc-400">Gerencie usuários, acessos e permissões</p>
+        </div>
+        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2.5 text-sm font-bold transition-all shadow-sm">
+          <Plus className="w-4 h-4" /> Novo Usuário
         </button>
       </div>
 
-      {/* Company cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {empresas.map((emp) => {
-          const isEditing = editId === emp.id
-          return (
-            <div
-              key={emp.id}
-              style={{
-                background: t.surface,
-                border: `1px solid ${t.border}`,
-                borderRadius: 12,
-                padding: 20,
-              }}
-            >
-              {/* Logo uploads row */}
-              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                <LogoUploadBox
-                  label="Logo Dark"
-                  previewBg="#0A0F1E"
-                  logoSrc={emp.logoDark}
-                  onUpload={(b64) => updateEmpresa(emp.id, { logoDark: b64 })}
-                  onRemove={() => updateEmpresa(emp.id, { logoDark: null })}
-                  borderColor={t.border}
-                  mutedColor={t.muted}
-                  surfaceColor={t.surface}
-                  redColor={t.red}
-                />
-                <LogoUploadBox
-                  label="Logo Light"
-                  previewBg="#F0F2F5"
-                  logoSrc={emp.logoLight}
-                  onUpload={(b64) => updateEmpresa(emp.id, { logoLight: b64 })}
-                  onRemove={() => updateEmpresa(emp.id, { logoLight: null })}
-                  borderColor={t.border}
-                  mutedColor={t.muted}
-                  surfaceColor={t.surface}
-                  redColor={t.red}
-                />
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-white">Novo Usuário</h2>
+              <button onClick={() => setShowCreate(false)} className="text-zinc-500 hover:text-zinc-300"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5">Nome completo</label>
+                <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="João Silva" />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5">E-mail</label>
+                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="joao@grupoalt.com.br" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5">Senha</label>
+                <input type="password" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="••••••••" />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_admin} onChange={e => setForm({ ...form, is_admin: e.target.checked })} className="w-4 h-4 rounded accent-[#CCA000]" />
+                <span className="text-sm text-zinc-300">Administrador global</span>
+              </label>
+              {error && <p className="text-red-400 text-xs">{error}</p>}
+              <button onClick={handleCreate} disabled={saving || !form.nome || !form.email || !form.senha} className="w-full bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 transition-all">
+                {saving ? 'Criando...' : 'Criar Usuário'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Company info + actions */}
-              {isEditing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      value={editForm.nome}
-                      onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))}
-                      placeholder="Nome da empresa"
-                      style={{
-                        flex: 1,
-                        background: t.surfaceHover,
-                        border: `1px solid ${t.borderHover}`,
-                        borderRadius: 6,
-                        padding: '8px 12px',
-                        fontSize: 14,
-                        color: t.text,
-                        outline: 'none',
-                      }}
-                    />
-                    <input
-                      type="text"
-                      value={editForm.cnpj}
-                      onChange={(e) => setEditForm((f) => ({ ...f, cnpj: e.target.value }))}
-                      placeholder="CNPJ"
-                      style={{
-                        width: 200,
-                        background: t.surfaceHover,
-                        border: `1px solid ${t.borderHover}`,
-                        borderRadius: 6,
-                        padding: '8px 12px',
-                        fontSize: 14,
-                        color: t.text,
-                        fontFamily: "'DM Mono', monospace",
-                        outline: 'none',
-                      }}
-                    />
-                    <input
-                      type="color"
-                      value={editForm.cor}
-                      onChange={(e) => setEditForm((f) => ({ ...f, cor: e.target.value }))}
-                      title="Cor da empresa"
-                      style={{
-                        width: 36,
-                        height: 36,
-                        border: `1px solid ${t.border}`,
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        background: 'transparent',
-                        padding: 2,
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={cancelEdit}
-                      style={{
-                        background: t.surface,
-                        border: `1px solid ${t.border}`,
-                        borderRadius: 6,
-                        padding: '6px 14px',
-                        fontSize: 12,
-                        color: t.textSec,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={saveEdit}
-                      style={{
-                        background: t.blueDim,
-                        border: `1px solid ${t.blue}33`,
-                        borderRadius: 6,
-                        padding: '6px 14px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: t.blue,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Salvar
-                    </button>
-                  </div>
+      {/* Users List */}
+      <div className="space-y-3">
+        {usuarios.map(user => {
+          const isExpanded = expandedUser === user.id
+          return (
+            <div key={user.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+              <button onClick={() => setExpandedUser(isExpanded ? null : user.id)} className="w-full flex items-center gap-4 p-5 hover:bg-zinc-800/50 transition-colors text-left">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CCA000] to-[#E0B82E] flex items-center justify-center text-zinc-900 text-xs font-bold flex-shrink-0">
+                  {user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                 </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: emp.cor,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{emp.nome}</div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: t.muted,
-                          fontFamily: "'DM Mono', monospace",
-                          marginTop: 2,
-                        }}
-                      >
-                        {emp.cnpj}
-                      </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white">{user.nome}</span>
+                    {user.is_admin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#CCA000]/20 text-[#E0B82E] font-medium">ADMIN</span>}
+                    {!user.ativo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">INATIVO</span>}
+                  </div>
+                  <span className="text-xs text-zinc-500">{user.email}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                  <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{user.empresas.length}</span>
+                  <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{user.permissoes.length}</span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{user.unidades.length}</span>
+                </div>
+                {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-zinc-800 p-5 space-y-6">
+                  {/* Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-300">Status</span>
+                    <button onClick={() => toggleAtivo(user.id, user.ativo)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${user.ativo ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {user.ativo ? 'Ativo' : 'Inativo'} — clique para alternar
+                    </button>
+                  </div>
+
+                  {/* Empresas */}
+                  <div>
+                    <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5" /> Acesso a Empresas
+                    </h4>
+                    <div className="space-y-2">
+                      {empresas.map(emp => {
+                        const linked = user.empresas.find(ue => ue.id === emp.id)
+                        return (
+                          <div key={emp.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-zinc-800/50">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input type="checkbox" checked={!!linked} onChange={() => toggleEmpresa(user.id, emp.id, !!linked)} className="w-4 h-4 rounded accent-[#CCA000]" />
+                              <span className="text-sm text-zinc-200">{emp.nome}</span>
+                            </label>
+                            {linked && (
+                              <select value={linked.role} onChange={e => updateRole(user.id, emp.id, e.target.value)} className="bg-zinc-700 border border-zinc-600 rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-[#CCA000]">
+                                {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                              </select>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => startEdit(emp)}
-                      aria-label={`Editar ${emp.nome}`}
-                      style={{
-                        background: t.surface,
-                        border: `1px solid ${t.border}`,
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        color: t.textSec,
-                        fontSize: 12,
-                      }}
-                    >
-                      <Pencil size={14} />
-                      Editar
-                    </button>
-                    {empresas.length > 1 && (
-                      <button
-                        onClick={() => removeEmpresa(emp.id)}
-                        aria-label={`Excluir ${emp.nome}`}
-                        style={{
-                          background: t.redDim,
-                          border: `1px solid ${t.red}33`,
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          color: t.red,
-                          fontSize: 12,
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Excluir
-                      </button>
-                    )}
+
+                  {/* Permissões */}
+                  <div>
+                    <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5" /> Permissões por Módulo
+                    </h4>
+                    <div className="space-y-3">
+                      {Object.entries(MODULOS).map(([modulo, acoes]) => (
+                        <div key={modulo} className="py-2 px-3 rounded-xl bg-zinc-800/50">
+                          <span className="text-xs font-medium text-zinc-300 capitalize mb-2 block">{modulo}</span>
+                          <div className="flex flex-wrap gap-2">
+                            {acoes.map(acao => {
+                              const has = user.permissoes.some(p => p.modulo === modulo && p.acao === acao)
+                              return (
+                                <button key={acao} onClick={() => togglePermissao(user.id, modulo, acao, has)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${has ? 'bg-[#CCA000]/20 text-[#E0B82E] border border-[#CCA000]/30' : 'bg-zinc-700/50 text-zinc-500 border border-zinc-700 hover:border-zinc-600'}`}>
+                                  {acao}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -411,36 +242,12 @@ export default function PageAdmin() {
         })}
       </div>
 
-      {/* Info box */}
-      <div
-        style={{
-          marginTop: 24,
-          background: t.blueDim,
-          border: `1px solid ${t.blue}22`,
-          borderRadius: 10,
-          padding: 16,
-        }}
-      >
-        <div style={{ fontSize: 13, fontWeight: 600, color: t.blue, marginBottom: 6 }}>
-          Instruções
+      {usuarios.length === 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-12 text-center">
+          <Users className="w-10 h-10 text-zinc-600 mx-auto mb-4" />
+          <p className="text-zinc-500">Nenhum usuário cadastrado</p>
         </div>
-        <ul
-          style={{
-            margin: 0,
-            paddingLeft: 18,
-            fontSize: 12,
-            color: t.textSec,
-            lineHeight: 1.7,
-          }}
-        >
-          <li>Cada empresa pode ter duas variantes de logo: uma para o tema escuro e outra para o tema claro.</li>
-          <li>Formatos aceitos: PNG, JPG, SVG e WebP. Recomenda-se fundo transparente.</li>
-          <li>O logo escuro (Dark) aparece sobre o fundo navy do tema escuro; o logo claro (Light) sobre o fundo cinza claro.</li>
-          <li>Caso apenas uma variante seja enviada, ela será usada em ambos os temas como fallback.</li>
-          <li>A cor da empresa e usada como acento visual na navbar e em indicadores.</li>
-          <li>E necessario manter pelo menos uma empresa cadastrada.</li>
-        </ul>
-      </div>
+      )}
     </div>
   )
 }
