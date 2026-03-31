@@ -48,16 +48,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">Dashboard</h1>
             <p className="text-sm text-zinc-400">Visão geral das operações do {grupoAtivo?.nome || 'Grupo ALT'}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-zinc-700 transition-all shadow-sm">
-              <Download className="w-4 h-4" />
-              Exportar
-            </button>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2.5 text-sm font-bold hover:from-[#E0B82E] hover:to-[#CCA000] transition-all shadow-sm">
-              <Plus className="w-4 h-4" />
-              Novo Lançamento
-            </button>
-          </div>
+          <div className="flex items-center gap-3" />
         </div>
       </div>
 
