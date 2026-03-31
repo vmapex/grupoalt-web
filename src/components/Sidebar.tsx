@@ -5,10 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Building2, BarChart3, FileText, CalendarCheck,
-  ChevronDown, ChevronRight, LogOut, Search,
-  LayoutDashboard, Receipt, Wallet, Landmark,
-  TrendingUp, GitCompare, Network, Layers,
-  Settings, Plus,
+  ChevronDown, Search, LayoutDashboard,
+  Landmark, TrendingUp, GitCompare, Network, Layers,
+  Settings,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -27,21 +26,35 @@ const sections: NavSection[] = [
     label: 'Principal',
     children: [
       { label: 'Dashboard', href: '/portal/grupo', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
-      { label: 'Indicadores', href: '/portal/indicadores', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
-      { label: 'Documentos', href: '/portal/documentos', icon: <FileText className="w-[18px] h-[18px]" /> },
-      { label: 'Fechamento', href: '/portal/fechamento', icon: <CalendarCheck className="w-[18px] h-[18px]" /> },
     ],
   },
   {
-    id: 'financeiro',
-    label: 'Financeiro',
-    modulo: 'financeiro',
+    id: 'indicadores',
+    label: 'Indicadores',
+    modulo: 'indicadores',
     children: [
-      { label: 'Contas a Pagar', href: '/portal/financeiro/cp', icon: <Receipt className="w-[18px] h-[18px]" /> },
-      { label: 'Contas a Receber', href: '/portal/financeiro/cr', icon: <Wallet className="w-[18px] h-[18px]" /> },
-      { label: 'Extrato', href: '/portal/financeiro/extrato', icon: <Landmark className="w-[18px] h-[18px]" /> },
-      { label: 'Fluxo de Caixa', href: '/portal/financeiro/fluxo', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
-      { label: 'Conciliação', href: '/portal/financeiro/conciliacao', icon: <GitCompare className="w-[18px] h-[18px]" /> },
+      { label: 'Financeiro', href: '/portal/indicadores/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      { label: 'Operações', href: '/portal/indicadores/operacoes', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
+      { label: 'Controladoria', href: '/portal/indicadores/controladoria', icon: <Landmark className="w-[18px] h-[18px]" /> },
+    ],
+  },
+  {
+    id: 'documentos',
+    label: 'Documentos',
+    modulo: 'documentos',
+    children: [
+      { label: 'Processos', href: '/portal/documentos/processos', icon: <FileText className="w-[18px] h-[18px]" /> },
+      { label: 'Políticas', href: '/portal/documentos/politicas', icon: <FileText className="w-[18px] h-[18px]" /> },
+      { label: 'Organograma', href: '/portal/documentos/organograma', icon: <Network className="w-[18px] h-[18px]" /> },
+      { label: 'Missão | Visão | Valores', href: '/portal/documentos/mvv', icon: <Layers className="w-[18px] h-[18px]" /> },
+      { label: 'Planejamento', href: '/portal/documentos/planejamentos', icon: <CalendarCheck className="w-[18px] h-[18px]" /> },
+    ],
+  },
+  {
+    id: 'motor',
+    label: 'Motor Fechamento v2.0',
+    children: [
+      { label: 'Motor Fechamento v2.0', href: '/portal/fechamento', icon: <GitCompare className="w-[18px] h-[18px]" /> },
     ],
   },
   {
