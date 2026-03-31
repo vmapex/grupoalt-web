@@ -33,7 +33,7 @@ const sections: NavSection[] = [
     label: 'Indicadores',
     modulo: 'indicadores',
     children: [
-      { label: 'Financeiro', href: '/portal/indicadores/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      { label: 'Financeiro', href: '/bi/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
       { label: 'Operações', href: '/portal/indicadores/operacoes', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
       { label: 'Controladoria', href: '/portal/indicadores/controladoria', icon: <Landmark className="w-[18px] h-[18px]" /> },
     ],
