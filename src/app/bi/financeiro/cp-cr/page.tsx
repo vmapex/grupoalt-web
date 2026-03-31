@@ -4,14 +4,13 @@ import {
   ComposedChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { Badge } from '@/components/ui/Badge'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { mockCPFull as fallbackCP, mockCRFull as fallbackCR, cpTemporalData as fallbackTemporal } from '@/lib/mocks/cpcrData'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { getCatDesc } from '@/lib/mocks/extratoData'
 import { CATEGORIAS } from '@/lib/planoContas'
@@ -44,6 +43,7 @@ export default function PageCPCR() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('TODOS')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   // CP/CR: busca todos os lançamentos dentro do filtro de datas do dashboard
   const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim })
@@ -51,13 +51,13 @@ export default function PageCPCR() {
   const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim)
   const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim)
 
-  // Transform API → component shape, fallback to mock
+  // Transform API → component shape (sem fallback mock)
   const cpData: ContaPagarReceber[] = useMemo(
-    () => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : fallbackCP),
+    () => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []),
     [cpRaw],
   )
   const crData: ContaPagarReceber[] = useMemo(
-    () => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : fallbackCR),
+    () => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []),
     [crRaw],
   )
 
@@ -147,7 +147,7 @@ export default function PageCPCR() {
 
   // Temporal chart data — derive from actual data when available
   const temporalData = useMemo(() => {
-    if (!cpRaw?.dados && !crRaw?.dados) return fallbackTemporal
+    if (!cpRaw?.dados && !crRaw?.dados) return []
     const months: Record<string, { cp: number; cr: number }> = {}
     const fmt = (d: string | null) => {
       if (!d) return null
@@ -171,7 +171,7 @@ export default function PageCPCR() {
       months[key].cr += r.valor
     }
     const entries = Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]))
-    if (entries.length === 0) return fallbackTemporal
+    if (entries.length === 0) return []
     return entries.map(([mes, v]) => ({ mes, cp: Math.round(v.cp), cr: Math.round(v.cr) }))
   }, [cpData, crData, cpRaw, crRaw])
 
@@ -310,29 +310,79 @@ export default function PageCPCR() {
                   <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
+                        <th style={{ width: 24 }} />
                         <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                        <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Grupo" field="grupo" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Pago" field="valor_pago" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Em Aberto" field="valor_aberto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
+                        <SortHeader label="Dt. Pgto" field="dt_pgto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
                       </tr>
                     </thead>
                     <tbody>
-                      {dataSorted.map((r, i) => (
-                        <tr key={i} className="transition-colors hover:bg-surface-hover" style={{ borderBottom: `1px solid ${t.border}22` }}>
-                          <td className="px-3.5 py-2.5 font-medium">{r.fav}</td>
-                          <td className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate" style={{ color: t.muted }} title={`${r.cat} — ${getCatDesc(r.cat)}`}>{getCatDesc(r.cat)}</td>
-                          <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
-                          <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_aberto > 0 ? t.red : t.mutedDim }}>{r.valor_aberto > 0 ? fmtBRL(r.valor_aberto) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-center"><Badge status={r.status} /></td>
-                        </tr>
-                      ))}
+                      {dataSorted.map((r, i) => {
+                        const hasPgtos = r.pagamentos && r.pagamentos.length > 0
+                        const isExpanded = expandedRow === i
+                        const lastPgto = hasPgtos ? r.pagamentos[r.pagamentos.length - 1] : null
+                        return (
+                          <>{/* Main row */}
+                          <tr
+                            key={i}
+                            className="transition-colors hover:bg-surface-hover"
+                            style={{ borderBottom: isExpanded ? 'none' : `1px solid ${t.border}22`, cursor: hasPgtos ? 'pointer' : 'default' }}
+                            onClick={() => hasPgtos ? setExpandedRow(isExpanded ? null : i) : undefined}
+                          >
+                            <td className="px-1 py-2.5 text-center" style={{ width: 24 }}>
+                              {hasPgtos && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
+                            </td>
+                            <td className="px-3 py-2.5 font-medium">{r.fav}</td>
+                            <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
+                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
+                            <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_aberto > 0 ? t.red : t.mutedDim }}>{r.valor_aberto > 0 ? fmtBRL(r.valor_aberto) : '—'}</td>
+                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{lastPgto?.data || '—'}</td>
+                            <td className="px-3 py-2.5 text-center"><Badge status={r.status} /></td>
+                          </tr>
+                          {/* Expanded payment details */}
+                          {isExpanded && hasPgtos && (
+                            <tr key={`${i}-exp`} style={{ borderBottom: `1px solid ${t.border}22` }}>
+                              <td colSpan={9} style={{ padding: 0 }}>
+                                <div className="mx-8 my-2 rounded-lg overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+                                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider font-semibold" style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}>
+                                    Pagamentos Realizados ({r.pagamentos.length})
+                                  </div>
+                                  <table className="w-full text-[10px]">
+                                    <thead>
+                                      <tr style={{ background: `${t.bg}88` }}>
+                                        <th className="text-left px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Data</th>
+                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Valor Pago</th>
+                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Desconto</th>
+                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Juros</th>
+                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Multa</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {r.pagamentos.map((p, pi) => (
+                                        <tr key={pi} style={{ borderTop: pi > 0 ? `1px solid ${t.border}22` : 'none' }}>
+                                          <td className="px-3 py-1.5 font-mono" style={{ color: t.text }}>{p.data || '—'}</td>
+                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: t.green }}>{fmtBRL(p.valor)}</td>
+                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.desconto > 0 ? t.blue : t.mutedDim }}>{p.desconto > 0 ? fmtBRL(p.desconto) : '—'}</td>
+                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.juros > 0 ? t.amber : t.mutedDim }}>{p.juros > 0 ? fmtBRL(p.juros) : '—'}</td>
+                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.multa > 0 ? t.red : t.mutedDim }}>{p.multa > 0 ? fmtBRL(p.multa) : '—'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </>
+                        )
+                      })}
                     </tbody>
                   </table>
                 )}
