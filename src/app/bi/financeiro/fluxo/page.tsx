@@ -43,8 +43,8 @@ export default function PageFluxo() {
   const dt_inicio = isoToDMY(dateFrom)
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
   const { data: extratoAtual } = useExtrato(empresaId)  // sem datas = últimos 180d = saldo mais recente
-  const { data: cpRaw } = useCP(empresaId, { registros: 100 })
-  const { data: crRaw } = useCR(empresaId, { registros: 100 })
+  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
+  const { data: crRaw } = useCR(empresaId, { registros: 500 })
 
   // Use API data or fallback — SOMENTE títulos em aberto
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : fallbackCP), [cpRaw])

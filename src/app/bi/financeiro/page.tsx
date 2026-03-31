@@ -49,8 +49,8 @@ export default function DashboardExecutivo() {
 
   // API calls with date range
   const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
-  const { data: cpRaw } = useCP(empresaId, { registros: 100 })
-  const { data: crRaw } = useCR(empresaId, { registros: 100 })
+  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
+  const { data: crRaw } = useCR(empresaId, { registros: 500 })
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
