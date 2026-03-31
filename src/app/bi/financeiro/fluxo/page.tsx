@@ -46,9 +46,11 @@ export default function PageFluxo() {
   const { data: cpRaw } = useCP(empresaId, { registros: 100 })
   const { data: crRaw } = useCR(empresaId, { registros: 100 })
 
-  // Use API data or fallback
+  // Use API data or fallback — SOMENTE títulos em aberto
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : fallbackCP), [cpRaw])
   const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : fallbackCR), [crRaw])
+  const cpAberto = useMemo(() => cpData.filter((c) => c.status !== 'PAGO'), [cpData])
+  const crAberto = useMemo(() => crData.filter((c) => c.status !== 'RECEBIDO'), [crData])
 
   const saldoAtual = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.saldo_atual
@@ -58,20 +60,19 @@ export default function PageFluxo() {
 
   const totalEnt = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_entradas
-    return crData.reduce((s, r) => s + r.valor, 0)
-  }, [fluxoAPI, crData])
+    return crAberto.reduce((s, r) => s + r.valor, 0)
+  }, [fluxoAPI, crAberto])
 
   const totalSai = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_saidas
-    return cpData.reduce((s, r) => s + r.valor, 0)
-  }, [fluxoAPI, cpData])
+    return cpAberto.reduce((s, r) => s + r.valor, 0)
+  }, [fluxoAPI, cpAberto])
 
-  // Monthly data from API or CP/CR
-  const mockFluxoMensal = useMemo(() => {
+  // Monthly data — somente títulos em aberto
+  const fluxoMensal = useMemo(() => {
     if (fluxoAPI?.mensal?.length) {
       return fluxoAPI.mensal.map((m) => ({ mes: m.mes, ent: m.entradas, sai: m.saidas }))
     }
-    // Derive from CP/CR by month
     const months: Record<string, { ent: number; sai: number }> = {}
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     const fmt = (d: string) => {
@@ -79,13 +80,13 @@ export default function PageFluxo() {
       if (isNaN(dt.getTime())) return null
       return `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
     }
-    for (const r of crData) {
+    for (const r of crAberto) {
       const key = fmt(r.vcto)
       if (!key) continue
       if (!months[key]) months[key] = { ent: 0, sai: 0 }
       months[key].ent += r.valor
     }
-    for (const r of cpData) {
+    for (const r of cpAberto) {
       const key = fmt(r.vcto)
       if (!key) continue
       if (!months[key]) months[key] = { ent: 0, sai: 0 }
@@ -94,7 +95,7 @@ export default function PageFluxo() {
     const entries = Object.entries(months).sort()
     if (entries.length === 0) return [{ mes: '-', ent: 0, sai: 0 }]
     return entries.map(([mes, v]) => ({ mes, ent: Math.round(v.ent), sai: Math.round(v.sai) }))
-  }, [fluxoAPI, cpData, crData])
+  }, [fluxoAPI, cpAberto, crAberto])
 
   // Daily projection from API or seed-based fallback
   const fluxoDiario = useMemo(() => {
@@ -111,9 +112,9 @@ export default function PageFluxo() {
         }
       })
     }
-    // Fallback: linear projection from CP/CR averages
-    const cpOpen = cpData.filter((c) => c.status !== 'PAGO').reduce((s, r) => s + r.valor, 0)
-    const crOpen = crData.filter((c) => c.status !== 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
+    // Fallback: linear projection from CP/CR open items
+    const cpOpen = cpAberto.reduce((s, r) => s + r.valor, 0)
+    const crOpen = crAberto.reduce((s, r) => s + r.valor, 0)
     const dailyNet = (crOpen - cpOpen) / Math.max(hz, 1)
     let saldo = saldoAtual
     const base = new Date()
@@ -135,13 +136,13 @@ export default function PageFluxo() {
   const cobertura = fluxoAPI?.kpis?.cobertura ?? (totalSai > 0 ? (saldoAtual + totalEnt) / totalSai : 0)
 
   const topEntradas = useMemo(
-    () => [...crData].sort((a, b) => b.valor - a.valor).slice(0, 4),
-    [crData],
+    () => [...crAberto].sort((a, b) => b.valor - a.valor).slice(0, 4),
+    [crAberto],
   )
 
   const topSaidas = useMemo(
-    () => [...cpData].sort((a, b) => b.valor - a.valor).slice(0, 4),
-    [cpData],
+    () => [...cpAberto].sort((a, b) => b.valor - a.valor).slice(0, 4),
+    [cpAberto],
   )
 
   const todayStr = useMemo(() => {
@@ -213,8 +214,8 @@ export default function PageFluxo() {
                 <GlowLine color={t.blue} />
                 <div className="px-5 pt-4 pb-2 flex items-center justify-between">
                   <div>
-                    <div className="text-[11px] font-semibold" style={{ color: t.text }}>Entradas x Saidas Mensais</div>
-                    <div className="text-[9px] mt-0.5" style={{ color: t.muted }}>Comparativo de fluxo por periodo</div>
+                    <div className="text-[11px] font-semibold" style={{ color: t.text }}>Previsão Entradas x Saídas Mensais</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: t.muted }}>Títulos em aberto por mês de vencimento</div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5">
@@ -229,7 +230,7 @@ export default function PageFluxo() {
                 </div>
                 <div style={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={mockFluxoMensal} margin={{ top: 20, right: 20, bottom: 5, left: 10 }}>
+                    <ComposedChart data={fluxoMensal} margin={{ top: 20, right: 20, bottom: 5, left: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={t.gridLine} />
                       <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono, monospace' }} axisLine={{ stroke: t.border }} tickLine={false} />
                       <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtK(v)} width={50} />
@@ -250,8 +251,8 @@ export default function PageFluxo() {
                 <GlowLine color={t.amber} />
                 <div className="px-5 pt-4 pb-2 flex items-center justify-between">
                   <div>
-                    <div className="text-[11px] font-semibold" style={{ color: t.text }}>Saldo Projetado Diario</div>
-                    <div className="text-[9px] mt-0.5" style={{ color: t.muted }}>Projecao de saldo para os proximos {hz} dias</div>
+                    <div className="text-[11px] font-semibold" style={{ color: t.text }}>Saldo Projetado Diário</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: t.muted }}>Saldo atual + entradas previstas − saídas previstas ({hz} dias)</div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <TrendingUp size={12} style={{ color: t.amber }} />
