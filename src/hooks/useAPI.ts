@@ -86,7 +86,7 @@ function useApi<T>(
 export function useExtrato(empresaId: number | null, dtInicio?: string, dtFim?: string) {
   return useApi<ExtratoResponseAPI>(
     empresaId ? `/empresas/${empresaId}/extrato` : null,
-    { dt_inicio: dtInicio, dt_fim: dtFim, refresh: 'true' },
+    { dt_inicio: dtInicio, dt_fim: dtFim },
   )
 }
 
@@ -107,7 +107,7 @@ export function useCP(
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cp` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim },
   )
 }
 
@@ -126,7 +126,7 @@ export function useCR(
 ) {
   return useApi<PaginatedResponseAPI>(
     empresaId ? `/empresas/${empresaId}/cr` : null,
-    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim, refresh: 'true' },
+    { status: opts?.status, pagina: opts?.pagina, registros: opts?.registros ?? 500, favorecido: opts?.favorecido, data_inicio: opts?.dtInicio, data_fim: opts?.dtFim },
   )
 }
 
