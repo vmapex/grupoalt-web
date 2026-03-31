@@ -4,240 +4,213 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, BarChart3, FileText,
-  ChevronDown, ChevronRight, LogOut, PanelLeftClose,
-  PanelLeft, CheckSquare, Shield,
+  Building2, BarChart3, FileText, CalendarCheck,
+  ChevronDown, ChevronRight, LogOut, Search,
+  LayoutDashboard, Receipt, Wallet, Landmark,
+  TrendingUp, GitCompare, Network, Layers,
+  Settings, Plus,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
-interface NavChild {
+interface NavChild { label: string; href: string; icon?: React.ReactNode; badge?: string }
+interface NavSection {
+  id: string
   label: string
-  href: string
   modulo?: string
+  addBtn?: boolean
+  children: NavChild[]
 }
 
-interface NavItem {
-  label: string
-  href?: string
-  icon: React.ReactNode
-  modulo?: string
-  children?: NavChild[]
-}
-
-const navigation: NavItem[] = [
+const sections: NavSection[] = [
   {
+    id: 'principal',
+    label: 'Principal',
+    children: [
+      { label: 'Dashboard', href: '/portal/grupo', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+      { label: 'Indicadores', href: '/portal/indicadores', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      { label: 'Documentos', href: '/portal/documentos', icon: <FileText className="w-[18px] h-[18px]" /> },
+      { label: 'Fechamento', href: '/portal/fechamento', icon: <CalendarCheck className="w-[18px] h-[18px]" /> },
+    ],
+  },
+  {
+    id: 'financeiro',
+    label: 'Financeiro',
+    modulo: 'financeiro',
+    children: [
+      { label: 'Contas a Pagar', href: '/portal/financeiro/cp', icon: <Receipt className="w-[18px] h-[18px]" /> },
+      { label: 'Contas a Receber', href: '/portal/financeiro/cr', icon: <Wallet className="w-[18px] h-[18px]" /> },
+      { label: 'Extrato', href: '/portal/financeiro/extrato', icon: <Landmark className="w-[18px] h-[18px]" /> },
+      { label: 'Fluxo de Caixa', href: '/portal/financeiro/fluxo', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
+      { label: 'Conciliação', href: '/portal/financeiro/conciliacao', icon: <GitCompare className="w-[18px] h-[18px]" /> },
+    ],
+  },
+  {
+    id: 'grupo',
     label: 'Grupo',
-    icon: <Building2 size={20} />,
     modulo: 'grupo',
     children: [
-      { label: 'Visão Geral', href: '/portal/grupo' },
-      { label: 'Estrutura', href: '/portal/grupo/estrutura' },
-      { label: 'Segmentação', href: '/portal/grupo/segmentacao' },
+      { label: 'Estrutura', href: '/portal/grupo/estrutura', icon: <Network className="w-[18px] h-[18px]" /> },
+      { label: 'Segmentação', href: '/portal/grupo/segmentacao', icon: <Layers className="w-[18px] h-[18px]" /> },
     ],
-  },
-  {
-    label: 'Indicadores',
-    icon: <BarChart3 size={20} />,
-    modulo: 'indicadores',
-    children: [
-      { label: 'Dashboard', href: '/portal/indicadores' },
-      { label: 'Portal BI', href: '/bi/financeiro' },
-      { label: 'Financeiro', href: '/portal/indicadores/financeiro' },
-      { label: 'Contábil', href: '/portal/indicadores/contabil' },
-      { label: 'Faturamento', href: '/portal/indicadores/faturamento' },
-      { label: 'Custos', href: '/portal/indicadores/custos' },
-      { label: 'Controladoria', href: '/portal/indicadores/controladoria' },
-    ],
-  },
-  {
-    label: 'Documentação',
-    icon: <FileText size={20} />,
-    modulo: 'documentos',
-    children: [
-      { label: 'Processos', href: '/portal/documentos/processos' },
-      { label: 'Políticas', href: '/portal/documentos/politicas' },
-      { label: 'Planejamentos', href: '/portal/documentos/planejamentos' },
-    ],
-  },
-  {
-    label: 'Motor Fechamento',
-    icon: <CheckSquare size={20} />,
-    href: '/portal/fechamento',
-    modulo: 'fechamento',
   },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
   const { user, empresas, empresaAtiva, grupos, grupoAtivo, hasPermissao, setEmpresaAtiva, setGrupoAtivo, logout } = useAuthStore()
-  const [collapsed, setCollapsed] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
-    const active = new Set<string>()
-    navigation.forEach(item => {
-      if (item.children?.some(c => pathname.startsWith(c.href))) {
-        active.add(item.label)
-      }
-    })
-    return active
-  })
 
-  const toggleSection = (label: string) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
-      return next
-    })
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+
+  const toggleSection = (id: string) => {
+    setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  const visibleNav = useMemo(() => navigation.filter(item => {
+  const visibleSections = useMemo(() => sections.filter(s => {
     if (user?.is_admin) return true
-    if (!item.modulo) return true
-    return hasPermissao(item.modulo, 'visualizar')
+    if (!s.modulo) return true
+    return hasPermissao(s.modulo, 'visualizar')
   }), [user?.is_admin, hasPermissao])
 
+  const userInitials = user?.nome
+    ? user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+    : '?'
+
   return (
-    <aside
-      className={`flex flex-col h-screen bg-[#05091A] border-r border-white/[0.07] transition-all duration-300 ${
-        collapsed ? 'w-[56px]' : 'w-[240px]'
-      }`}
-    >
-      {/* Logo + Toggle */}
-      <div className="flex items-center justify-between px-3 h-14 border-b border-white/[0.07]">
-        {!collapsed && (
-          <span className="text-sm font-semibold text-[#F1F5F9] tracking-wider">
-            GRUPO ALT
-          </span>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded hover:bg-white/[0.05] text-[#64748B]"
-        >
-          {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+    <aside className="w-[280px] flex flex-col bg-zinc-900 border-r border-zinc-800 relative overflow-hidden flex-shrink-0">
+      {/* Gold accent top line */}
+      <div className="h-[2px] flex-shrink-0" style={{
+        background: 'linear-gradient(90deg, #CCA000 0%, #E0B82E 25%, #F5E6A3 50%, #E0B82E 75%, #CCA000 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 4s ease-in-out infinite',
+      }} />
+
+      {/* Account Header */}
+      <div className="flex items-center justify-between border-b border-zinc-800 p-5">
+        <button className="flex gap-2 hover:bg-zinc-800 transition-all text-sm font-medium bg-zinc-800 border-zinc-700 border rounded-xl py-2.5 px-4 items-center shadow-sm">
+          <Building2 className="w-4 h-4 text-[#CCA000]" />
+          <span className="text-zinc-100">{grupoAtivo?.nome || 'Grupo ALT'}</span>
+          <ChevronDown className="w-4 h-4 text-zinc-500" />
         </button>
+        <div className="relative">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] border-2 border-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 text-xs font-bold shadow-sm">
+            {userInitials}
+          </div>
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-zinc-900" />
+        </div>
       </div>
 
-      {/* Grupo Selector */}
-      {!collapsed && grupos.length > 0 && (
-        <div className="px-3 py-2 border-b border-white/[0.07]">
-          <select
-            className="w-full bg-white/[0.034] border border-white/[0.07] rounded px-2 py-1.5 text-xs text-[#F1F5F9] focus:outline-none focus:border-[#38BDF8]"
-            value={grupoAtivo?.id || ''}
-            onChange={e => {
-              const g = grupos.find(g => g.id === Number(e.target.value))
-              if (g) setGrupoAtivo(g)
-            }}
-          >
-            {grupos.map(g => (
-              <option key={g.id} value={g.id}>{g.nome}</option>
-            ))}
-          </select>
+      {/* Search */}
+      <div className="px-4 pt-4">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 pl-9 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] focus:ring-1 focus:ring-[#CCA000] transition-colors"
+          />
         </div>
-      )}
-
-      {/* Empresa Selector */}
-      {!collapsed && empresas.length > 0 && (
-        <div className="px-3 py-2 border-b border-white/[0.07]">
-          <select
-            className="w-full bg-white/[0.034] border border-white/[0.07] rounded px-2 py-1.5 text-xs text-[#F1F5F9] focus:outline-none focus:border-[#38BDF8]"
-            value={empresaAtiva?.id || ''}
-            onChange={e => {
-              const emp = empresas.find(emp => emp.id === Number(e.target.value))
-              if (emp) setEmpresaAtiva(emp)
-            }}
-          >
-            {empresas.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.nome}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2">
-        {visibleNav.map(item => (
-          <div key={item.label}>
-            {item.children ? (
-              <>
-                <button
-                  onClick={() => toggleSection(item.label)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                    item.children.some(c => isActive(c.href))
-                      ? 'text-[#38BDF8]'
-                      : 'text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-white/[0.034]'
-                  }`}
-                >
-                  {item.icon}
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {expandedSections.has(item.label)
-                        ? <ChevronDown size={14} />
-                        : <ChevronRight size={14} />
-                      }
-                    </>
-                  )}
-                </button>
-                {!collapsed && expandedSections.has(item.label) && (
-                  <div className="ml-8 border-l border-white/[0.07]">
-                    {item.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={`block pl-3 py-1.5 text-xs transition-colors ${
-                          isActive(child.href)
-                            ? 'text-[#38BDF8] border-l-2 border-[#38BDF8] -ml-px'
-                            : 'text-[#64748B] hover:text-[#F1F5F9]'
-                        }`}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <Link
-                href={item.href!}
-                className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                  isActive(item.href!)
-                    ? 'text-[#38BDF8] bg-white/[0.034]'
-                    : 'text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-white/[0.034]'
-                }`}
-              >
-                {item.icon}
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
+      <nav className="flex-1 overflow-y-auto select-none text-sm pt-4 px-2" style={{ scrollbarWidth: 'none' }}>
+        {visibleSections.map((section) => (
+          <div key={section.id}>
+            <button
+              onClick={() => toggleSection(section.id)}
+              className="w-full px-4 mb-2 mt-5 first:mt-0 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <span className="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${collapsed[section.id] ? '-rotate-90' : ''}`} />
+                {section.label}
+              </span>
+            </button>
+            {!collapsed[section.id] && (
+              <div className="transition-all duration-200">
+                {section.children.map((child) => {
+                  const active = isActive(child.href)
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition-colors mb-0.5 ${
+                        active
+                          ? 'bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-100 shadow-sm'
+                          : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                      }`}
+                    >
+                      {child.icon}
+                      <span className={active ? 'font-medium' : ''}>{child.label}</span>
+                      {child.badge && (
+                        <span className="ml-auto bg-[#CCA000]/20 text-[#E0B82E] text-xs px-2 py-0.5 rounded-full font-medium">
+                          {child.badge}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
             )}
           </div>
         ))}
+
+        {/* Empresas section */}
+        <div>
+          <button className="w-full px-4 mb-2 mt-5 cursor-pointer hover:opacity-80 transition-opacity">
+            <span className="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+              <ChevronDown className="w-3.5 h-3.5" />
+              Empresas
+            </span>
+          </button>
+          {empresas.map((emp, i) => (
+            <button
+              key={emp.id}
+              onClick={() => setEmpresaAtiva(emp)}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 mx-2 rounded-xl transition-colors ${
+                empresaAtiva?.id === emp.id ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${
+                i === 0 ? 'bg-[#CCA000]' : i === 1 ? 'bg-blue-500' : 'bg-emerald-500'
+              }`} />
+              <span className="text-sm">{emp.nome}</span>
+              {empresaAtiva?.id === emp.id && (
+                <span className="ml-auto text-xs text-zinc-500">Principal</span>
+              )}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      {/* Footer: Admin + Logout */}
-      <div className="border-t border-white/[0.07] py-2">
+      {/* Settings / Admin */}
+      <div className="border-t border-zinc-800 px-2 py-3">
         {user?.is_admin && (
           <Link
             href="/portal/admin"
-            className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-              isActive('/portal/admin')
-                ? 'text-[#38BDF8]'
-                : 'text-[#64748B] hover:text-[#F1F5F9] hover:bg-white/[0.034]'
+            className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl transition-colors text-sm ${
+              isActive('/portal/admin') ? 'text-zinc-100 bg-zinc-800' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
             }`}
           >
-            <Shield size={20} />
-            {!collapsed && <span>Admin</span>}
+            <Settings className="w-[18px] h-[18px]" />
+            <span>Administração</span>
           </Link>
         )}
-        <button
-          onClick={() => { logout(); window.location.href = '/login' }}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#64748B] hover:text-[#F87171] hover:bg-white/[0.034] transition-colors"
-        >
-          <LogOut size={20} />
-          {!collapsed && <span>Sair</span>}
-        </button>
       </div>
+
+      {/* Gold bottom line */}
+      <div className="h-[2px] flex-shrink-0" style={{
+        background: 'linear-gradient(90deg, #CCA000 0%, #E0B82E 25%, #F5E6A3 50%, #E0B82E 75%, #CCA000 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 4s ease-in-out infinite',
+      }} />
+
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
     </aside>
   )
 }
