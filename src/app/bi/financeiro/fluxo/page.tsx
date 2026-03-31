@@ -12,7 +12,6 @@ import { KPICard } from '@/components/ui/KPICard'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
-import { mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull as fallbackCP, mockCRFull as fallbackCR } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
@@ -24,8 +23,6 @@ function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
 }
-
-const seed = (i: number) => Math.abs(Math.sin(i * 9301 + 49297) * 233280) % 1
 
 const HZ_OPTIONS = [
   { label: '+7d', days: 7 },
@@ -56,7 +53,7 @@ export default function PageFluxo() {
   const saldoAtual = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.saldo_atual
     if (extratoResponse?.saldo_atual) return extratoResponse.saldo_atual
-    return mockContas.reduce((s, c) => s + c.saldo, 0)
+    return 0
   }, [fluxoAPI, extratoResponse])
 
   const totalEnt = useMemo(() => {
@@ -114,26 +111,24 @@ export default function PageFluxo() {
         }
       })
     }
-    // Fallback: seed-based
-    const data: { dia: string; saldo: number; saldoPos: number | null; saldoNeg: number | null }[] = []
+    // Fallback: linear projection from CP/CR averages
+    const cpOpen = cpData.filter((c) => c.status !== 'PAGO').reduce((s, r) => s + r.valor, 0)
+    const crOpen = crData.filter((c) => c.status !== 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
+    const dailyNet = (crOpen - cpOpen) / Math.max(hz, 1)
     let saldo = saldoAtual
     const base = new Date()
-    for (let i = 0; i < hz; i++) {
+    return Array.from({ length: hz }, (_, i) => {
       const d = new Date(base)
       d.setDate(d.getDate() + i)
-      const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-      const entDia = seed(i * 2) * 18000 + 2000
-      const saiDia = seed(i * 2 + 1) * 15000 + 3000
-      saldo += entDia - saiDia
+      saldo += dailyNet
       const rounded = Math.round(saldo)
-      data.push({
-        dia: label,
+      return {
+        dia: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
         saldo: rounded,
         saldoPos: rounded >= 0 ? rounded : 0,
         saldoNeg: rounded < 0 ? rounded : 0,
-      })
-    }
-    return data
+      }
+    })
   }, [hz, saldoAtual, fluxoAPI])
 
   const saldoProjetado = fluxoAPI?.kpis?.saldo_projetado ?? (fluxoDiario.length > 0 ? fluxoDiario[fluxoDiario.length - 1].saldo : saldoAtual)
