@@ -290,13 +290,13 @@ export default function LoginPage() {
               label: 'Nossa Missão',
               title: 'Conectar o agro ao futuro',
               desc: 'Oferecer soluções logísticas e operacionais que impulsionam o agronegócio brasileiro com excelência, segurança e compromisso socioambiental.',
-              img: '/missão.jpeg',
+              img: '/missao.jpeg',
             },
             {
               label: 'Nossa Visão',
               title: 'Referência em logística agro',
               desc: 'Ser reconhecida como a principal parceira logística do agronegócio no Brasil, inovando continuamente para superar expectativas.',
-              img: '/visão.jpg',
+              img: '/visao.jpg',
             },
             {
               label: 'Nossos Valores',
