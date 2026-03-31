@@ -55,10 +55,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       financeiro: 'Financeiro', caixa: 'Caixa', extrato: 'Extrato',
       cp: 'Contas a Pagar', cr: 'Contas a Receber', fluxo: 'Fluxo de Caixa',
       conciliacao: 'Conciliação', indicadores: 'Indicadores', documentos: 'Documentos',
-      fechamento: 'Fechamento', admin: 'Admin', permissoes: 'Permissões',
-      processos: 'Processos', politicas: 'Políticas', planejamentos: 'Planejamentos',
+      fechamento: 'Motor Fechamento', admin: 'Admin', permissoes: 'Permissões',
+      processos: 'Processos', politicas: 'Políticas', planejamentos: 'Planejamento',
       faturamento: 'Faturamento', custos: 'Custos', contabil: 'Contábil',
-      controladoria: 'Controladoria',
+      controladoria: 'Controladoria', operacoes: 'Operações',
+      organograma: 'Organograma', mvv: 'Missão | Visão | Valores',
     }
     return parts.map(p => labels[p] || p)
   })()
