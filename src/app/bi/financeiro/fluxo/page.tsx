@@ -38,11 +38,11 @@ export default function PageFluxo() {
   const dt_fim = isoToDMY(dateTo)
   const [hz, setHz] = useState(30)
 
-  // API calls
+  // API calls — extrato sem filtro de datas para saldo atual real
   const dateFrom = useDateRangeStore((s) => s.from)
   const dt_inicio = isoToDMY(dateFrom)
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
-  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: extratoAtual } = useExtrato(empresaId)  // sem datas = últimos 180d = saldo mais recente
   const { data: cpRaw } = useCP(empresaId, { registros: 100 })
   const { data: crRaw } = useCR(empresaId, { registros: 100 })
 
@@ -53,10 +53,10 @@ export default function PageFluxo() {
   const crAberto = useMemo(() => crData.filter((c) => c.status !== 'RECEBIDO'), [crData])
 
   const saldoAtual = useMemo(() => {
-    if (fluxoAPI?.kpis) return fluxoAPI.kpis.saldo_atual
-    if (extratoResponse?.saldo_atual) return extratoResponse.saldo_atual
+    if (fluxoAPI?.kpis?.saldo_atual) return fluxoAPI.kpis.saldo_atual
+    if (extratoAtual?.saldo_atual) return extratoAtual.saldo_atual
     return 0
-  }, [fluxoAPI, extratoResponse])
+  }, [fluxoAPI, extratoAtual])
 
   const totalEnt = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_entradas
