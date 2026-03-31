@@ -88,6 +88,13 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
     banco: '',
+    pagamentos: (l.pagamentos || []).map((p) => ({
+      data: p.data,
+      valor: p.valor,
+      desconto: p.desconto,
+      juros: p.juros,
+      multa: p.multa,
+    })),
   }))
 }
 

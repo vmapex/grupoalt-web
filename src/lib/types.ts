@@ -48,6 +48,14 @@ export interface SaldoAPI {
 
 // ── CP/CR (GET /empresas/{id}/cp ou /cr) ──────────────────────
 
+export interface PagamentoDetalheAPI {
+  data: string | null
+  valor: number
+  desconto: number
+  juros: number
+  multa: number
+}
+
 export interface LancamentoAPI {
   codigo: number
   favorecido: string
@@ -63,6 +71,7 @@ export interface LancamentoAPI {
   status: string  // A VENCER | ATRASADO | PAGO | RECEBIDO | PARCIAL
   numero_documento: string | null
   observacao: string | null
+  pagamentos: PagamentoDetalheAPI[]
 }
 
 export interface ResumoKPIsAPI {
