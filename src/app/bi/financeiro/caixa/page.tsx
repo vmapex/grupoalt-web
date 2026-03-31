@@ -4,6 +4,7 @@ import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { CAIXA_DATA, WEEKLY } from '@/lib/mocks/caixaData'
 import { CATEGORIAS } from '@/lib/planoContas'
+import { buildQuarterly, buildMonthly, buildWeekly } from '@/lib/caixaBuilder'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
 import { DrillBar } from '@/components/caixa/DrillBar'
@@ -39,7 +40,19 @@ export default function PageCaixa() {
   const lancamentos = extratoRaw?.lancamentos ?? []
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
 
-  // Compute KPI and DRE values from API data
+  // Build level data from real extrato
+  const quarterlyData = useMemo(() => lancamentos.length ? buildQuarterly(lancamentos as any) : CAIXA_DATA.quarterly, [lancamentos])
+  const monthlyData = useMemo(() => lancamentos.length ? buildMonthly(lancamentos as any) : CAIXA_DATA.monthly, [lancamentos])
+  const weeklyDataMap = useMemo(() => {
+    if (!lancamentos.length) return WEEKLY
+    const map: Record<string, ReturnType<typeof buildWeekly>> = {}
+    for (const label of monthlyData.labels) {
+      map[label] = buildWeekly(lancamentos as any, label)
+    }
+    return map
+  }, [lancamentos, monthlyData])
+
+  // KPI and DRE values
   const kpiValues = useMemo(() => {
     if (!lancamentos.length) return null
     const entradas = lancamentos.filter((r: any) => r.valor > 0).reduce((s: number, r: any) => s + r.valor, 0)
@@ -48,7 +61,6 @@ export default function PageCaixa() {
     return { entradas, saidas, saldoFinal }
   }, [lancamentos, saldoInicial])
 
-  // DRE from extrato
   const dreData = useMemo(() => {
     if (!lancamentos.length) return null
     const groups: Record<string, number> = {}
@@ -70,11 +82,11 @@ export default function PageCaixa() {
   }, [lancamentos])
 
   const getLevelData = useCallback(() => {
-    if (level === 'quarterly') return CAIXA_DATA.quarterly
-    if (level === 'monthly') return CAIXA_DATA.monthly
-    if (level === 'weekly' && selMonth && WEEKLY[selMonth]) return WEEKLY[selMonth]
-    return CAIXA_DATA.monthly
-  }, [level, selMonth])
+    if (level === 'quarterly') return quarterlyData
+    if (level === 'monthly') return monthlyData
+    if (level === 'weekly' && selMonth && weeklyDataMap[selMonth]) return weeklyDataMap[selMonth]
+    return monthlyData
+  }, [level, selMonth, quarterlyData, monthlyData, weeklyDataMap])
 
   const d = getLevelData()
   const sum = (arr: number[]) => arr.reduce((s, v) => s + (v || 0), 0)
@@ -85,10 +97,13 @@ export default function PageCaixa() {
   }
   const drillDown = () => {
     if (level === 'quarterly') { setLevel('monthly'); setSelMonth(null) }
-    else if (level === 'monthly') { setSelMonth('Dez/25'); setLevel('weekly') }
+    else if (level === 'monthly') {
+      const firstMonth = monthlyData.labels[0]
+      if (firstMonth) { setSelMonth(firstMonth); setLevel('weekly') }
+    }
   }
   const drillIntoMonth = (monthLabel: string) => {
-    if (WEEKLY[monthLabel]) { setSelMonth(monthLabel); setLevel('weekly') }
+    if (weeklyDataMap[monthLabel]) { setSelMonth(monthLabel); setLevel('weekly') }
   }
   const jumpTo = (lv: Level) => { setLevel(lv); if (lv !== 'weekly') setSelMonth(null) }
 
