@@ -4,9 +4,7 @@ import {
   ComposedChart, Bar, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
-import {
-  TrendingUp, TrendingDown, ArrowUpRight, Clock, ShieldCheck,
-} from 'lucide-react'
+import { ArrowUpRight, Clock, ShieldCheck } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
@@ -30,8 +28,6 @@ interface KPICardData {
   value: string
   color: string
   dim: string
-  trend: number // percentage
-  trendUp: boolean
   route: string
 }
 
@@ -104,12 +100,12 @@ export default function DashboardExecutivo() {
   const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 38400
 
   const kpis: KPICardData[] = useMemo(() => [
-    { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, trend: 0, trendUp: true, route: '/bi/financeiro/extrato' },
-    { label: 'Resultado (EBT2)', value: `R$ ${fmtK(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, trend: 0, trendUp: ebt2 >= 0, route: '/bi/financeiro/caixa' },
-    { label: 'CP Atrasado', value: `R$ ${fmtK(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, trend: 0, trendUp: cpAtrasado === 0, route: '/bi/financeiro/cp-cr' },
-    { label: 'CR Previsto', value: `R$ ${fmtK(crPrevisto)}`, color: t.green, dim: t.greenDim, trend: 0, trendUp: true, route: '/bi/financeiro/cp-cr' },
-    { label: 'Conciliacao', value: `${concilPct}%`, color: concilPct >= 80 ? t.green : t.amber, dim: concilPct >= 80 ? t.greenDim : t.amberDim, trend: 0, trendUp: concilPct >= 80, route: '/bi/financeiro/conciliacao' },
-    { label: 'Fluxo 30d', value: `R$ ${fmtK(fluxo30d)}`, color: fluxo30d >= 0 ? t.green : t.red, dim: fluxo30d >= 0 ? t.greenDim : t.redDim, trend: 0, trendUp: fluxo30d >= 0, route: '/bi/financeiro/fluxo' },
+    { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, route: '/bi/financeiro/extrato' },
+    { label: 'Resultado (EBT2)', value: `R$ ${fmtK(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/caixa' },
+    { label: 'CP Atrasado', value: `R$ ${fmtK(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, route: '/bi/financeiro/cp-cr' },
+    { label: 'CR Previsto', value: `R$ ${fmtK(crPrevisto)}`, color: t.green, dim: t.greenDim, route: '/bi/financeiro/cp-cr' },
+    { label: 'Conciliacao', value: `${concilPct}%`, color: concilPct >= 80 ? t.green : t.amber, dim: concilPct >= 80 ? t.greenDim : t.amberDim, route: '/bi/financeiro/conciliacao' },
+    { label: 'Fluxo 30d', value: `R$ ${fmtK(fluxo30d)}`, color: fluxo30d >= 0 ? t.green : t.red, dim: fluxo30d >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/fluxo' },
   ], [t, saldoCaixa, ebt2, cpAtrasado, crPrevisto])
 
   /* ── Receita vs Custos chart data (from extrato) ──── */
@@ -258,19 +254,8 @@ export default function DashboardExecutivo() {
             >
               {kpi.value}
             </div>
-            <div className="flex items-center gap-1">
-              {kpi.trendUp ? (
-                <TrendingUp size={11} style={{ color: t.green }} />
-              ) : (
-                <TrendingDown size={11} style={{ color: t.red }} />
-              )}
-              <span
-                className="text-[10px] font-mono font-medium"
-                style={{ color: kpi.trendUp ? t.green : t.red }}
-              >
-                {kpi.trendUp ? '\u25B2' : '\u25BC'} {kpi.trend.toFixed(1).replace('.', ',')}%
-              </span>
-            </div>
+            {/* Value indicator dot */}
+            <div className="w-1 h-1 rounded-full mt-1" style={{ background: kpi.color, opacity: 0.5 }} />
           </a>
         ))}
       </div>
