@@ -14,10 +14,11 @@ import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { mockContas } from '@/lib/mocks/extratoData'
 import { mockCPFull as fallbackCP, mockCRFull as fallbackCR } from '@/lib/mocks/cpcrData'
-import { useFluxoCaixa, useCP, useCR, useSaldos } from '@/hooks/useAPI'
+import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
+import { parseDMY } from '@/lib/formatters'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -40,9 +41,11 @@ export default function PageFluxo() {
   const dt_fim = isoToDMY(dateTo)
   const [hz, setHz] = useState(30)
 
-  // API calls with date range
+  // API calls
+  const dateFrom = useDateRangeStore((s) => s.from)
+  const dt_inicio = isoToDMY(dateFrom)
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
-  const { data: saldosRaw } = useSaldos(empresaId)
+  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
   const { data: cpRaw } = useCP(empresaId, { registros: 100 })
   const { data: crRaw } = useCR(empresaId, { registros: 100 })
 
@@ -52,9 +55,9 @@ export default function PageFluxo() {
 
   const saldoAtual = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.saldo_atual
-    if (saldosRaw) return saldosRaw.reduce((s, c) => s + c.saldo, 0)
+    if (extratoResponse?.saldo_atual) return extratoResponse.saldo_atual
     return mockContas.reduce((s, c) => s + c.saldo, 0)
-  }, [fluxoAPI, saldosRaw])
+  }, [fluxoAPI, extratoResponse])
 
   const totalEnt = useMemo(() => {
     if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_entradas
@@ -66,18 +69,35 @@ export default function PageFluxo() {
     return cpData.reduce((s, r) => s + r.valor, 0)
   }, [fluxoAPI, cpData])
 
-  // Monthly data from API or fallback
+  // Monthly data from API or CP/CR
   const mockFluxoMensal = useMemo(() => {
     if (fluxoAPI?.mensal?.length) {
       return fluxoAPI.mensal.map((m) => ({ mes: m.mes, ent: m.entradas, sai: m.saidas }))
     }
-    return [
-      { mes: 'Dez/25', ent: 358700, sai: 193100 },
-      { mes: 'Jan/26', ent: 285400, sai: 201800 },
-      { mes: 'Fev/26', ent: 312600, sai: 188400 },
-      { mes: 'Mar/26', ent: 298100, sai: 195600 },
-    ]
-  }, [fluxoAPI])
+    // Derive from CP/CR by month
+    const months: Record<string, { ent: number; sai: number }> = {}
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    const fmt = (d: string) => {
+      const dt = parseDMY(d)
+      if (isNaN(dt.getTime())) return null
+      return `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
+    }
+    for (const r of crData) {
+      const key = fmt(r.vcto)
+      if (!key) continue
+      if (!months[key]) months[key] = { ent: 0, sai: 0 }
+      months[key].ent += r.valor
+    }
+    for (const r of cpData) {
+      const key = fmt(r.vcto)
+      if (!key) continue
+      if (!months[key]) months[key] = { ent: 0, sai: 0 }
+      months[key].sai += r.valor
+    }
+    const entries = Object.entries(months).sort()
+    if (entries.length === 0) return [{ mes: '-', ent: 0, sai: 0 }]
+    return entries.map(([mes, v]) => ({ mes, ent: Math.round(v.ent), sai: Math.round(v.sai) }))
+  }, [fluxoAPI, cpData, crData])
 
   // Daily projection from API or seed-based fallback
   const fluxoDiario = useMemo(() => {
