@@ -4,8 +4,19 @@ import { useThemeStore } from '@/store/themeStore'
 import { DRE_ROWS, getDREColor } from '@/lib/mocks/caixaData'
 import { fmtK } from '@/lib/formatters'
 
-export function DRESidebar() {
+interface DRERow {
+  name: string
+  val: number
+  pct: number
+}
+
+interface DRESidebarProps {
+  rows?: DRERow[]
+}
+
+export function DRESidebar({ rows }: DRESidebarProps) {
   const t = useThemeStore((s) => s.tokens)
+  const data = rows ?? DRE_ROWS
 
   return (
     <div className="py-4 px-4 overflow-y-auto">
@@ -15,14 +26,14 @@ export function DRESidebar() {
       >
         DRE Realizado
       </div>
-      {DRE_ROWS.map((row, i) => (
-        <DRERow key={i} row={row} index={i} />
+      {data.map((row, i) => (
+        <DRERowItem key={i} row={row} index={i} />
       ))}
     </div>
   )
 }
 
-function DRERow({ row, index }: { row: (typeof DRE_ROWS)[number]; index: number }) {
+function DRERowItem({ row, index }: { row: DRERow; index: number }) {
   const t = useThemeStore((s) => s.tokens)
   const c = getDREColor(row.name, t)
   const [hovered, setHovered] = useState(false)

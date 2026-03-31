@@ -169,7 +169,18 @@ export default function PageCaixa() {
             </div>
 
             {/* RIGHT: DRE Sidebar */}
-            <DRESidebar />
+            <DRESidebar rows={dreData ? [
+              { name: 'RoB', val: dreData.rob, pct: 100 },
+              { name: 'T.D.C.F.', val: dreData.tdcf, pct: dreData.rob ? (dreData.tdcf / dreData.rob) * 100 : 0 },
+              { name: 'Rec. Líq.', val: dreData.rob - dreData.tdcf, pct: dreData.rob ? ((dreData.rob - dreData.tdcf) / dreData.rob) * 100 : 0 },
+              { name: 'Cust. Var.', val: dreData.cv, pct: dreData.rob ? (dreData.cv / dreData.rob) * 100 : 0 },
+              { name: 'Marg. Cont.', val: dreData.mc, pct: dreData.rob ? (dreData.mc / dreData.rob) * 100 : 0 },
+              { name: 'Cust. Fixo', val: dreData.cf, pct: dreData.rob ? (dreData.cf / dreData.rob) * 100 : 0 },
+              { name: 'EBT1', val: dreData.ebt1, pct: dreData.rob ? (dreData.ebt1 / dreData.rob) * 100 : 0 },
+              { name: 'RNOP', val: dreData.rnop, pct: dreData.rob ? (dreData.rnop / dreData.rob) * 100 : 0 },
+              { name: 'DNOP', val: dreData.dnop, pct: dreData.rob ? (dreData.dnop / dreData.rob) * 100 : 0 },
+              { name: 'EBT2', val: dreData.ebt2, pct: dreData.rob ? (dreData.ebt2 / dreData.rob) * 100 : 0 },
+            ] : undefined} />
           </div>
 
           {/* Footer strip */}
