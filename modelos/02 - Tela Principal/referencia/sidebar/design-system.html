@@ -1,0 +1,1110 @@
+<html class="h-full antialiased" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ZincMail — Design System</title>
+<!-- Geist font (same as reference) -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<!-- TailwindCSS CDN (same as reference) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Lucide Icons (same as reference) -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    :root { font-family: 'Geist', system-ui, sans-serif; }
+    .sidebar { width: 320px; }
+    @media (max-width: 768px) {
+      .sidebar { width: 280px; }
+    }
+    @media (max-width: 640px) {
+      .sidebar { width: 100%; max-width: 300px; }
+    }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .beautiful-shadow {
+      box-shadow: 0px 0px 0px 1px rgba(0,0,0,0.06), 0px 1px 1px -0.5px rgba(0,0,0,0.06), 0px 3px 3px -1.5px rgba(0,0,0,0.06), 0px 6px 6px -3px rgba(0,0,0,0.06), 0px 12px 12px -6px rgba(0,0,0,0.06), 0px 24px 24px -12px rgba(0,0,0,0.06);
+    }
+    .font-geist { font-family: 'Geist', sans-serif !important; }
+
+    /* === Design System Page Styles === */
+    html { overflow-y: auto !important; overflow-x: hidden !important; scroll-behavior: smooth !important; }
+    body { overflow-y: auto !important; overflow-x: hidden !important; }
+
+    .ds-section { max-width: 1120px; margin: 0 auto; padding: 64px 24px; }
+    .ds-section + .ds-section { border-top: 1px solid rgba(113,113,122,0.2); }
+    .ds-section-title {
+      font-family: 'Geist', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #a1a1aa;
+      margin-bottom: 12px;
+    }
+    .ds-section-heading {
+      font-family: 'Geist', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #fafafa;
+      margin-bottom: 8px;
+    }
+    .ds-section-desc {
+      font-family: 'Geist', sans-serif;
+      font-size: 15px;
+      color: #71717a;
+      margin-bottom: 48px;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+    .ds-spec-row {
+      display: flex;
+      align-items: baseline;
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(113,113,122,0.15);
+      gap: 24px;
+    }
+    .ds-spec-label {
+      width: 140px;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717a;
+      font-family: 'Geist', sans-serif;
+      padding-top: 4px;
+    }
+    .ds-spec-preview { flex: 1; min-width: 0; }
+    .ds-spec-meta {
+      width: 120px;
+      flex-shrink: 0;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 500;
+      color: #52525b;
+      font-family: 'Geist', monospace;
+      padding-top: 4px;
+    }
+    .ds-swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .ds-swatch {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(113,113,122,0.2);
+    }
+    .ds-swatch-color { height: 72px; }
+    .ds-swatch-info { padding: 10px 12px; background: #18181b; }
+    .ds-swatch-name { font-size: 12px; font-weight: 500; color: #d4d4d8; font-family: 'Geist', sans-serif; }
+    .ds-swatch-value { font-size: 11px; color: #52525b; font-family: 'Geist', monospace; margin-top: 2px; }
+    .ds-component-group { margin-bottom: 48px; }
+    .ds-component-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+      font-family: 'Geist', sans-serif;
+    }
+    .ds-component-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+    .ds-state-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: #52525b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: center;
+      margin-top: 10px;
+      font-family: 'Geist', sans-serif;
+    }
+    .ds-nav-top {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(113,113,122,0.15);
+    }
+    .ds-nav-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      overflow-x: auto;
+    }
+    .ds-nav-inner::-webkit-scrollbar { display: none; }
+    .ds-nav-inner { -ms-overflow-style: none; scrollbar-width: none; }
+    .ds-nav-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: #71717a;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      font-family: 'Geist', sans-serif;
+    }
+    .ds-nav-link:hover { color: #d4d4d8; background: rgba(113,113,122,0.12); }
+    .ds-nav-brand {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fafafa;
+      margin-right: 16px;
+      white-space: nowrap;
+      font-family: 'Geist', sans-serif;
+    }
+    .ds-motion-card {
+      background: #18181b;
+      border: 1px solid rgba(113,113,122,0.2);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .ds-layout-box {
+      background: rgba(113,113,122,0.08);
+      border: 1px dashed rgba(113,113,122,0.25);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 11px;
+      color: #52525b;
+      font-family: 'Geist', monospace;
+      text-align: center;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-geist" style="min-height:100vh;">
+
+<!-- =============================== -->
+<!-- TOP NAVIGATION                  -->
+<!-- =============================== -->
+<nav class="ds-nav-top">
+  <div class="ds-nav-inner">
+    <span class="ds-nav-brand">ZincMail DS</span>
+    <a class="ds-nav-link" href="#hero">Hero</a>
+    <a class="ds-nav-link" href="#typography">Typography</a>
+    <a class="ds-nav-link" href="#colors">Colors</a>
+    <a class="ds-nav-link" href="#components">Components</a>
+    <a class="ds-nav-link" href="#layout">Layout</a>
+    <a class="ds-nav-link" href="#motion">Motion</a>
+    <a class="ds-nav-link" href="#icons">Icons</a>
+  </div>
+</nav>
+
+
+<!-- =============================== -->
+<!-- 0) HERO — Exact Clone           -->
+<!-- =============================== -->
+<section id="hero">
+  <div class="min-h-screen flex flex-col sm:flex-row gap-6 sm:gap-10 items-start justify-center sm:p-6 bg-zinc-400 pt-4 pr-4 pb-4 pl-4">
+
+    <!-- Dark sidebar (exact clone) -->
+    <aside class="sidebar beautiful-shadow overflow-hidden bg-zinc-900 border-zinc-700 rounded-2xl">
+      <!-- Account header -->
+      <div class="flex items-center justify-between border-zinc-800 border-b pt-5 pr-5 pb-5 pl-5">
+        <button class="flex gap-2 beautiful-shadow hover:bg-zinc-800 transition-all text-sm font-medium bg-zinc-800 border-zinc-700 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4 items-center" id="heroAccountBtn">
+          <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i>
+          <span class="text-zinc-100">ZincMail</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
+        </button>
+        <div class="relative">
+          <div class="w-10 h-10 beautiful-shadow bg-zinc-700 border-zinc-700 border-2 rounded-xl flex items-center justify-center text-zinc-400 text-xs font-medium">SC</div>
+          <div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-zinc-900"></div>
+        </div>
+      </div>
+      <!-- Account dropdown -->
+      <div class="mx-5 mt-2 rounded-xl bg-zinc-800 beautiful-shadow border border-zinc-700 p-5 text-sm hidden" id="heroAccountMenu">
+        <div class="mb-4 pb-4 border-b border-zinc-700">
+          <p class="font-medium text-zinc-100">Design System</p>
+          <p class="text-zinc-400 text-xs mt-1">ds@zincmail.com</p>
+          <div class="flex items-center gap-2 mt-2">
+            <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+            <span class="text-xs text-zinc-400">Online</span>
+          </div>
+        </div>
+        <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors">
+          <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i>
+          <span class="font-medium text-zinc-200">ds@zincmail.com</span>
+          <i data-lucide="check" class="w-4 h-4 ml-auto text-emerald-400"></i>
+        </button>
+        <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors">
+          <i data-lucide="mail" class="w-4 h-4 text-blue-400"></i>
+          <span class="text-zinc-300">team@zincmail.com</span>
+        </button>
+        <hr class="my-4 border-zinc-700"/>
+        <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors text-zinc-300">
+          <i data-lucide="settings" class="w-4 h-4"></i> Settings
+        </button>
+        <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors text-red-400">
+          <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+        </button>
+      </div>
+      <!-- Compose button -->
+      <div class="px-5 pt-6">
+        <button class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-200 to-zinc-100 text-zinc-900 rounded-xl pt-3 pr-4 pb-3 pl-4 font-medium hover:from-zinc-100 hover:to-zinc-50 transition-all beautiful-shadow">
+          <i data-lucide="edit" class="w-4 h-4"></i>
+          Compose
+        </button>
+      </div>
+      <!-- Navigation -->
+      <nav class="select-none text-sm pt-6 pr-2 pl-2">
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-100 rounded-xl beautiful-shadow" href="#">
+          <i data-lucide="inbox" class="w-5 h-5"></i>
+          <span class="font-medium">Inbox</span>
+          <span class="ml-auto bg-zinc-600 text-zinc-200 text-xs px-2 py-1 rounded-full font-medium">24</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+          <i data-lucide="star" class="w-5 h-5"></i> Starred <span class="ml-auto text-xs text-zinc-500">8</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+          <i data-lucide="send" class="w-5 h-5"></i> Sent
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+          <i data-lucide="file-text" class="w-5 h-5"></i> Drafts <span class="ml-auto text-xs text-zinc-500">3</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+          <i data-lucide="trash-2" class="w-5 h-5"></i> Trash
+        </a>
+        <!-- Labels -->
+        <div class="px-4 mt-6">
+          <button class="flex items-center gap-2 w-full text-zinc-500 uppercase text-xs tracking-wider font-medium mb-3" id="heroLabelsToggle">
+            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+            Labels
+            <i data-lucide="plus" class="w-4 h-4 ml-auto hover:bg-zinc-800 rounded p-0.5 transition-colors"></i>
+          </button>
+          <div class="space-y-1" id="heroLabelsList">
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span><span>Work</span><span class="ml-auto text-xs text-zinc-500">12</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Personal</span><span class="ml-auto text-xs text-zinc-500">7</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span><span>Important</span><span class="ml-auto text-xs text-zinc-500">5</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span><span>Follow Up</span><span class="ml-auto text-xs text-zinc-500">2</span>
+            </button>
+          </div>
+        </div>
+        <!-- Storage -->
+        <div class="px-4 mt-6 pb-6">
+          <p class="text-zinc-500 uppercase text-xs tracking-wider font-medium mb-3">Storage</p>
+          <div class="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-zinc-300 text-sm">Used</span>
+              <span class="text-zinc-300 text-sm">8.2 GB of 15 GB</span>
+            </div>
+            <div class="w-full bg-zinc-700 rounded-full h-2">
+              <div class="bg-gradient-to-r from-zinc-400 to-zinc-300 h-2 rounded-full" style="width: 55%"></div>
+            </div>
+            <button class="w-full mt-3 text-xs text-zinc-400 hover:text-zinc-300 transition-colors">Manage Storage</button>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Light sidebar (exact clone) -->
+    <aside class="sidebar beautiful-shadow overflow-hidden bg-zinc-100 border-zinc-200 rounded-2xl">
+      <!-- Account header -->
+      <div class="flex items-center justify-between border-zinc-200 border-b pt-5 pr-5 pb-5 pl-5">
+        <button class="flex items-center gap-2 beautiful-shadow hover:shadow-md transition-all text-sm font-medium bg-gradient-to-r from-zinc-50 to-white border-zinc-200 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4">
+          <i data-lucide="mail" class="w-4 h-4 text-zinc-600"></i>
+          <span class="text-zinc-800">ZincMail</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
+        </button>
+        <div class="relative">
+          <div class="w-10 h-10 beautiful-shadow bg-zinc-300 border-zinc-200 border-2 rounded-xl flex items-center justify-center text-zinc-600 text-xs font-medium">DS</div>
+          <div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-zinc-100"></div>
+        </div>
+      </div>
+      <!-- Compose button -->
+      <div class="px-5 pt-6">
+        <button class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-800 to-zinc-900 text-zinc-100 rounded-xl pt-3 pr-4 pb-3 pl-4 font-medium hover:from-zinc-900 hover:to-zinc-800 transition-all beautiful-shadow">
+          <i data-lucide="edit" class="w-4 h-4"></i>
+          Compose
+        </button>
+      </div>
+      <!-- Navigation -->
+      <nav class="select-none text-sm pt-6 pr-2 pl-2">
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 bg-gradient-to-r from-zinc-200 to-zinc-300 text-zinc-900 rounded-xl beautiful-shadow" href="#">
+          <i data-lucide="inbox" class="w-5 h-5"></i>
+          <span class="font-medium">Inbox</span>
+          <span class="ml-auto bg-zinc-400 text-zinc-100 text-xs px-2 py-1 rounded-full font-medium">24</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+          <i data-lucide="star" class="w-5 h-5"></i> Starred <span class="ml-auto text-xs text-zinc-500">8</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+          <i data-lucide="send" class="w-5 h-5"></i> Sent
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+          <i data-lucide="file-text" class="w-5 h-5"></i> Drafts <span class="ml-auto text-xs text-zinc-500">3</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+          <i data-lucide="trash-2" class="w-5 h-5"></i> Trash
+        </a>
+        <!-- Labels -->
+        <div class="px-4 mt-6">
+          <button class="flex items-center gap-2 w-full text-zinc-500 uppercase text-xs tracking-wider font-medium mb-3">
+            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+            Labels
+            <i data-lucide="plus" class="w-4 h-4 ml-auto hover:bg-zinc-200 rounded p-0.5 transition-colors"></i>
+          </button>
+          <div class="space-y-1">
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span><span>Work</span><span class="ml-auto text-xs text-zinc-500">12</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Personal</span><span class="ml-auto text-xs text-zinc-500">7</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span><span>Important</span><span class="ml-auto text-xs text-zinc-500">5</span>
+            </button>
+            <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span><span>Follow Up</span><span class="ml-auto text-xs text-zinc-500">2</span>
+            </button>
+          </div>
+        </div>
+        <!-- Storage -->
+        <div class="px-4 mt-6 pb-6">
+          <p class="text-zinc-500 uppercase text-xs tracking-wider font-medium mb-3">Storage</p>
+          <div class="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-zinc-700 text-sm">Used</span>
+              <span class="text-zinc-700 text-sm">8.2 GB of 15 GB</span>
+            </div>
+            <div class="w-full bg-zinc-200 rounded-full h-2">
+              <div class="bg-gradient-to-r from-zinc-600 to-zinc-700 h-2 rounded-full" style="width: 55%"></div>
+            </div>
+            <button class="w-full mt-3 text-xs text-zinc-600 hover:text-zinc-700 transition-colors">Manage Storage</button>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 1) TYPOGRAPHY                   -->
+<!-- =============================== -->
+<section id="typography" class="ds-section">
+  <p class="ds-section-title">01 — Typography</p>
+  <h2 class="ds-section-heading">Type Scale</h2>
+  <p class="ds-section-desc">Geist is the sole typeface. Every size, weight, and transform used in the reference, documented with live previews.</p>
+
+  <!-- Font Medium 14px — Primary nav item -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Font Medium</div>
+    <div class="ds-spec-preview">
+      <span class="text-sm font-medium text-zinc-100 font-geist">Inbox — Primary Navigation</span>
+    </div>
+    <div class="ds-spec-meta">14px / 500</div>
+  </div>
+
+  <!-- Font Medium 14px — Body text -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Body SM</div>
+    <div class="ds-spec-preview">
+      <span class="text-sm text-zinc-300 font-geist">8.2 GB of 15 GB — Body content text</span>
+    </div>
+    <div class="ds-spec-meta">14px / 400</div>
+  </div>
+
+  <!-- Font Medium 14px — Bold button -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Button Text</div>
+    <div class="ds-spec-preview">
+      <span class="text-sm font-medium text-zinc-900 font-geist">Compose — Button label</span>
+    </div>
+    <div class="ds-spec-meta">14px / 500</div>
+  </div>
+
+  <!-- XS Bold — Badges -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Badge XS</div>
+    <div class="ds-spec-preview">
+      <span class="text-xs font-medium text-zinc-200 font-geist">24 — Counter badge</span>
+    </div>
+    <div class="ds-spec-meta">12px / 500</div>
+  </div>
+
+  <!-- XS Regular — Secondary text -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Caption XS</div>
+    <div class="ds-spec-preview">
+      <span class="text-xs text-zinc-400 font-geist">sarah@zincmail.com — Secondary detail</span>
+    </div>
+    <div class="ds-spec-meta">12px / 400</div>
+  </div>
+
+  <!-- XS Uppercase Tracking — Section headers -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Section Header</div>
+    <div class="ds-spec-preview">
+      <span class="text-zinc-500 uppercase text-xs tracking-wider font-medium font-geist">Labels — Section divider</span>
+    </div>
+    <div class="ds-spec-meta">12px / 500 / 0.1em</div>
+  </div>
+
+  <!-- XS Light — Tertiary -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Tertiary XS</div>
+    <div class="ds-spec-preview">
+      <span class="text-xs text-zinc-500 font-geist">8 — Nav counter</span>
+    </div>
+    <div class="ds-spec-meta">12px / 400</div>
+  </div>
+
+  <!-- Dropdown name -->
+  <div class="ds-spec-row">
+    <div class="ds-spec-label">Name / Title</div>
+    <div class="ds-spec-preview">
+      <p class="font-medium text-zinc-100 font-geist">Sarah Chen — Profile name</p>
+    </div>
+    <div class="ds-spec-meta">16px / 500</div>
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 2) COLORS & SURFACES            -->
+<!-- =============================== -->
+<section id="colors" class="ds-section">
+  <p class="ds-section-title">02 — Colors &amp; Surfaces</p>
+  <h2 class="ds-section-heading">Zinc Palette</h2>
+  <p class="ds-section-desc">A neutral zinc scale forms the entire chromatic foundation. Accent colors are used sparingly for status indicators and labels.</p>
+
+  <!-- Backgrounds -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Backgrounds</p>
+    <div class="ds-swatch-grid">
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-950"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-950</p><p class="ds-swatch-value">Page BG</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-900"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-900</p><p class="ds-swatch-value">Dark sidebar</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-800"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-800</p><p class="ds-swatch-value">Card / Dropdown</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-400"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-400</p><p class="ds-swatch-value">Canvas BG</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-100"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-100</p><p class="ds-swatch-value">Light sidebar</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-50"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-50</p><p class="ds-swatch-value">Light card</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-white"></div><div class="ds-swatch-info"><p class="ds-swatch-name">white</p><p class="ds-swatch-value">Input BG</p></div></div>
+    </div>
+  </div>
+
+  <!-- Text Colors -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Text</p>
+    <div class="ds-swatch-grid">
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-100 flex items-center justify-center"><span class="text-zinc-900 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-100</p><p class="ds-swatch-value">Primary (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-900 flex items-center justify-center"><span class="text-zinc-200 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-200</p><p class="ds-swatch-value">Secondary (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-900 flex items-center justify-center"><span class="text-zinc-300 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-300</p><p class="ds-swatch-value">Nav text (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-900 flex items-center justify-center"><span class="text-zinc-400 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-400</p><p class="ds-swatch-value">Muted (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-900 flex items-center justify-center"><span class="text-zinc-500 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-500</p><p class="ds-swatch-value">Disabled</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-100 flex items-center justify-center"><span class="text-zinc-700 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-700</p><p class="ds-swatch-value">Nav text (light)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-100 flex items-center justify-center"><span class="text-zinc-800 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-800</p><p class="ds-swatch-value">Primary (light)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-zinc-100 flex items-center justify-center"><span class="text-zinc-900 text-sm font-medium font-geist">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-900</p><p class="ds-swatch-value">Button (light)</p></div></div>
+    </div>
+  </div>
+
+  <!-- Accents -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Accent &amp; Status</p>
+    <div class="ds-swatch-grid">
+      <div class="ds-swatch"><div class="ds-swatch-color bg-emerald-400"></div><div class="ds-swatch-info"><p class="ds-swatch-name">emerald-400</p><p class="ds-swatch-value">Online status</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-red-500"></div><div class="ds-swatch-info"><p class="ds-swatch-name">red-500</p><p class="ds-swatch-value">Work label</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-blue-500"></div><div class="ds-swatch-info"><p class="ds-swatch-name">blue-500</p><p class="ds-swatch-value">Personal label</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-green-500"></div><div class="ds-swatch-info"><p class="ds-swatch-name">green-500</p><p class="ds-swatch-value">Important label</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-yellow-500"></div><div class="ds-swatch-info"><p class="ds-swatch-name">yellow-500</p><p class="ds-swatch-value">Follow Up label</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-red-400 flex items-center justify-center"><span class="text-sm font-medium font-geist text-white">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">red-400</p><p class="ds-swatch-value">Danger text</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-blue-400 flex items-center justify-center"><span class="text-sm font-medium font-geist text-white">Aa</span></div><div class="ds-swatch-info"><p class="ds-swatch-name">blue-400</p><p class="ds-swatch-value">Alt account icon</p></div></div>
+    </div>
+  </div>
+
+  <!-- Gradients -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Gradients</p>
+    <div class="ds-swatch-grid">
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-700 to-zinc-800"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-700 → 800</p><p class="ds-swatch-value">Active nav (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-200 to-zinc-300"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-200 → 300</p><p class="ds-swatch-value">Active nav (light)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-200 to-zinc-100"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-200 → 100</p><p class="ds-swatch-value">CTA button (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-800 to-zinc-900"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-800 → 900</p><p class="ds-swatch-value">CTA button (light)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-50 to-white"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-50 → white</p><p class="ds-swatch-value">Account btn (light)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-400 to-zinc-300"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-400 → 300</p><p class="ds-swatch-value">Progress bar (dark)</p></div></div>
+      <div class="ds-swatch"><div class="ds-swatch-color bg-gradient-to-r from-zinc-600 to-zinc-700"></div><div class="ds-swatch-info"><p class="ds-swatch-name">zinc-600 → 700</p><p class="ds-swatch-value">Progress bar (light)</p></div></div>
+    </div>
+  </div>
+
+  <!-- Borders & Dividers -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Borders &amp; Surfaces</p>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;">
+      <div style="width:200px;" class="bg-zinc-900 border border-zinc-700 rounded-xl p-4">
+        <p class="text-xs text-zinc-400 font-geist">border-zinc-700</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">Dark theme border</p>
+      </div>
+      <div style="width:200px;" class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p class="text-xs text-zinc-400 font-geist">border-zinc-800</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">Dark subtle divider</p>
+      </div>
+      <div style="width:200px;" class="bg-zinc-100 border border-zinc-200 rounded-xl p-4">
+        <p class="text-xs text-zinc-600 font-geist">border-zinc-200</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">Light theme border</p>
+      </div>
+      <div style="width:200px;" class="beautiful-shadow bg-zinc-800 rounded-xl p-4">
+        <p class="text-xs text-zinc-400 font-geist">beautiful-shadow</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">Layered box-shadow</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 3) UI COMPONENTS                -->
+<!-- =============================== -->
+<section id="components" class="ds-section">
+  <p class="ds-section-title">03 — UI Components</p>
+  <h2 class="ds-section-heading">Components</h2>
+  <p class="ds-section-desc">Every interactive element extracted from the reference. States shown side-by-side where applicable.</p>
+
+  <!-- BUTTONS: Compose (dark variant) -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Compose Button — Dark Sidebar</p>
+    <div class="ds-component-row">
+      <div>
+        <button class="flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-200 to-zinc-100 text-zinc-900 rounded-xl pt-3 pr-4 pb-3 pl-4 font-medium hover:from-zinc-100 hover:to-zinc-50 transition-all beautiful-shadow" style="width:280px;">
+          <i data-lucide="edit" class="w-4 h-4"></i> Compose
+        </button>
+        <p class="ds-state-label">Default / Hover</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUTTONS: Compose (light variant) -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Compose Button — Light Sidebar</p>
+    <div class="ds-component-row">
+      <div>
+        <button class="flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-800 to-zinc-900 text-zinc-100 rounded-xl pt-3 pr-4 pb-3 pl-4 font-medium hover:from-zinc-900 hover:to-zinc-800 transition-all beautiful-shadow" style="width:280px;">
+          <i data-lucide="edit" class="w-4 h-4"></i> Compose
+        </button>
+        <p class="ds-state-label">Default / Hover</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUTTONS: Account selector -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Account Selector Button</p>
+    <div class="ds-component-row" style="gap:24px;">
+      <div>
+        <button class="flex gap-2 beautiful-shadow hover:bg-zinc-800 transition-all text-sm font-medium bg-zinc-800 border-zinc-700 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4 items-center">
+          <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i>
+          <span class="text-zinc-100">ZincMail</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
+        </button>
+        <p class="ds-state-label">Dark variant</p>
+      </div>
+      <div>
+        <button class="flex items-center gap-2 beautiful-shadow hover:shadow-md transition-all text-sm font-medium bg-gradient-to-r from-zinc-50 to-white border-zinc-200 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4">
+          <i data-lucide="mail" class="w-4 h-4 text-zinc-600"></i>
+          <span class="text-zinc-800">ZincMail</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
+        </button>
+        <p class="ds-state-label">Light variant</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV ITEMS -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Navigation Items — Dark</p>
+    <div style="max-width:300px;" class="bg-zinc-900 rounded-xl p-2">
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-100 rounded-xl beautiful-shadow" href="#">
+        <i data-lucide="inbox" class="w-5 h-5"></i>
+        <span class="font-medium">Inbox</span>
+        <span class="ml-auto bg-zinc-600 text-zinc-200 text-xs px-2 py-1 rounded-full font-medium">24</span>
+      </a>
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+        <i data-lucide="star" class="w-5 h-5"></i> Starred <span class="ml-auto text-xs text-zinc-500">8</span>
+      </a>
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors" href="#">
+        <i data-lucide="send" class="w-5 h-5"></i> Sent
+      </a>
+    </div>
+    <p class="ds-state-label">Active + Inactive + Hover</p>
+  </div>
+
+  <div class="ds-component-group">
+    <p class="ds-component-label">Navigation Items — Light</p>
+    <div style="max-width:300px;" class="bg-zinc-100 rounded-xl p-2">
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 bg-gradient-to-r from-zinc-200 to-zinc-300 text-zinc-900 rounded-xl beautiful-shadow" href="#">
+        <i data-lucide="inbox" class="w-5 h-5"></i>
+        <span class="font-medium">Inbox</span>
+        <span class="ml-auto bg-zinc-400 text-zinc-100 text-xs px-2 py-1 rounded-full font-medium">24</span>
+      </a>
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+        <i data-lucide="star" class="w-5 h-5"></i> Starred <span class="ml-auto text-xs text-zinc-500">8</span>
+      </a>
+      <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors" href="#">
+        <i data-lucide="send" class="w-5 h-5"></i> Sent
+      </a>
+    </div>
+    <p class="ds-state-label">Active + Inactive + Hover</p>
+  </div>
+
+  <!-- LABEL ITEMS -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Label Items</p>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      <div style="max-width:280px;flex:1;" class="bg-zinc-900 rounded-xl p-3 space-y-1">
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-red-500"></span><span>Work</span><span class="ml-auto text-xs text-zinc-500">12</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Personal</span><span class="ml-auto text-xs text-zinc-500">7</span>
+        </button>
+        <p class="ds-state-label">Dark</p>
+      </div>
+      <div style="max-width:280px;flex:1;" class="bg-zinc-100 rounded-xl p-3 space-y-1">
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span><span>Important</span><span class="ml-auto text-xs text-zinc-500">5</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-yellow-500"></span><span>Follow Up</span><span class="ml-auto text-xs text-zinc-500">2</span>
+        </button>
+        <p class="ds-state-label">Light</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Badges &amp; Counters</p>
+    <div class="ds-component-row" style="gap:24px;">
+      <div>
+        <span class="bg-zinc-600 text-zinc-200 text-xs px-2 py-1 rounded-full font-medium">24</span>
+        <p class="ds-state-label">Dark active</p>
+      </div>
+      <div>
+        <span class="bg-zinc-400 text-zinc-100 text-xs px-2 py-1 rounded-full font-medium">24</span>
+        <p class="ds-state-label">Light active</p>
+      </div>
+      <div>
+        <span class="text-xs text-zinc-500">8</span>
+        <p class="ds-state-label">Inline counter</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AVATAR -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Avatar + Status Indicator</p>
+    <div class="ds-component-row" style="gap:24px;">
+      <div>
+        <div class="relative" style="width:fit-content;">
+          <div class="w-10 h-10 beautiful-shadow bg-zinc-700 border-zinc-700 border-2 rounded-xl flex items-center justify-center text-zinc-400 text-xs font-medium">SC</div>
+          <div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-zinc-900"></div>
+        </div>
+        <p class="ds-state-label">Dark bg</p>
+      </div>
+      <div>
+        <div class="relative" style="width:fit-content;">
+          <div class="w-10 h-10 beautiful-shadow bg-zinc-300 border-zinc-200 border-2 rounded-xl flex items-center justify-center text-zinc-600 text-xs font-medium">DS</div>
+          <div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-zinc-100"></div>
+        </div>
+        <p class="ds-state-label">Light bg</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Storage Progress Bar</p>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      <div style="max-width:280px;flex:1;">
+        <div class="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-zinc-300 text-sm">Used</span>
+            <span class="text-zinc-300 text-sm">8.2 GB of 15 GB</span>
+          </div>
+          <div class="w-full bg-zinc-700 rounded-full h-2">
+            <div class="bg-gradient-to-r from-zinc-400 to-zinc-300 h-2 rounded-full" style="width: 55%"></div>
+          </div>
+          <button class="w-full mt-3 text-xs text-zinc-400 hover:text-zinc-300 transition-colors">Manage Storage</button>
+        </div>
+        <p class="ds-state-label">Dark</p>
+      </div>
+      <div style="max-width:280px;flex:1;">
+        <div class="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-zinc-700 text-sm">Used</span>
+            <span class="text-zinc-700 text-sm">8.2 GB of 15 GB</span>
+          </div>
+          <div class="w-full bg-zinc-200 rounded-full h-2">
+            <div class="bg-gradient-to-r from-zinc-600 to-zinc-700 h-2 rounded-full" style="width: 55%"></div>
+          </div>
+          <button class="w-full mt-3 text-xs text-zinc-600 hover:text-zinc-700 transition-colors">Manage Storage</button>
+        </div>
+        <p class="ds-state-label">Light</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DROPDOWN MENU ITEMS -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Dropdown Menu Items</p>
+    <div style="max-width:280px;" class="bg-zinc-800 rounded-xl border border-zinc-700 p-3">
+      <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors">
+        <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i>
+        <span class="font-medium text-zinc-200">ds@zincmail.com</span>
+        <i data-lucide="check" class="w-4 h-4 ml-auto text-emerald-400"></i>
+      </button>
+      <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors">
+        <i data-lucide="mail" class="w-4 h-4 text-blue-400"></i>
+        <span class="text-zinc-300">team@zincmail.com</span>
+      </button>
+      <hr class="my-3 border-zinc-700"/>
+      <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors text-zinc-300">
+        <i data-lucide="settings" class="w-4 h-4"></i> Settings
+      </button>
+      <button class="flex items-center gap-3 w-full py-2.5 px-2 rounded-lg hover:bg-zinc-700 transition-colors text-red-400">
+        <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+      </button>
+    </div>
+    <p class="ds-state-label">Hover any row</p>
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 4) LAYOUT & SPACING             -->
+<!-- =============================== -->
+<section id="layout" class="ds-section">
+  <p class="ds-section-title">04 — Layout &amp; Spacing</p>
+  <h2 class="ds-section-heading">Layout Patterns</h2>
+  <p class="ds-section-desc">The reference uses a flex-based side-by-side layout on a tinted canvas, with fixed-width sidebars and responsive breakpoints.</p>
+
+  <!-- Pattern 1: Dual sidebar -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Pattern: Dual Sidebar Canvas</p>
+    <div class="bg-zinc-400 rounded-2xl p-6 flex flex-col sm:flex-row gap-6 sm:gap-10 items-start justify-center">
+      <div class="ds-layout-box" style="width:320px;min-height:320px;flex-shrink:0;">
+        <p>sidebar</p>
+        <p class="mt-1">width: 320px</p>
+        <p>bg-zinc-900</p>
+        <p>rounded-2xl</p>
+      </div>
+      <div class="ds-layout-box" style="width:320px;min-height:320px;flex-shrink:0;">
+        <p>sidebar</p>
+        <p class="mt-1">width: 320px</p>
+        <p>bg-zinc-100</p>
+        <p>rounded-2xl</p>
+      </div>
+    </div>
+    <p class="ds-state-label">bg-zinc-400 canvas · flex flex-col sm:flex-row · gap-6 sm:gap-10</p>
+  </div>
+
+  <!-- Pattern 2: Sidebar internal structure -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Pattern: Sidebar Internal Structure</p>
+    <div style="max-width:320px;" class="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-700">
+      <div class="ds-layout-box border-b border-zinc-800 rounded-none" style="border-radius:0;">
+        <p>Account Header</p>
+        <p>p-5 · border-b</p>
+      </div>
+      <div class="ds-layout-box rounded-none" style="border-radius:0;">
+        <p>Compose Button</p>
+        <p>px-5 pt-6</p>
+      </div>
+      <div class="ds-layout-box rounded-none" style="border-radius:0;">
+        <p>Navigation</p>
+        <p>pt-6 pr-2 pl-2</p>
+        <p class="mt-1">nav items: px-4 py-3 mx-2</p>
+      </div>
+      <div class="ds-layout-box rounded-none" style="border-radius:0;">
+        <p>Labels Section</p>
+        <p>px-4 mt-6</p>
+        <p class="mt-1">label items: px-4 py-2.5</p>
+      </div>
+      <div class="ds-layout-box rounded-none" style="border-radius:0;">
+        <p>Storage</p>
+        <p>px-4 mt-6 pb-6</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Radius scale -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Border Radius Scale</p>
+    <div class="ds-component-row" style="gap:24px;">
+      <div>
+        <div class="w-16 h-16 bg-zinc-800 border border-zinc-700 rounded-2xl"></div>
+        <p class="ds-state-label">rounded-2xl</p>
+      </div>
+      <div>
+        <div class="w-16 h-16 bg-zinc-800 border border-zinc-700 rounded-xl"></div>
+        <p class="ds-state-label">rounded-xl</p>
+      </div>
+      <div>
+        <div class="w-16 h-16 bg-zinc-800 border border-zinc-700 rounded-lg"></div>
+        <p class="ds-state-label">rounded-lg</p>
+      </div>
+      <div>
+        <div class="w-16 h-16 bg-zinc-800 border border-zinc-700 rounded-full"></div>
+        <p class="ds-state-label">rounded-full</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Responsive breakpoints -->
+  <div class="ds-component-group">
+    <p class="ds-component-label">Responsive Breakpoints</p>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;">
+      <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-4" style="width:200px;">
+        <p class="text-xs font-medium text-zinc-300 font-geist">Default</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">sidebar: 320px</p>
+        <p class="text-xs text-zinc-500 font-geist">flex-row · gap-10 · p-6</p>
+      </div>
+      <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-4" style="width:200px;">
+        <p class="text-xs font-medium text-zinc-300 font-geist">≤ 768px</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">sidebar: 280px</p>
+      </div>
+      <div class="bg-zinc-900 border border-zinc-700 rounded-xl p-4" style="width:200px;">
+        <p class="text-xs font-medium text-zinc-300 font-geist">≤ 640px</p>
+        <p class="text-xs text-zinc-500 font-geist mt-1">sidebar: 100% / max 300px</p>
+        <p class="text-xs text-zinc-500 font-geist">flex-col · gap-6 · p-4</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 5) MOTION & INTERACTION         -->
+<!-- =============================== -->
+<section id="motion" class="ds-section">
+  <p class="ds-section-title">05 — Motion &amp; Interaction</p>
+  <h2 class="ds-section-heading">Motion Gallery</h2>
+  <p class="ds-section-desc">All transition and interaction behaviors present in the reference. Hover each card to see the effect live.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:20px;">
+
+    <!-- transition-colors -->
+    <div class="ds-motion-card">
+      <button class="flex items-center gap-3 px-4 py-3 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors w-full">
+        <i data-lucide="star" class="w-5 h-5"></i> Hover me
+      </button>
+      <p class="text-xs text-zinc-500 font-geist">transition-colors</p>
+      <p class="text-xs text-zinc-600 font-geist">Nav items, labels, menu rows</p>
+    </div>
+
+    <!-- transition-all on button -->
+    <div class="ds-motion-card">
+      <button class="flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-200 to-zinc-100 text-zinc-900 rounded-xl pt-3 pr-4 pb-3 pl-4 font-medium hover:from-zinc-100 hover:to-zinc-50 transition-all beautiful-shadow w-full">
+        <i data-lucide="edit" class="w-4 h-4"></i> Hover me
+      </button>
+      <p class="text-xs text-zinc-500 font-geist">transition-all</p>
+      <p class="text-xs text-zinc-600 font-geist">Gradient shift on CTA buttons</p>
+    </div>
+
+    <!-- hover:shadow-md -->
+    <div class="ds-motion-card">
+      <button class="flex items-center gap-2 beautiful-shadow hover:shadow-md transition-all text-sm font-medium bg-gradient-to-r from-zinc-50 to-white border-zinc-200 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4 text-zinc-800">
+        <i data-lucide="mail" class="w-4 h-4 text-zinc-600"></i> Hover me
+      </button>
+      <p class="text-xs text-zinc-500 font-geist">hover:shadow-md</p>
+      <p class="text-xs text-zinc-600 font-geist">Shadow lift on account selector</p>
+    </div>
+
+    <!-- transition-transform chevron -->
+    <div class="ds-motion-card">
+      <button class="flex items-center gap-2 text-zinc-400" onclick="this.querySelector('[data-lucide=chevron-down]').style.transform = this.querySelector('[data-lucide=chevron-down]').style.transform === 'rotate(-90deg)' ? 'rotate(0deg)' : 'rotate(-90deg)'">
+        <i data-lucide="chevron-down" class="w-5 h-5 transition-transform" style="transition-duration:200ms;"></i>
+        <span class="text-sm font-medium text-zinc-300 font-geist">Click to toggle</span>
+      </button>
+      <p class="text-xs text-zinc-500 font-geist">transition-transform</p>
+      <p class="text-xs text-zinc-600 font-geist">Chevron rotation on Labels toggle</p>
+    </div>
+
+    <!-- hover:bg on dark button -->
+    <div class="ds-motion-card">
+      <button class="flex gap-2 beautiful-shadow hover:bg-zinc-800 transition-all text-sm font-medium bg-zinc-800 border-zinc-700 border rounded-xl pt-2.5 pr-4 pb-2.5 pl-4 items-center text-zinc-100">
+        <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i> Hover me
+      </button>
+      <p class="text-xs text-zinc-500 font-geist">hover:bg-zinc-800</p>
+      <p class="text-xs text-zinc-600 font-geist">Subtle bg change on dark buttons</p>
+    </div>
+
+    <!-- hover:text color change -->
+    <div class="ds-motion-card">
+      <button class="text-xs text-zinc-400 hover:text-zinc-300 transition-colors font-geist">
+        Hover to lighten text →
+      </button>
+      <p class="text-xs text-zinc-500 font-geist mt-2">hover:text-zinc-300</p>
+      <p class="text-xs text-zinc-600 font-geist">Manage Storage, tertiary actions</p>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- =============================== -->
+<!-- 6) ICONS                        -->
+<!-- =============================== -->
+<section id="icons" class="ds-section">
+  <p class="ds-section-title">06 — Icons</p>
+  <h2 class="ds-section-heading">Lucide Icon Set</h2>
+  <p class="ds-section-desc">All icons used in the reference, rendered via Lucide with the same markup, sizes, and color inheritance.</p>
+
+  <!-- Icon grid -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:16px;">
+
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="mail" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">mail</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="inbox" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">inbox</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="star" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">star</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="send" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">send</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="file-text" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">file-text</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="trash-2" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">trash-2</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="edit" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">edit</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="settings" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">settings</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="log-out" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">log-out</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">check</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="chevron-down" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">chevron-down</p>
+    </div>
+    <div class="ds-motion-card" style="padding:24px;min-height:auto;">
+      <i data-lucide="plus" class="w-5 h-5 text-zinc-400"></i>
+      <p class="text-xs text-zinc-500 font-geist">plus</p>
+    </div>
+
+  </div>
+
+  <!-- Size variants -->
+  <div class="ds-component-group" style="margin-top:40px;">
+    <p class="ds-component-label">Size Variants Used</p>
+    <div class="ds-component-row" style="gap:32px;">
+      <div>
+        <i data-lucide="mail" class="w-4 h-4 text-zinc-400"></i>
+        <p class="ds-state-label">w-4 h-4 (16px)</p>
+      </div>
+      <div>
+        <i data-lucide="inbox" class="w-5 h-5 text-zinc-400"></i>
+        <p class="ds-state-label">w-5 h-5 (20px)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color inheritance -->
+  <div class="ds-component-group" style="margin-top:32px;">
+    <p class="ds-component-label">Color Inheritance</p>
+    <div class="ds-component-row" style="gap:24px;">
+      <div>
+        <i data-lucide="mail" class="w-5 h-5 text-zinc-400"></i>
+        <p class="ds-state-label">text-zinc-400</p>
+      </div>
+      <div>
+        <i data-lucide="mail" class="w-5 h-5 text-zinc-600"></i>
+        <p class="ds-state-label">text-zinc-600</p>
+      </div>
+      <div>
+        <i data-lucide="mail" class="w-5 h-5 text-blue-400"></i>
+        <p class="ds-state-label">text-blue-400</p>
+      </div>
+      <div>
+        <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+        <p class="ds-state-label">text-emerald-400</p>
+      </div>
+      <div>
+        <i data-lucide="log-out" class="w-5 h-5 text-red-400"></i>
+        <p class="ds-state-label">text-red-400</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="ds-section" style="padding-top:32px;padding-bottom:48px;text-align:center;">
+  <p class="text-xs text-zinc-600 font-geist">ZincMail Design System — Extracted from reference index.html</p>
+  <p class="text-xs text-zinc-700 font-geist mt-1">Geist · TailwindCSS · Lucide Icons</p>
+</footer>
+
+<!-- Initialize Lucide Icons -->
+<script>
+  lucide.createIcons();
+
+  // Hero account dropdown toggle (same JS as reference)
+  const heroAccountBtn = document.getElementById('heroAccountBtn');
+  const heroAccountMenu = document.getElementById('heroAccountMenu');
+  if (heroAccountBtn && heroAccountMenu) {
+    heroAccountBtn.addEventListener('click', () => {
+      heroAccountMenu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!heroAccountBtn.contains(e.target) && !heroAccountMenu.contains(e.target)) {
+        heroAccountMenu.classList.add('hidden');
+      }
+    });
+  }
+
+  // Hero labels toggle (same JS as reference)
+  const heroLabelsToggle = document.getElementById('heroLabelsToggle');
+  const heroLabelsList = document.getElementById('heroLabelsList');
+  if (heroLabelsToggle && heroLabelsList) {
+    heroLabelsToggle.addEventListener('click', () => {
+      heroLabelsList.classList.toggle('hidden');
+      const chevron = heroLabelsToggle.querySelector('[data-lucide="chevron-down"]');
+      if (chevron) {
+        chevron.style.transform = heroLabelsList.classList.contains('hidden') ? 'rotate(-90deg)' : 'rotate(0deg)';
+      }
+    });
+  }
+</script>
+
+</body></html>

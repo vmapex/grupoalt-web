@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Grupo ALT - Layout Preview</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+          colors: {
+            brand: {
+              gold: '#CCA000',
+              'gold-light': '#E0B82E',
+              'gold-pale': '#F5E6A3',
+              dark: '#0F0F14',
+              darker: '#0A0A0F'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+    .sidebar { width: 280px; }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .beautiful-shadow {
+      box-shadow: 0px 0px 0px 1px rgba(0,0,0,0.06), 0px 1px 1px -0.5px rgba(0,0,0,0.06), 0px 3px 3px -1.5px rgba(0,0,0,0.06), 0px 6px 6px -3px rgba(0,0,0,0.06), 0px 12px 12px -6px rgba(0,0,0,0.06), 0px 24px 24px -12px rgba(0,0,0,0.06);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgb(63 63 70 / 0.5); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgb(82 82 91 / 0.7); }
+    /* Gold accent line animation */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .gold-shimmer {
+      background: linear-gradient(90deg, #CCA000 0%, #E0B82E 25%, #F5E6A3 50%, #E0B82E 75%, #CCA000 100%);
+      background-size: 200% 100%;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="antialiased bg-zinc-950 text-zinc-100 h-screen overflow-hidden">
+
+<div class="flex h-screen">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SIDEBAR                                 -->
+  <!-- ═══════════════════════════════════════ -->
+  <aside class="sidebar flex flex-col bg-zinc-900 border-r border-zinc-800 relative overflow-hidden flex-shrink-0">
+
+    <!-- Gold accent top line -->
+    <div class="h-[2px] gold-shimmer flex-shrink-0"></div>
+
+    <!-- Account Header -->
+    <div class="flex items-center justify-between border-b border-zinc-800 p-5">
+      <button class="flex gap-2 beautiful-shadow hover:bg-zinc-800 transition-all text-sm font-medium bg-zinc-800 border-zinc-700 border rounded-xl py-2.5 px-4 items-center">
+        <i data-lucide="building-2" class="w-4 h-4 text-brand-gold"></i>
+        <span class="text-zinc-100">Grupo ALT</span>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-500"></i>
+      </button>
+      <div class="relative">
+        <div class="w-10 h-10 beautiful-shadow bg-gradient-to-br from-brand-gold to-brand-gold-light border-2 border-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 text-xs font-bold">VM</div>
+        <div class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-zinc-900"></div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="px-4 pt-4">
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"></i>
+        <input
+          type="text"
+          placeholder="Buscar..."
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 pl-9 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold transition-colors"
+        />
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 overflow-y-auto scroll-hide select-none text-sm pt-4 px-2">
+
+      <!-- Principal -->
+      <button onclick="toggleSection('sec-principal')" class="w-full px-4 mb-2 cursor-pointer hover:opacity-80 transition-opacity">
+        <span class="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="sec-principal-icon"></i>
+          Principal
+        </span>
+      </button>
+      <div id="sec-principal" class="overflow-hidden transition-all duration-200" style="max-height:500px">
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-100 rounded-xl beautiful-shadow mb-0.5" href="#">
+          <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
+          <span class="font-medium">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i>
+          <span>Indicadores</span>
+          <span class="ml-auto bg-brand-gold/20 text-brand-gold-light text-xs px-2 py-0.5 rounded-full font-medium">5</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+          <span>Documentos</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="calendar-check" class="w-[18px] h-[18px]"></i>
+          <span>Fechamento</span>
+        </a>
+      </div>
+
+      <!-- Financeiro -->
+      <button onclick="toggleSection('sec-financeiro')" class="w-full px-4 mt-5 mb-2 cursor-pointer hover:opacity-80 transition-opacity">
+        <span class="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="sec-financeiro-icon"></i>
+          Financeiro
+        </span>
+      </button>
+      <div id="sec-financeiro" class="overflow-hidden transition-all duration-200" style="max-height:500px">
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="receipt" class="w-[18px] h-[18px]"></i>
+          <span>Contas a Pagar</span>
+          <span class="ml-auto text-xs text-zinc-500">18</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="wallet" class="w-[18px] h-[18px]"></i>
+          <span>Contas a Receber</span>
+          <span class="ml-auto text-xs text-zinc-500">7</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="landmark" class="w-[18px] h-[18px]"></i>
+          <span>Extrato</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="trending-up" class="w-[18px] h-[18px]"></i>
+          <span>Fluxo de Caixa</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="git-compare" class="w-[18px] h-[18px]"></i>
+          <span>Conciliacao</span>
+        </a>
+      </div>
+
+      <!-- Grupo -->
+      <button onclick="toggleSection('sec-grupo')" class="w-full px-4 mt-5 mb-2 cursor-pointer hover:opacity-80 transition-opacity">
+        <span class="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="sec-grupo-icon"></i>
+          Grupo
+        </span>
+      </button>
+      <div id="sec-grupo" class="overflow-hidden transition-all duration-200" style="max-height:500px">
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="network" class="w-[18px] h-[18px]"></i>
+          <span>Estrutura</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors mb-0.5" href="#">
+          <i data-lucide="layers" class="w-[18px] h-[18px]"></i>
+          <span>Segmentacao</span>
+        </a>
+      </div>
+
+      <!-- Empresas -->
+      <button onclick="toggleSection('sec-empresas')" class="w-full px-4 mt-5 mb-2 cursor-pointer hover:opacity-80 transition-opacity">
+        <span class="text-zinc-500 uppercase text-xs tracking-wider font-medium flex items-center gap-2">
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="sec-empresas-icon"></i>
+          Empresas
+          <i data-lucide="plus" class="w-3.5 h-3.5 ml-auto hover:bg-zinc-800 rounded p-0.5 transition-colors cursor-pointer" onclick="event.stopPropagation()"></i>
+        </span>
+      </button>
+      <div id="sec-empresas" class="overflow-hidden transition-all duration-200" style="max-height:500px">
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-brand-gold"></span>
+          <span class="text-sm">ALT Transportes</span>
+          <span class="ml-auto text-xs text-zinc-500">Principal</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span class="text-sm">ALT Agro</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-4 py-2.5 mx-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="text-sm">ALT Logistica</span>
+        </button>
+      </div>
+
+    </nav>
+
+    <!-- Settings / Admin -->
+    <div class="border-t border-zinc-800 px-2 py-3">
+      <a class="flex items-center gap-3 px-4 py-2.5 mx-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl transition-colors text-sm" href="#">
+        <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+        <span>Administracao</span>
+      </a>
+    </div>
+
+    <!-- Gold bottom line -->
+    <div class="h-[2px] gold-shimmer flex-shrink-0"></div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- MAIN AREA                               -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm flex-shrink-0">
+      <!-- Breadcrumb -->
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-zinc-500">Portal</span>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-600"></i>
+        <span class="text-zinc-100 font-medium">Dashboard</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Notification Bell -->
+        <button class="relative p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+          <span class="absolute top-1 right-1 w-4 h-4 bg-brand-gold text-zinc-900 text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+        </button>
+        <!-- Help -->
+        <button class="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all">
+          <i data-lucide="help-circle" class="w-[18px] h-[18px]"></i>
+        </button>
+
+        <div class="w-px h-6 bg-zinc-800"></div>
+
+        <!-- User -->
+        <button class="flex items-center gap-2.5 py-1.5 px-2 rounded-xl hover:bg-zinc-800 transition-all">
+          <div class="w-8 h-8 bg-gradient-to-br from-brand-gold to-brand-gold-light rounded-xl flex items-center justify-center text-zinc-900 text-xs font-bold beautiful-shadow">VM</div>
+          <div class="text-left">
+            <div class="text-sm font-medium text-zinc-200 leading-tight">Vinicius M.</div>
+            <div class="text-xs text-zinc-500 leading-tight">Administrador</div>
+          </div>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-zinc-500"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══ CONTENT ═══ -->
+    <main class="flex-1 overflow-y-auto p-6 bg-zinc-950">
+
+      <!-- Page Header -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-semibold text-white tracking-tight mb-1">Dashboard</h1>
+            <p class="text-sm text-zinc-400">Visao geral das operacoes do Grupo ALT</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button class="flex items-center gap-2 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-zinc-700 transition-all beautiful-shadow">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              Exportar
+            </button>
+            <button class="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-brand-gold-light text-zinc-900 rounded-xl px-4 py-2.5 text-sm font-bold hover:from-brand-gold-light hover:to-brand-gold transition-all beautiful-shadow">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              Novo Lancamento
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-zinc-700 transition-all group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Faturamento</span>
+            <div class="w-8 h-8 rounded-lg bg-brand-gold/10 flex items-center justify-center">
+              <i data-lucide="dollar-sign" class="w-4 h-4 text-brand-gold"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white mb-1">R$ 4,2M</div>
+          <div class="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+            +12.5% vs mes anterior
+          </div>
+        </div>
+        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-zinc-700 transition-all group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Viagens</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <i data-lucide="truck" class="w-4 h-4 text-blue-400"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white mb-1">1.847</div>
+          <div class="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+            +8.3% vs mes anterior
+          </div>
+        </div>
+        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-zinc-700 transition-all group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Frota Ativa</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <i data-lucide="car" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white mb-1">312</div>
+          <div class="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+            +3 veiculos
+          </div>
+        </div>
+        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-zinc-700 transition-all group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Pendencias</span>
+            <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white mb-1">R$ 287K</div>
+          <div class="flex items-center gap-1 text-xs text-red-400 font-medium">
+            <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
+            +4.1% vs mes anterior
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Activity Panel (2 cols) -->
+        <div class="col-span-2 bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-base font-semibold text-white">Atividade Recente</h3>
+            <a href="#" class="text-xs text-brand-gold-light hover:text-brand-gold font-medium transition-colors">Ver tudo</a>
+          </div>
+
+          <div class="space-y-0">
+            <!-- Item 1 -->
+            <div class="flex items-start gap-3 py-4 border-b border-zinc-800/50">
+              <div class="w-8 h-8 rounded-lg bg-brand-gold/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i data-lucide="file-check" class="w-4 h-4 text-brand-gold"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-zinc-200"><span class="font-medium text-white">Nota Fiscal #48291</span> emitida para Cargill S.A.</p>
+                <p class="text-xs text-zinc-500 mt-1">Hoje, 14:32</p>
+              </div>
+              <span class="flex-shrink-0 bg-emerald-500/10 text-emerald-400 text-xs px-2 py-1 rounded-lg font-medium">Concluido</span>
+            </div>
+            <!-- Item 2 -->
+            <div class="flex items-start gap-3 py-4 border-b border-zinc-800/50">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i data-lucide="git-compare" class="w-4 h-4 text-blue-400"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-zinc-200"><span class="font-medium text-white">Conciliacao bancaria</span> finalizada - Banco do Brasil</p>
+                <p class="text-xs text-zinc-500 mt-1">Hoje, 11:15</p>
+              </div>
+              <span class="flex-shrink-0 bg-emerald-500/10 text-emerald-400 text-xs px-2 py-1 rounded-lg font-medium">Concluido</span>
+            </div>
+            <!-- Item 3 -->
+            <div class="flex items-start gap-3 py-4 border-b border-zinc-800/50">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-zinc-200"><span class="font-medium text-white">Fechamento contabil</span> de Fevereiro aprovado</p>
+                <p class="text-xs text-zinc-500 mt-1">Ontem, 17:48</p>
+              </div>
+              <span class="flex-shrink-0 bg-brand-gold/10 text-brand-gold-light text-xs px-2 py-1 rounded-lg font-medium">Aprovado</span>
+            </div>
+            <!-- Item 4 -->
+            <div class="flex items-start gap-3 py-4">
+              <div class="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i data-lucide="file-edit" class="w-4 h-4 text-zinc-400"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-zinc-200"><span class="font-medium text-white">Politica de Compliance</span> atualizada por Joao Silva</p>
+                <p class="text-xs text-zinc-500 mt-1">Ontem, 09:20</p>
+              </div>
+              <span class="flex-shrink-0 bg-zinc-800 text-zinc-400 text-xs px-2 py-1 rounded-lg font-medium">Atualizado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="space-y-4">
+          <!-- Quick Actions -->
+          <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+            <h3 class="text-base font-semibold text-white mb-5">Acesso Rapido</h3>
+            <div class="space-y-1">
+              <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
+                <div class="w-9 h-9 rounded-lg bg-brand-gold/10 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="file-plus" class="w-4 h-4 text-brand-gold"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Novo Documento</div>
+                  <div class="text-xs text-zinc-500">Criar ou enviar</div>
+                </div>
+              </a>
+              <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
+                <div class="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="receipt" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Contas a Pagar</div>
+                  <div class="text-xs text-zinc-500">18 pendentes</div>
+                </div>
+              </a>
+              <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
+                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Indicadores</div>
+                  <div class="text-xs text-zinc-500">Painel de KPIs</div>
+                </div>
+              </a>
+              <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
+                <div class="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="users" class="w-4 h-4 text-zinc-400"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Equipe</div>
+                  <div class="text-xs text-zinc-500">Estrutura do grupo</div>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <!-- Calendar Widget -->
+          <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-semibold text-white">Proximos Vencimentos</h3>
+              <span class="text-xs text-zinc-500">Marco 2026</span>
+            </div>
+            <div class="space-y-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col items-center justify-center flex-shrink-0">
+                  <span class="text-[10px] text-red-400 font-medium leading-none">ABR</span>
+                  <span class="text-sm text-red-300 font-bold leading-tight">02</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-zinc-200 font-medium truncate">IPVA Frota SP</p>
+                  <p class="text-xs text-zinc-500">R$ 45.200</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex flex-col items-center justify-center flex-shrink-0">
+                  <span class="text-[10px] text-brand-gold font-medium leading-none">ABR</span>
+                  <span class="text-sm text-brand-gold-light font-bold leading-tight">05</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-zinc-200 font-medium truncate">Folha Pagamento</p>
+                  <p class="text-xs text-zinc-500">R$ 892.000</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex flex-col items-center justify-center flex-shrink-0">
+                  <span class="text-[10px] text-zinc-400 font-medium leading-none">ABR</span>
+                  <span class="text-sm text-zinc-300 font-bold leading-tight">10</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-zinc-200 font-medium truncate">Seguro Frota</p>
+                  <p class="text-xs text-zinc-500">R$ 128.500</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+</div>
+
+<script>
+  // Initialize Lucide icons
+  lucide.createIcons();
+
+  // Toggle sidebar sections
+  function toggleSection(sectionId) {
+    const content = document.getElementById(sectionId);
+    const icon = document.getElementById(sectionId + '-icon');
+    if (!content) return;
+
+    const isOpen = content.style.maxHeight !== '0px';
+    if (isOpen) {
+      content.style.maxHeight = '0px';
+      content.style.opacity = '0';
+      if (icon) icon.style.transform = 'rotate(-90deg)';
+    } else {
+      content.style.maxHeight = '500px';
+      content.style.opacity = '1';
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+  }
+</script>
+</body>
+</html>

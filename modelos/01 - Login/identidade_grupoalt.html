@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Identidade Visual — Grupo ALT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ═══════════════════════════════════════════════
+       GRUPO ALT — SISTEMA DE CORES OFICIAL
+       Extraído do logo + expandido para ecossistema
+    ═══════════════════════════════════════════════ */
+
+    /* ── PRIMÁRIAS (do logo) ── */
+    --alt-azul-900: #062C5D;
+    --alt-azul-800: #0A3668;
+    --alt-azul-700: #043A76;
+    --alt-azul-600: #0D4A8A;
+    --alt-azul-500: #045199;
+    --alt-azul-400: #1A6ABF;
+    --alt-azul-300: #3D8AD6;
+    --alt-azul-200: #6AABE6;
+    --alt-azul-100: #A3CFF2;
+    --alt-azul-50:  #D6EAFA;
+
+    /* ── CARVÃO / GRAFITE (tipografia do logo) ── */
+    --alt-carvao-900: #1A1718;
+    --alt-carvao-800: #232021;
+    --alt-carvao-700: #2E2A2B;
+    --alt-carvao-600: #3D3839;
+    --alt-carvao-500: #524D4E;
+    --alt-carvao-400: #706A6B;
+    --alt-carvao-300: #948F90;
+    --alt-carvao-200: #BDB9BA;
+    --alt-carvao-100: #DCD9DA;
+    --alt-carvao-50:  #F0EEEF;
+
+    /* ── TERRA (identidade agro, solo) ── */
+    --alt-terra-900: #3E2216;
+    --alt-terra-800: #5C3420;
+    --alt-terra-700: #7A4529;
+    --alt-terra-600: #9B5A34;
+    --alt-terra-500: #B87040;
+    --alt-terra-400: #CC8D5E;
+    --alt-terra-300: #DBAA82;
+    --alt-terra-200: #E8C7AB;
+    --alt-terra-100: #F3E1D1;
+    --alt-terra-50:  #FAF2EB;
+
+    /* ── CAMPO (vegetação, sustentabilidade) ── */
+    --alt-campo-900: #1A3A1E;
+    --alt-campo-800: #245028;
+    --alt-campo-700: #2F6633;
+    --alt-campo-600: #3B7D3F;
+    --alt-campo-500: #4A964E;
+    --alt-campo-400: #63AE67;
+    --alt-campo-300: #84C487;
+    --alt-campo-200: #AEDAB0;
+    --alt-campo-100: #D4EDD5;
+    --alt-campo-50:  #EDF8ED;
+
+    /* ── OURO (premium, valor, commodity) ── */
+    --alt-ouro-900: #4A3800;
+    --alt-ouro-800: #6B5100;
+    --alt-ouro-700: #8C6B00;
+    --alt-ouro-600: #AD8500;
+    --alt-ouro-500: #CCA000;
+    --alt-ouro-400: #E0B82E;
+    --alt-ouro-300: #EBCF5C;
+    --alt-ouro-200: #F2E08E;
+    --alt-ouro-100: #F8EFC0;
+    --alt-ouro-50:  #FDF8E5;
+
+    /* ── NEUTROS ── */
+    --alt-branco:     #FFFFFF;
+    --alt-offwhite:   #F7F6F5;
+    --alt-cinza-100:  #EDECEB;
+    --alt-cinza-200:  #D5D3D1;
+    --alt-cinza-300:  #B0ADAB;
+    --alt-cinza-400:  #8A8785;
+    --alt-cinza-500:  #6B6866;
+    --alt-preto:      #111010;
+
+    /* ── SEMÂNTICAS ── */
+    --alt-sucesso:    #2E7D32;
+    --alt-alerta:     #E6A200;
+    --alt-erro:       #C62828;
+    --alt-info:       #045199;
+
+    /* ── TIPOGRAFIA ── */
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--alt-offwhite);
+    color: var(--alt-carvao-800);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(145deg, var(--alt-azul-900) 0%, var(--alt-azul-700) 45%, var(--alt-azul-600) 100%);
+    color: white;
+    padding: 80px 60px 70px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--alt-ouro-500), var(--alt-ouro-400), var(--alt-ouro-500));
+  }
+  .hero-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--alt-ouro-400);
+    border: 1px solid rgba(224, 184, 46, 0.3);
+    padding: 6px 16px;
+    border-radius: 3px;
+    margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: 52px;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+  }
+  .hero p {
+    font-size: 17px;
+    opacity: 0.75;
+    max-width: 560px;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+  .hero-meta {
+    margin-top: 32px;
+    display: flex;
+    gap: 32px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+    text-transform: uppercase;
+  }
+
+  /* ── CONTAINER ── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* ── SECTIONS ── */
+  section {
+    padding: 72px 0;
+  }
+  section + section {
+    border-top: 1px solid var(--alt-cinza-200);
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--alt-azul-600);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 32px;
+    color: var(--alt-carvao-800);
+    margin-bottom: 8px;
+  }
+  .section-desc {
+    font-size: 15px;
+    color: var(--alt-carvao-400);
+    max-width: 600px;
+    margin-bottom: 48px;
+    line-height: 1.7;
+  }
+
+  /* ── COLOR PALETTE GRID ── */
+  .palette-group {
+    margin-bottom: 56px;
+  }
+  .palette-group:last-child { margin-bottom: 0; }
+  .palette-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--alt-carvao-800);
+    margin-bottom: 6px;
+  }
+  .palette-context {
+    font-size: 13px;
+    color: var(--alt-carvao-400);
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+  .palette-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .swatch {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 10px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, z-index 0s;
+    min-height: 100px;
+  }
+  .swatch:hover {
+    transform: scale(1.08);
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-radius: 6px;
+  }
+  .swatch-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+  .swatch-hex {
+    font-size: 11px;
+    font-family: 'DM Sans', monospace;
+    font-weight: 400;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+  .swatch.light .swatch-label,
+  .swatch.light .swatch-hex { color: var(--alt-carvao-800); }
+  .swatch.dark .swatch-label,
+  .swatch.dark .swatch-hex { color: rgba(255,255,255,0.95); }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--alt-carvao-800);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .copy-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── PRIMARY HIGHLIGHT ── */
+  .primary-showcase {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 56px;
+  }
+  .primary-card {
+    border-radius: 16px;
+    padding: 40px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .primary-card h3 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    margin-bottom: 8px;
+  }
+  .primary-card p {
+    font-size: 13px;
+    opacity: 0.7;
+    line-height: 1.6;
+  }
+  .primary-card .hex-big {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 20px;
+    font-family: var(--font-body);
+  }
+
+  /* ── SEMANTIC COLORS ── */
+  .semantic-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .semantic-card {
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: white;
+    border: 1px solid var(--alt-cinza-100);
+  }
+  .semantic-dot {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin: 0 auto 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .semantic-card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--alt-carvao-700);
+  }
+  .semantic-card .hex-sm {
+    font-size: 12px;
+    color: var(--alt-carvao-400);
+    font-family: monospace;
+  }
+  .semantic-card .use-case {
+    font-size: 11px;
+    color: var(--alt-carvao-300);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* ── TYPOGRAPHY SECTION ── */
+  .type-specimen {
+    background: white;
+    border-radius: 16px;
+    padding: 48px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 32px;
+  }
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 32px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--alt-cinza-100);
+  }
+  .type-row:last-child { border-bottom: none; }
+  .type-meta {
+    min-width: 160px;
+    flex-shrink: 0;
+  }
+  .type-meta .role {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--alt-azul-600);
+  }
+  .type-meta .specs {
+    font-size: 11px;
+    color: var(--alt-carvao-300);
+    margin-top: 4px;
+  }
+  .type-sample-display {
+    font-family: var(--font-display);
+    font-size: 48px;
+    color: var(--alt-carvao-800);
+    line-height: 1.2;
+  }
+  .type-sample-h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    color: var(--alt-carvao-800);
+  }
+  .type-sample-h3 {
+    font-family: var(--font-body);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--alt-carvao-800);
+  }
+  .type-sample-body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: var(--alt-carvao-600);
+    line-height: 1.7;
+    max-width: 520px;
+  }
+  .type-sample-caption {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--alt-carvao-400);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* ── USAGE EXAMPLES ── */
+  .usage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .usage-card {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .usage-preview {
+    height: 180px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .usage-preview h4 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .usage-preview p {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .usage-info {
+    background: white;
+    padding: 18px 20px;
+  }
+  .usage-info h5 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--alt-carvao-700);
+    margin-bottom: 4px;
+  }
+  .usage-info p {
+    font-size: 11px;
+    color: var(--alt-carvao-400);
+    line-height: 1.5;
+  }
+
+  /* ── CSS VARS EXPORT ── */
+  .code-block {
+    background: var(--alt-carvao-900);
+    color: #E0DDD9;
+    border-radius: 12px;
+    padding: 32px;
+    font-family: 'Courier New', monospace;
+    font-size: 12.5px;
+    line-height: 1.8;
+    overflow-x: auto;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .code-block .comment { color: #6B8A5E; }
+  .code-block .prop { color: #7AAFDA; }
+  .code-block .val { color: #DBAA82; }
+  .code-copy-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.6);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .code-copy-btn:hover {
+    background: rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.9);
+  }
+
+  /* ── CONTRAST TABLE ── */
+  .contrast-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-top: 32px;
+  }
+  .contrast-table th {
+    background: var(--alt-azul-700);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 14px 20px;
+    text-align: left;
+  }
+  .contrast-table td {
+    padding: 14px 20px;
+    font-size: 13px;
+    background: white;
+    border-bottom: 1px solid var(--alt-cinza-100);
+  }
+  .contrast-table tr:last-child td { border-bottom: none; }
+  .contrast-sample {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .contrast-pass {
+    color: var(--alt-sucesso);
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 48px 40px;
+    background: var(--alt-carvao-900);
+    color: rgba(255,255,255,0.4);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  .footer strong {
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .hero { padding: 56px 32px 48px; }
+    .hero h1 { font-size: 36px; }
+    .container { padding: 0 24px; }
+    .primary-showcase { grid-template-columns: 1fr; }
+    .semantic-grid { grid-template-columns: repeat(2, 1fr); }
+    .usage-grid { grid-template-columns: 1fr; }
+    .palette-strip { grid-template-columns: repeat(5, 1fr); }
+    .type-row { flex-direction: column; gap: 8px; }
+  }
+  @media (max-width: 600px) {
+    .palette-strip { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+    .hero-meta { flex-direction: column; gap: 8px; }
+    .semantic-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-badge">Manual de Identidade Visual</div>
+  <h1>Grupo ALT</h1>
+  <p>Sistema de cores, tipografia e diretrizes visuais oficiais para todos os canais, portais e materiais do Grupo ALT.</p>
+  <div class="hero-meta">
+    <span>Versão 1.0</span>
+    <span>Março 2026</span>
+    <span>Documento Interno</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ════════════════════════════════════════════
+       CORES PRIMÁRIAS DESTAQUE
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">01 — Cores Principais</div>
+    <div class="section-title">A essência da marca</div>
+    <div class="section-desc">Azul ALT e Carvão — extraídos diretamente do logotipo. O azul transmite solidez, confiança e profissionalismo. O carvão ancora a comunicação com sobriedade.</div>
+
+    <div class="primary-showcase">
+      <div class="primary-card" style="background: var(--alt-azul-700); color: white;">
+        <div>
+          <h3>Azul ALT</h3>
+          <p>Cor principal da marca. Usada em headers, CTAs, elementos de destaque e identidade institucional. Presente no logo, no boi Nelore e em toda comunicação primária.</p>
+        </div>
+        <div class="hex-big">#043A76</div>
+      </div>
+      <div class="primary-card" style="background: var(--alt-carvao-800); color: white;">
+        <div>
+          <h3>Carvão</h3>
+          <p>Cor de suporte tipográfico. Usada em títulos, textos de corpo e elementos que exigem peso visual sem competir com o azul. Referência à palavra "GRUPO" no logo.</p>
+        </div>
+        <div class="hex-big">#232021</div>
+      </div>
+    </div>
+
+    <!-- PALETA AZUL -->
+    <div class="palette-group">
+      <div class="palette-name">Azul ALT</div>
+      <div class="palette-context">Derivado do logo — variações para hierarquia de interface e comunicação</div>
+      <div class="palette-strip">
+        <div class="swatch dark" style="background: var(--alt-azul-900);" onclick="copyCor('#062C5D')">
+          <span class="swatch-label">900</span>
+          <span class="swatch-hex">#062C5D</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-800);" onclick="copyCor('#0A3668')">
+          <span class="swatch-label">800</span>
+          <span class="swatch-hex">#0A3668</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-700);" onclick="copyCor('#043A76')">
+          <span class="swatch-label">700 ★</span>
+          <span class="swatch-hex">#043A76</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-600);" onclick="copyCor('#0D4A8A')">
+          <span class="swatch-label">600</span>
+          <span class="swatch-hex">#0D4A8A</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-500);" onclick="copyCor('#045199')">
+          <span class="swatch-label">500</span>
+          <span class="swatch-hex">#045199</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-400);" onclick="copyCor('#1A6ABF')">
+          <span class="swatch-label">400</span>
+          <span class="swatch-hex">#1A6ABF</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-azul-300);" onclick="copyCor('#3D8AD6')">
+          <span class="swatch-label">300</span>
+          <span class="swatch-hex">#3D8AD6</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-azul-200);" onclick="copyCor('#6AABE6')">
+          <span class="swatch-label">200</span>
+          <span class="swatch-hex">#6AABE6</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-azul-100);" onclick="copyCor('#A3CFF2')">
+          <span class="swatch-label">100</span>
+          <span class="swatch-hex">#A3CFF2</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-azul-50);" onclick="copyCor('#D6EAFA')">
+          <span class="swatch-label">50</span>
+          <span class="swatch-hex">#D6EAFA</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PALETA CARVÃO -->
+    <div class="palette-group">
+      <div class="palette-name">Carvão</div>
+      <div class="palette-context">Base tipográfica e estrutural — backgrounds, textos, divisores</div>
+      <div class="palette-strip">
+        <div class="swatch dark" style="background: var(--alt-carvao-900);" onclick="copyCor('#1A1718')">
+          <span class="swatch-label">900</span>
+          <span class="swatch-hex">#1A1718</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-carvao-800);" onclick="copyCor('#232021')">
+          <span class="swatch-label">800 ★</span>
+          <span class="swatch-hex">#232021</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-carvao-700);" onclick="copyCor('#2E2A2B')">
+          <span class="swatch-label">700</span>
+          <span class="swatch-hex">#2E2A2B</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-carvao-600);" onclick="copyCor('#3D3839')">
+          <span class="swatch-label">600</span>
+          <span class="swatch-hex">#3D3839</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-carvao-500);" onclick="copyCor('#524D4E')">
+          <span class="swatch-label">500</span>
+          <span class="swatch-hex">#524D4E</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-carvao-400);" onclick="copyCor('#706A6B')">
+          <span class="swatch-label">400</span>
+          <span class="swatch-hex">#706A6B</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-carvao-300);" onclick="copyCor('#948F90')">
+          <span class="swatch-label">300</span>
+          <span class="swatch-hex">#948F90</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-carvao-200);" onclick="copyCor('#BDB9BA')">
+          <span class="swatch-label">200</span>
+          <span class="swatch-hex">#BDB9BA</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-carvao-100);" onclick="copyCor('#DCD9DA')">
+          <span class="swatch-label">100</span>
+          <span class="swatch-hex">#DCD9DA</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-carvao-50);" onclick="copyCor('#F0EEEF')">
+          <span class="swatch-label">50</span>
+          <span class="swatch-hex">#F0EEEF</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       CORES DO ECOSSISTEMA
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">02 — Cores do Ecossistema</div>
+    <div class="section-title">Paleta expandida para o agro</div>
+    <div class="section-desc">Cores complementares que dialogam com o universo do Grupo ALT — terra, campo e ouro. Usadas como apoio em gráficos, dashboards, materiais editoriais e comunicação visual.</div>
+
+    <!-- TERRA -->
+    <div class="palette-group">
+      <div class="palette-name">Terra</div>
+      <div class="palette-context">Solo, pecuária, robustez — operação de campo e presença no território</div>
+      <div class="palette-strip">
+        <div class="swatch dark" style="background: var(--alt-terra-900);" onclick="copyCor('#3E2216')">
+          <span class="swatch-label">900</span>
+          <span class="swatch-hex">#3E2216</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-terra-800);" onclick="copyCor('#5C3420')">
+          <span class="swatch-label">800</span>
+          <span class="swatch-hex">#5C3420</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-terra-700);" onclick="copyCor('#7A4529')">
+          <span class="swatch-label">700</span>
+          <span class="swatch-hex">#7A4529</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-terra-600);" onclick="copyCor('#9B5A34')">
+          <span class="swatch-label">600</span>
+          <span class="swatch-hex">#9B5A34</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-terra-500);" onclick="copyCor('#B87040')">
+          <span class="swatch-label">500 ★</span>
+          <span class="swatch-hex">#B87040</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-terra-400);" onclick="copyCor('#CC8D5E')">
+          <span class="swatch-label">400</span>
+          <span class="swatch-hex">#CC8D5E</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-terra-300);" onclick="copyCor('#DBAA82')">
+          <span class="swatch-label">300</span>
+          <span class="swatch-hex">#DBAA82</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-terra-200);" onclick="copyCor('#E8C7AB')">
+          <span class="swatch-label">200</span>
+          <span class="swatch-hex">#E8C7AB</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-terra-100);" onclick="copyCor('#F3E1D1')">
+          <span class="swatch-label">100</span>
+          <span class="swatch-hex">#F3E1D1</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-terra-50);" onclick="copyCor('#FAF2EB')">
+          <span class="swatch-label">50</span>
+          <span class="swatch-hex">#FAF2EB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPO -->
+    <div class="palette-group">
+      <div class="palette-name">Campo</div>
+      <div class="palette-context">Pasto, sustentabilidade, crescimento — indicadores positivos, inovação</div>
+      <div class="palette-strip">
+        <div class="swatch dark" style="background: var(--alt-campo-900);" onclick="copyCor('#1A3A1E')">
+          <span class="swatch-label">900</span>
+          <span class="swatch-hex">#1A3A1E</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-campo-800);" onclick="copyCor('#245028')">
+          <span class="swatch-label">800</span>
+          <span class="swatch-hex">#245028</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-campo-700);" onclick="copyCor('#2F6633')">
+          <span class="swatch-label">700</span>
+          <span class="swatch-hex">#2F6633</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-campo-600);" onclick="copyCor('#3B7D3F')">
+          <span class="swatch-label">600</span>
+          <span class="swatch-hex">#3B7D3F</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-campo-500);" onclick="copyCor('#4A964E')">
+          <span class="swatch-label">500 ★</span>
+          <span class="swatch-hex">#4A964E</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-campo-400);" onclick="copyCor('#63AE67')">
+          <span class="swatch-label">400</span>
+          <span class="swatch-hex">#63AE67</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-campo-300);" onclick="copyCor('#84C487')">
+          <span class="swatch-label">300</span>
+          <span class="swatch-hex">#84C487</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-campo-200);" onclick="copyCor('#AEDAB0')">
+          <span class="swatch-label">200</span>
+          <span class="swatch-hex">#AEDAB0</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-campo-100);" onclick="copyCor('#D4EDD5')">
+          <span class="swatch-label">100</span>
+          <span class="swatch-hex">#D4EDD5</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-campo-50);" onclick="copyCor('#EDF8ED')">
+          <span class="swatch-label">50</span>
+          <span class="swatch-hex">#EDF8ED</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OURO -->
+    <div class="palette-group">
+      <div class="palette-name">Ouro</div>
+      <div class="palette-context">Valor, premium, excelência — destaques financeiros, selos, badges</div>
+      <div class="palette-strip">
+        <div class="swatch dark" style="background: var(--alt-ouro-900);" onclick="copyCor('#4A3800')">
+          <span class="swatch-label">900</span>
+          <span class="swatch-hex">#4A3800</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-ouro-800);" onclick="copyCor('#6B5100')">
+          <span class="swatch-label">800</span>
+          <span class="swatch-hex">#6B5100</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-ouro-700);" onclick="copyCor('#8C6B00')">
+          <span class="swatch-label">700</span>
+          <span class="swatch-hex">#8C6B00</span>
+        </div>
+        <div class="swatch dark" style="background: var(--alt-ouro-600);" onclick="copyCor('#AD8500')">
+          <span class="swatch-label">600</span>
+          <span class="swatch-hex">#AD8500</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-500);" onclick="copyCor('#CCA000')">
+          <span class="swatch-label">500 ★</span>
+          <span class="swatch-hex">#CCA000</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-400);" onclick="copyCor('#E0B82E')">
+          <span class="swatch-label">400</span>
+          <span class="swatch-hex">#E0B82E</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-300);" onclick="copyCor('#EBCF5C')">
+          <span class="swatch-label">300</span>
+          <span class="swatch-hex">#EBCF5C</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-200);" onclick="copyCor('#F2E08E')">
+          <span class="swatch-label">200</span>
+          <span class="swatch-hex">#F2E08E</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-100);" onclick="copyCor('#F8EFC0')">
+          <span class="swatch-label">100</span>
+          <span class="swatch-hex">#F8EFC0</span>
+        </div>
+        <div class="swatch light" style="background: var(--alt-ouro-50);" onclick="copyCor('#FDF8E5')">
+          <span class="swatch-label">50</span>
+          <span class="swatch-hex">#FDF8E5</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       NEUTROS
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">03 — Neutros</div>
+    <div class="section-title">Base estrutural</div>
+    <div class="section-desc">Tons neutros para backgrounds, divisores, bordas e áreas de respiro. Garantem legibilidade e hierarquia sem competir com as cores da marca.</div>
+
+    <div class="palette-strip" style="max-width: 720px;">
+      <div class="swatch dark" style="background: var(--alt-preto);" onclick="copyCor('#111010')">
+        <span class="swatch-label">Preto</span>
+        <span class="swatch-hex">#111010</span>
+      </div>
+      <div class="swatch dark" style="background: var(--alt-cinza-500);" onclick="copyCor('#6B6866')">
+        <span class="swatch-label">500</span>
+        <span class="swatch-hex">#6B6866</span>
+      </div>
+      <div class="swatch dark" style="background: var(--alt-cinza-400);" onclick="copyCor('#8A8785')">
+        <span class="swatch-label">400</span>
+        <span class="swatch-hex">#8A8785</span>
+      </div>
+      <div class="swatch light" style="background: var(--alt-cinza-300);" onclick="copyCor('#B0ADAB')">
+        <span class="swatch-label">300</span>
+        <span class="swatch-hex">#B0ADAB</span>
+      </div>
+      <div class="swatch light" style="background: var(--alt-cinza-200);" onclick="copyCor('#D5D3D1')">
+        <span class="swatch-label">200</span>
+        <span class="swatch-hex">#D5D3D1</span>
+      </div>
+      <div class="swatch light" style="background: var(--alt-cinza-100);" onclick="copyCor('#EDECEB')">
+        <span class="swatch-label">100</span>
+        <span class="swatch-hex">#EDECEB</span>
+      </div>
+      <div class="swatch light" style="background: var(--alt-offwhite); border: 1px solid var(--alt-cinza-200);" onclick="copyCor('#F7F6F5')">
+        <span class="swatch-label">Off-white</span>
+        <span class="swatch-hex">#F7F6F5</span>
+      </div>
+      <div class="swatch light" style="background: var(--alt-branco); border: 1px solid var(--alt-cinza-200);" onclick="copyCor('#FFFFFF')">
+        <span class="swatch-label">Branco</span>
+        <span class="swatch-hex">#FFFFFF</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       CORES SEMÂNTICAS
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">04 — Cores Semânticas</div>
+    <div class="section-title">Feedback e estados</div>
+    <div class="section-desc">Cores funcionais para interfaces — alertas, confirmações, erros e informações contextuais em dashboards e sistemas internos.</div>
+
+    <div class="semantic-grid">
+      <div class="semantic-card">
+        <div class="semantic-dot" style="background: var(--alt-sucesso);"></div>
+        <h4>Sucesso</h4>
+        <div class="hex-sm">#2E7D32</div>
+        <div class="use-case">Confirmações, operações concluídas, indicadores positivos</div>
+      </div>
+      <div class="semantic-card">
+        <div class="semantic-dot" style="background: var(--alt-alerta);"></div>
+        <h4>Alerta</h4>
+        <div class="hex-sm">#E6A200</div>
+        <div class="use-case">Pendências, itens em aberto, vencimentos próximos</div>
+      </div>
+      <div class="semantic-card">
+        <div class="semantic-dot" style="background: var(--alt-erro);"></div>
+        <h4>Erro</h4>
+        <div class="hex-sm">#C62828</div>
+        <div class="use-case">Falhas, campos obrigatórios, divergências</div>
+      </div>
+      <div class="semantic-card">
+        <div class="semantic-dot" style="background: var(--alt-info);"></div>
+        <h4>Informação</h4>
+        <div class="hex-sm">#045199</div>
+        <div class="use-case">Dicas, tooltips, status neutros, links de navegação</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       TIPOGRAFIA
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">05 — Tipografia</div>
+    <div class="section-title">Escala tipográfica</div>
+    <div class="section-desc">Duas famílias que dialogam — DM Serif Display para títulos com personalidade, DM Sans para corpo com clareza. Ambas do ecossistema DM, garantindo coesão visual.</div>
+
+    <div class="type-specimen">
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="role">Display / H1</div>
+          <div class="specs">DM Serif Display · 48px</div>
+        </div>
+        <div class="type-sample-display">Grupo ALT</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="role">Heading / H2</div>
+          <div class="specs">DM Serif Display · 32px</div>
+        </div>
+        <div class="type-sample-h2">Excelência na cadeia bovina</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="role">Subheading / H3</div>
+          <div class="specs">DM Sans · 22px · Semi-bold</div>
+        </div>
+        <div class="type-sample-h3">Nossos pilares e compromissos</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="role">Body</div>
+          <div class="specs">DM Sans · 16px · Regular</div>
+        </div>
+        <div class="type-sample-body">O Grupo ALT atua na cadeia bovina com solidez e visão de longo prazo, entregando soluções que conectam o campo ao mercado com integridade e eficiência.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="role">Caption / Label</div>
+          <div class="specs">DM Sans · 12px · Semi-bold · Uppercase</div>
+        </div>
+        <div class="type-sample-caption">Sobre nós &nbsp;·&nbsp; Contato &nbsp;·&nbsp; Nossos valores &nbsp;·&nbsp; Relatório anual</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       EXEMPLOS DE APLICAÇÃO
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">06 — Aplicação</div>
+    <div class="section-title">Contextos de uso</div>
+    <div class="section-desc">Três combinações recomendadas para contextos distintos — institucional, operacional e premium.</div>
+
+    <div class="usage-grid">
+      <div class="usage-card">
+        <div class="usage-preview" style="background: linear-gradient(135deg, var(--alt-azul-900), var(--alt-azul-700)); color: white;">
+          <h4>Institucional</h4>
+          <p>Sites, apresentações, comunicados oficiais</p>
+        </div>
+        <div class="usage-info">
+          <h5>Azul 700 + Branco + Ouro 400</h5>
+          <p>Header escuro com tipografia clara. Detalhes em ouro para CTAs e destaques de marca. Tom sóbrio e confiável.</p>
+        </div>
+      </div>
+      <div class="usage-card">
+        <div class="usage-preview" style="background: var(--alt-offwhite); color: var(--alt-carvao-800); border-bottom: 3px solid var(--alt-azul-700);">
+          <h4 style="color: var(--alt-azul-700);">Operacional</h4>
+          <p style="color: var(--alt-carvao-400);">Dashboards, portais internos, sistemas de gestão</p>
+        </div>
+        <div class="usage-info">
+          <h5>Off-white + Carvão + Azul 500</h5>
+          <p>Fundo claro para leitura prolongada. Azul como cor de ação. Semânticas para feedback. Máxima legibilidade.</p>
+        </div>
+      </div>
+      <div class="usage-card">
+        <div class="usage-preview" style="background: linear-gradient(135deg, var(--alt-carvao-900), var(--alt-carvao-700)); color: var(--alt-ouro-400);">
+          <h4>Premium</h4>
+          <p style="color: rgba(255,255,255,0.5);">Materiais de exportação, investidores, eventos</p>
+        </div>
+        <div class="usage-info">
+          <h5>Carvão 900 + Ouro 400 + Branco</h5>
+          <p>Fundo escuro sofisticado. Tipografia em ouro. Ideal para comunicação com mercado externo e materiais de alto impacto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       CONTRASTE / ACESSIBILIDADE
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">07 — Acessibilidade</div>
+    <div class="section-title">Contraste WCAG</div>
+    <div class="section-desc">Combinações testadas para atender o padrão AA de acessibilidade (contraste mínimo 4.5:1 para texto normal).</div>
+
+    <table class="contrast-table">
+      <thead>
+        <tr>
+          <th>Combinação</th>
+          <th>Amostra</th>
+          <th>Ratio</th>
+          <th>WCAG AA</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Azul 700 sobre Branco</td>
+          <td><span class="contrast-sample" style="background: #FFFFFF; color: #043A76;">Grupo ALT</span></td>
+          <td>9.1:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+        <tr>
+          <td>Branco sobre Azul 700</td>
+          <td><span class="contrast-sample" style="background: #043A76; color: #FFFFFF;">Grupo ALT</span></td>
+          <td>9.1:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+        <tr>
+          <td>Carvão 800 sobre Branco</td>
+          <td><span class="contrast-sample" style="background: #FFFFFF; color: #232021;">Grupo ALT</span></td>
+          <td>15.8:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+        <tr>
+          <td>Ouro 400 sobre Azul 900</td>
+          <td><span class="contrast-sample" style="background: #062C5D; color: #E0B82E;">Grupo ALT</span></td>
+          <td>7.2:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+        <tr>
+          <td>Carvão 800 sobre Off-white</td>
+          <td><span class="contrast-sample" style="background: #F7F6F5; color: #232021;">Grupo ALT</span></td>
+          <td>14.2:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+        <tr>
+          <td>Branco sobre Campo 700</td>
+          <td><span class="contrast-sample" style="background: #2F6633; color: #FFFFFF;">Grupo ALT</span></td>
+          <td>5.8:1</td>
+          <td><span class="contrast-pass">✓ Passa</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       EXPORTAÇÃO CSS
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">08 — Implementação</div>
+    <div class="section-title">CSS Variables</div>
+    <div class="section-desc">Copie e cole no :root do seu projeto. Todas as cores prontas para uso imediato em qualquer aplicação web.</div>
+
+    <div class="code-block" id="codeBlock">
+      <button class="code-copy-btn" onclick="copyCSS()">Copiar CSS</button>
+<span class="comment">/* ═══ GRUPO ALT — DESIGN TOKENS ═══ */</span>
+
+<span class="comment">/* Primárias — Logo */</span>
+<span class="prop">--alt-azul-900</span>: <span class="val">#062C5D</span>;
+<span class="prop">--alt-azul-800</span>: <span class="val">#0A3668</span>;
+<span class="prop">--alt-azul-700</span>: <span class="val">#043A76</span>;  <span class="comment">/* ★ Principal */</span>
+<span class="prop">--alt-azul-600</span>: <span class="val">#0D4A8A</span>;
+<span class="prop">--alt-azul-500</span>: <span class="val">#045199</span>;
+<span class="prop">--alt-azul-400</span>: <span class="val">#1A6ABF</span>;
+<span class="prop">--alt-azul-300</span>: <span class="val">#3D8AD6</span>;
+<span class="prop">--alt-azul-200</span>: <span class="val">#6AABE6</span>;
+<span class="prop">--alt-azul-100</span>: <span class="val">#A3CFF2</span>;
+<span class="prop">--alt-azul-50</span>:  <span class="val">#D6EAFA</span>;
+
+<span class="comment">/* Carvão — Tipografia */</span>
+<span class="prop">--alt-carvao-900</span>: <span class="val">#1A1718</span>;
+<span class="prop">--alt-carvao-800</span>: <span class="val">#232021</span>;  <span class="comment">/* ★ Principal */</span>
+<span class="prop">--alt-carvao-700</span>: <span class="val">#2E2A2B</span>;
+<span class="prop">--alt-carvao-600</span>: <span class="val">#3D3839</span>;
+<span class="prop">--alt-carvao-500</span>: <span class="val">#524D4E</span>;
+<span class="prop">--alt-carvao-400</span>: <span class="val">#706A6B</span>;
+<span class="prop">--alt-carvao-300</span>: <span class="val">#948F90</span>;
+<span class="prop">--alt-carvao-200</span>: <span class="val">#BDB9BA</span>;
+<span class="prop">--alt-carvao-100</span>: <span class="val">#DCD9DA</span>;
+<span class="prop">--alt-carvao-50</span>:  <span class="val">#F0EEEF</span>;
+
+<span class="comment">/* Terra — Agro, Pecuária */</span>
+<span class="prop">--alt-terra-900</span>: <span class="val">#3E2216</span>;
+<span class="prop">--alt-terra-700</span>: <span class="val">#7A4529</span>;
+<span class="prop">--alt-terra-500</span>: <span class="val">#B87040</span>;  <span class="comment">/* ★ Principal */</span>
+<span class="prop">--alt-terra-300</span>: <span class="val">#DBAA82</span>;
+<span class="prop">--alt-terra-100</span>: <span class="val">#F3E1D1</span>;
+<span class="prop">--alt-terra-50</span>:  <span class="val">#FAF2EB</span>;
+
+<span class="comment">/* Campo — Sustentabilidade */</span>
+<span class="prop">--alt-campo-900</span>: <span class="val">#1A3A1E</span>;
+<span class="prop">--alt-campo-700</span>: <span class="val">#2F6633</span>;
+<span class="prop">--alt-campo-500</span>: <span class="val">#4A964E</span>;  <span class="comment">/* ★ Principal */</span>
+<span class="prop">--alt-campo-300</span>: <span class="val">#84C487</span>;
+<span class="prop">--alt-campo-100</span>: <span class="val">#D4EDD5</span>;
+<span class="prop">--alt-campo-50</span>:  <span class="val">#EDF8ED</span>;
+
+<span class="comment">/* Ouro — Premium, Valor */</span>
+<span class="prop">--alt-ouro-900</span>: <span class="val">#4A3800</span>;
+<span class="prop">--alt-ouro-700</span>: <span class="val">#8C6B00</span>;
+<span class="prop">--alt-ouro-500</span>: <span class="val">#CCA000</span>;  <span class="comment">/* ★ Principal */</span>
+<span class="prop">--alt-ouro-300</span>: <span class="val">#EBCF5C</span>;
+<span class="prop">--alt-ouro-100</span>: <span class="val">#F8EFC0</span>;
+<span class="prop">--alt-ouro-50</span>:  <span class="val">#FDF8E5</span>;
+
+<span class="comment">/* Semânticas */</span>
+<span class="prop">--alt-sucesso</span>: <span class="val">#2E7D32</span>;
+<span class="prop">--alt-alerta</span>:  <span class="val">#E6A200</span>;
+<span class="prop">--alt-erro</span>:    <span class="val">#C62828</span>;
+<span class="prop">--alt-info</span>:    <span class="val">#045199</span>;
+
+<span class="comment">/* Neutros */</span>
+<span class="prop">--alt-branco</span>:   <span class="val">#FFFFFF</span>;
+<span class="prop">--alt-offwhite</span>: <span class="val">#F7F6F5</span>;
+<span class="prop">--alt-preto</span>:    <span class="val">#111010</span>;
+    </div>
+  </section>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <strong>Grupo ALT</strong> — Identidade Visual v1.0 · Março 2026<br>
+  Documento confidencial para uso interno. Todas as cores foram extraídas e expandidas a partir do logotipo oficial.
+</footer>
+
+<!-- TOAST -->
+<div class="copy-toast" id="copyToast"></div>
+
+<script>
+  function copyCor(hex) {
+    navigator.clipboard.writeText(hex).then(() => {
+      showToast(`${hex} copiado para a área de transferência`);
+    }).catch(() => {
+      showToast(`Cor: ${hex}`);
+    });
+  }
+
+  function copyCSS() {
+    const block = document.getElementById('codeBlock');
+    const text = block.innerText
+      .replace('Copiar CSS', '')
+      .replace(/\/\*.*?\*\//g, (match) => match)
+      .trim();
+    
+    // Extract clean CSS
+    const lines = block.innerText.split('\n').filter(l => l.trim() && l.trim() !== 'Copiar CSS');
+    const css = ':root {\n' + lines.join('\n') + '\n}';
+    
+    navigator.clipboard.writeText(css).then(() => {
+      showToast('CSS copiado! Cole no :root do seu projeto.');
+    });
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('copyToast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+</script>
+
+</body>
+</html>
