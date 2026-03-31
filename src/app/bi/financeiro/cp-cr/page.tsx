@@ -74,6 +74,8 @@ export default function PageCPCR() {
       if (f === 'grupo') return getCatNivel2(r.cat)
       if (f === 'vcto') return parseDMY(r.vcto)
       if (f === 'valor') return r.valor
+      if (f === 'valor_pago') return r.valor_pago
+      if (f === 'valor_aberto') return r.valor_aberto
       if (f === 'status') return r.status
       return 0
     }),
@@ -247,6 +249,7 @@ export default function PageCPCR() {
                   { value: 'TODOS', label: 'Todos' },
                   { value: 'A VENCER', label: 'A Vencer' },
                   { value: 'ATRASADO', label: 'Atrasado' },
+                  { value: 'PARCIAL', label: 'Parcial' },
                   { value: isCP ? 'PAGO' : 'RECEBIDO', label: isCP ? 'Pago' : 'Recebido' },
                 ].map((opt) => (
                   <button
@@ -302,6 +305,8 @@ export default function PageCPCR() {
                         <SortHeader label="Grupo" field="grupo" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
+                        <SortHeader label="Pago" field="valor_pago" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
+                        <SortHeader label="Em Aberto" field="valor_aberto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
                       </tr>
                     </thead>
@@ -312,7 +317,9 @@ export default function PageCPCR() {
                           <td className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate" style={{ color: t.muted }} title={`${r.cat} — ${getCatDesc(r.cat)}`}>{getCatDesc(r.cat)}</td>
                           <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
                           <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{isCP ? '−' : '+'} {fmtBRL(r.valor)}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_aberto > 0 ? t.red : t.mutedDim }}>{r.valor_aberto > 0 ? fmtBRL(r.valor_aberto) : '—'}</td>
                           <td className="px-3.5 py-2.5 text-center"><Badge status={r.status} /></td>
                         </tr>
                       ))}

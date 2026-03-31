@@ -58,8 +58,9 @@ export interface LancamentoAPI {
   data_pagamento: string | null
   valor: number
   valor_pago: number | null
+  valor_aberto: number | null
   saldo: number
-  status: string  // A VENCER | ATRASADO | PAGO | RECEBIDO
+  status: string  // A VENCER | ATRASADO | PAGO | RECEBIDO | PARCIAL
   numero_documento: string | null
   observacao: string | null
 }

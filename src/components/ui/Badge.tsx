@@ -11,6 +11,7 @@ export function Badge({ status }: BadgeProps) {
     'A VENCER': { bg: t.greenDim, color: t.green, label: 'A Vencer' },
     ATRASADO: { bg: t.redDim, color: t.red, label: 'Atrasado' },
     PAGO: { bg: `${t.muted}15`, color: t.muted, label: 'Pago' },
+    PARCIAL: { bg: t.amberDim, color: t.amber, label: 'Parcial' },
     'A RECEBER': { bg: t.blueDim, color: t.blue, label: 'A Receber' },
     RECEBIDO: { bg: `${t.muted}15`, color: t.muted, label: 'Recebido' },
   }

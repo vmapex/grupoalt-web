@@ -82,6 +82,8 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
   return items.map((l) => ({
     fav: l.favorecido,
     valor: l.valor,
+    valor_pago: l.valor_pago ?? 0,
+    valor_aberto: l.valor_aberto ?? l.saldo,
     vcto: l.data_vcto || '',
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
