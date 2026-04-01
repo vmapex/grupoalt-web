@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function ConciliacaoPage() {
   const ref = useRef<HTMLDivElement>(null)
-  const { token, empresaAtiva } = useAuthStore()
+  const { empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
@@ -187,21 +187,20 @@ body {
 <script>
 const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
-const TOKEN = '${token}';
+
 
 const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2)); };
 
 async function loadConciliacao() {
   try {
-    const headers = { Authorization: 'Bearer ' + TOKEN };
     // Busca extrato dos últimos 5 meses + saldos (chamada única, backend lê do PostgreSQL)
     const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
     const dFim = new Date();
     const dIni = new Date(); dIni.setMonth(dIni.getMonth() - 5); dIni.setDate(1);
 
     const [extratoRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fmtDMY(dIni) + '&dt_fim=' + fmtDMY(dFim), { headers }),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers })
+      fetch(API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fmtDMY(dIni) + '&dt_fim=' + fmtDMY(dFim), { credentials: 'include' }),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { credentials: 'include' })
     ]);
 
     const extratoJson = await extratoRes.json();
@@ -375,7 +374,7 @@ loadConciliacao();
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [empresaAtiva, token])
+  }, [empresaAtiva])
 
   return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }

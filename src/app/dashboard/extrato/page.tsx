@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function ExtratoPage() {
   const ref = useRef<HTMLDivElement>(null)
-  const { token, empresaAtiva } = useAuthStore()
+  const { empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
@@ -183,7 +183,7 @@ td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-
 <script>
 const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
-const TOKEN = '${token}';
+
 
 const fmt = v => Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtK = v => {const a=Math.abs(v);return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2));};
@@ -223,7 +223,7 @@ async function loadData() {
   try {
     const url = API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fetchIni + '&dt_fim=' + fetchFim;
     console.log('[Extrato] Fetching:', url);
-    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) throw new Error('Erro HTTP ' + res.status);
     const data = await res.json();
     RAW = Array.isArray(data) ? data : (data.dados || data.lancamentos || data.items || []);
@@ -296,7 +296,7 @@ async function loadSaldos() {
   try {
     const res = await fetch(
       API + '/empresas/' + EMPRESA + '/saldos',
-      { headers: { Authorization: 'Bearer ' + TOKEN } }
+      { credentials: 'include' }
     );
     if (!res.ok) throw new Error('Saldos HTTP ' + res.status);
     const data = await res.json();
@@ -453,7 +453,7 @@ loadData();
     iframe.srcdoc = html
     ref.current!.innerHTML = ''
     ref.current!.appendChild(iframe)
-  }, [empresaAtiva, token])
+  }, [empresaAtiva])
 
   return <div ref={ref} style={{ width: '100%', height: 'calc(100vh - 48px)' }} />
 }

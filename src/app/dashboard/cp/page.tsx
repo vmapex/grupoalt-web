@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function CpCrPage() {
   const ref = useRef<HTMLDivElement>(null)
-  const { token, empresaAtiva } = useAuthStore()
+  const { empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
@@ -236,7 +236,7 @@ Chart.register(ChartDataLabels);
 
 const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
-const TOKEN = '${token}';
+
 
 const fmt  = v => Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2)); };
@@ -248,8 +248,8 @@ let CR_DATA = [];
 async function loadFromAPI() {
   try {
     const [cpRes, crRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers: { Authorization: 'Bearer ' + TOKEN } }),
-      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers: { Authorization: 'Bearer ' + TOKEN } })
+      fetch(API + '/empresas/' + EMPRESA + '/cp', { credentials: 'include' }),
+      fetch(API + '/empresas/' + EMPRESA + '/cr', { credentials: 'include' })
     ]);
     const cpJson = await cpRes.json();
     const crJson = await crRes.json();
@@ -842,7 +842,7 @@ loadFromAPI();
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [empresaAtiva, token])
+  }, [empresaAtiva])
 
   return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }

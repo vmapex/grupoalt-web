@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function CaixaPage() {
   const ref = useRef<HTMLIFrameElement>(null)
-  const { token, empresaAtiva } = useAuthStore()
+  const { empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
@@ -125,7 +125,6 @@ Chart.register(ChartDataLabels);
 
 const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
-const TOKEN = '${token}';
 
 // ── FORMATTERS ───────────────────────────────────────────────────────────────
 function fmtBR(v) {
@@ -186,7 +185,7 @@ var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','
 // ── FETCH ────────────────────────────────────────────────────────────────────
 async function fetchData(dtIni, dtFim) {
   var url = API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + encodeURIComponent(dtIni) + '&dt_fim=' + encodeURIComponent(dtFim);
-  var res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+  var res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error('Erro HTTP ' + res.status);
   var data = await res.json();
   return Array.isArray(data) ? data : (data.dados || data.lancamentos || []);
@@ -453,7 +452,7 @@ function applyFilter() {
 </html>`
 
     ref.current.srcdoc = html
-  }, [token, empresaAtiva])
+  }, [empresaAtiva])
 
   return (
     <iframe

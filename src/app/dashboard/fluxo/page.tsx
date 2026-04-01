@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function FluxoPage() {
   const ref = useRef<HTMLDivElement>(null)
-  const { token, empresaAtiva } = useAuthStore()
+  const { empresaAtiva } = useAuthStore()
 
   useEffect(() => {
     if (!ref.current) return
@@ -270,7 +270,7 @@ Chart.register(ChartDataLabels);
 
 const API = '${apiUrl}';
 const EMPRESA = ${empresaId};
-const TOKEN = '${token}';
+
 
 const fmtK=v=>{const a=Math.abs(v);return(v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2));};
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -313,11 +313,10 @@ let CR_ALL=[];
 
 async function loadFromAPI() {
   try {
-    const headers = { Authorization: 'Bearer ' + TOKEN };
     const [cpRes, crRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/cp', { headers }).catch(() => null),
-      fetch(API + '/empresas/' + EMPRESA + '/cr', { headers }).catch(() => null),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { headers }).catch(() => null)
+      fetch(API + '/empresas/' + EMPRESA + '/cp', { credentials: 'include' }).catch(() => null),
+      fetch(API + '/empresas/' + EMPRESA + '/cr', { credentials: 'include' }).catch(() => null),
+      fetch(API + '/empresas/' + EMPRESA + '/saldos', { credentials: 'include' }).catch(() => null)
     ]);
 
     const parseJson = async (res) => {
@@ -549,7 +548,7 @@ loadFromAPI();
     iframe.srcdoc = html
     ref.current.innerHTML = ''
     ref.current.appendChild(iframe)
-  }, [empresaAtiva, token])
+  }, [empresaAtiva])
 
   return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
 }
