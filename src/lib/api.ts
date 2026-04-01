@@ -14,10 +14,17 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Não interceptar a própria request de refresh (evita loop infinito)
+    if (originalRequest.url?.includes('/auth/refresh')) {
+      return Promise.reject(error)
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          pendingRequests.push(() => resolve(api(originalRequest)))
+        return new Promise((resolve, reject) => {
+          pendingRequests.push(() => {
+            resolve(api(originalRequest))
+          })
         })
       }
 
