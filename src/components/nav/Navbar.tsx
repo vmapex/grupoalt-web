@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import api from '@/lib/api'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, getLogo } from '@/store/empresaStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
@@ -12,7 +13,7 @@ import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
 import { ExportButton } from '@/components/export/ExportButton'
 import { ExportModal } from '@/components/export/ExportModal'
-import { Settings, Building2, ArrowLeft } from 'lucide-react'
+import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const NAV = [
   { href: '/bi/financeiro', label: 'Home', exact: true },
@@ -31,6 +32,19 @@ export function Navbar() {
   const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
   const logo = getLogo(active, t.isDark)
   const [exportOpen, setExportOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      // Flush API cache for this empresa
+      await api.post(`/empresas/1/cache/flush`).catch(() => {})
+      // Reload page
+      window.location.reload()
+    } catch {
+      window.location.reload()
+    }
+  }, [])
 
   // Carrega projetos/unidades sempre que a empresa muda
   useEffect(() => {
@@ -104,6 +118,20 @@ export function Navbar() {
 
       {/* Right: Controls */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
+          style={{
+            background: t.surface,
+            border: `1px solid ${t.border}`,
+            color: t.muted,
+          }}
+          title="Atualizar dados"
+          aria-label="Atualizar dados"
+        >
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+        </button>
         <ExportButton onClick={() => setExportOpen(true)} />
         <DateRangePicker />
         <NotificationBell />
