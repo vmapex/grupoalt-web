@@ -1,19 +1,19 @@
 import { create } from 'zustand'
-import Cookies from 'js-cookie'
+import api from '@/lib/api'
 
 interface Empresa { id: number; nome: string; cnpj?: string; slug?: string }
 interface Grupo { id: number; nome: string }
 interface Permissao { modulo: string; acao: string; empresa_id?: number | null }
 
 interface AuthState {
-  token: string | null
+  isAuthenticated: boolean
   user: { id: number; nome: string; email: string; is_admin: boolean } | null
   empresas: Empresa[]
   empresaAtiva: Empresa | null
   grupos: Grupo[]
   grupoAtivo: Grupo | null
   permissoes: Permissao[]
-  setAuth: (token: string, user: AuthState['user'], empresas: Empresa[], grupos?: Grupo[], permissoes?: Permissao[]) => void
+  setAuth: (user: AuthState['user'], empresas: Empresa[], grupos?: Grupo[], permissoes?: Permissao[]) => void
   setEmpresaAtiva: (e: Empresa) => void
   setGrupoAtivo: (g: Grupo) => void
   hasPermissao: (modulo: string, acao: string, empresaId?: number) => boolean
@@ -21,7 +21,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: typeof window !== 'undefined' ? Cookies.get('access_token') || null : null,
+  isAuthenticated: false,
   user: null,
   empresas: [],
   empresaAtiva: null,
@@ -29,10 +29,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   grupoAtivo: null,
   permissoes: [],
 
-  setAuth: (token, user, empresas, grupos = [], permissoes = []) => {
-    Cookies.set('access_token', token, { expires: 1 })
+  setAuth: (user, empresas, grupos = [], permissoes = []) => {
     set({
-      token, user, empresas,
+      isAuthenticated: true,
+      user, empresas,
       empresaAtiva: empresas[0] || null,
       grupos,
       grupoAtivo: grupos[0] || null,
@@ -54,10 +54,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    Cookies.remove('access_token')
-    Cookies.remove('refresh_token')
+    api.post('/auth/logout').catch(() => {})
     set({
-      token: null, user: null, empresas: [], empresaAtiva: null,
+      isAuthenticated: false, user: null, empresas: [], empresaAtiva: null,
       grupos: [], grupoAtivo: null, permissoes: [],
     })
   },

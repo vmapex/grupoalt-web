@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import Cookies from 'js-cookie'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useAuthStore } from '@/store/authStore'
@@ -20,22 +19,15 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
   const setAuth = useAuthStore((s) => s.setAuth)
   const user = useAuthStore((s) => s.user)
 
-  // Auth guard: verify token and load user data
+  // Auth guard: verify session via httpOnly cookie
   useEffect(() => {
-    const token = Cookies.get('access_token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
-    // Load user data if not already loaded (e.g. navigated directly to /bi)
     if (!user) {
       api.get('/auth/me')
         .then((res) => {
           const d = res.data
-          setAuth(token, d.user || d, d.empresas || [], d.grupos || [], d.permissoes || [])
+          setAuth(d.user || d, d.empresas || [], d.grupos || [], d.permissoes || [])
         })
         .catch(() => {
-          Cookies.remove('access_token')
           router.push('/login')
         })
     }

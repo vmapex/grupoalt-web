@@ -10,16 +10,11 @@ import api from '@/lib/api'
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { token, user, setAuth } = useAuthStore()
+  const { user, setAuth } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
     Promise.all([
       api.get('/auth/me'),
       api.get('/notificacoes/contagem').catch(() => ({ data: { nao_lidas: 0 } })),
@@ -28,7 +23,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         const data = meRes.data
         if (!data || !data.id) throw new Error('Resposta inválida do /auth/me')
         setAuth(
-          token,
           { id: data.id, nome: data.nome, email: data.email, is_admin: data.is_admin },
           data.empresas || [],
           data.grupos || [],

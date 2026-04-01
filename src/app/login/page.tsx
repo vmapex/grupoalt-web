@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
-import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
 
 export default function LoginPage() {
@@ -21,20 +20,15 @@ export default function LoginPage() {
       const form = new URLSearchParams()
       form.append('username', email)
       form.append('password', password)
-      const { data } = await api.post('/auth/login', form, {
+      await api.post('/auth/login', form, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
 
-      const token = data.access_token
-      Cookies.set('access_token', token, { expires: 1 })
-
-      const meRes = await api.get('/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      // Cookie httpOnly setado pelo backend — buscar dados do usuário
+      const meRes = await api.get('/auth/me')
       const me = meRes.data
 
       setAuth(
-        token,
         { id: me.id, nome: me.nome, email: me.email, is_admin: me.is_admin },
         me.empresas || [],
         me.grupos || [],
