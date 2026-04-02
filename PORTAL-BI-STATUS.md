@@ -1,6 +1,6 @@
 # ALT MAX Portal BI — Status Completo e Pendências
 
-## Data: 02/04/2026
+## Data: 02/04/2026 (atualizado sessão tarde)
 
 ---
 
@@ -11,7 +11,7 @@
 - **altmax-api**: FastAPI + PostgreSQL + Redis (Railway)
 
 ### Branches
-- Desenvolvimento: `claude/continue-previous-work-yAok1`
+- Desenvolvimento: `claude/continue-bi-portal-VY133`
 - Produção: `main` (auto-deploy)
 
 ### URLs
@@ -32,6 +32,7 @@
 - [x] Cache Redis com TTLs otimizados (10min extrato/CP/CR, 1h dimensões)
 - [x] Rate limit Omie tratado (REDUNDANT → retry com delay)
 - [x] Sidebar: Portal BI dentro de Indicadores
+- [x] HTML entities decode nos nomes de favorecidos (CP, CR, Extrato)
 
 ### 2.2 Extrato Bancário ✅ 100%
 - [x] Endpoint `ListarExtrato` da Omie (não ListarLancCC)
@@ -47,15 +48,16 @@
 - [x] Cards de banco só mostram com saldo ≠ 0
 - [x] Loading spinner + empty state
 - [x] Resposta da API: `{saldo_inicial, saldo_atual, lancamentos, saldos_contas}`
+- [x] Campo `categoria` com fallback: cCodCategoria → cCodCateg → cDesCategoria
 
-### 2.3 Contas a Pagar / Receber ✅ ~95%
+### 2.3 Contas a Pagar / Receber ✅ ~97%
 - [x] Favorecido resolvido via ListarClientes + ConsultarCliente
 - [x] Status correto: usa `status_titulo` string + `valor_pago` dos movimentos
 - [x] Prioridade: `valor_pago` dos movimentos > `status_titulo` string
 - [x] Status PARCIAL (quando 1% < pago/valor < 99.5%)
 - [x] Liquidação parcial via ListarMovimentos (`financas/mf/`)
 - [x] Colunas: Favorecido, Grupo (nivel2 DRE), Vencimento, Valor, Pago, Em Aberto, Dt. Pgto, Status
-- [x] Linha expandível com pagamentos realizados (Data, Valor, Desconto, Juros, Multa)
+- [x] Linha expandível com pagamento consolidado (Data, Valor, Desconto, Juros, Multa)
 - [x] Filtro por status (botões: Todos, A Vencer, Atrasado, Parcial, Pago)
 - [x] Prazo médio ponderado (emissão → vencimento × valor)
 - [x] Rankings por favorecido e categoria com % corretos
@@ -63,6 +65,11 @@
 - [x] Conectado ao dateRangeStore
 - [x] Paginação: 500 registros por página
 - [x] Período default: 180 dias atrás + 90 dias futuro
+- [x] _get_movement_map() corrigido: nValPago sempre individual, soma simples
+- [x] HTML entities decode (html.unescape) em todos os nomes
+- [x] Endpoint /baixas via ListarMovimentos (consolidado com desc/juros/multa)
+- [x] ExpandedPayments: componente com fetch on-demand ao expandir linha
+- [ ] **LIMITAÇÃO OMIE**: Baixas individuais (pagamentos parciais) não disponíveis via API. ListarMovimentos retorna 1 registro consolidado por título. ConsultarContaPagar não tem campo `baixas`. A tela do Omie mostra os pagamentos individuais mas a API não expõe.
 
 ### 2.4 Dashboard Executivo ✅ 100%
 - [x] DRE calculado do extrato via planoContas.ts
@@ -84,13 +91,16 @@
 - [x] Saldo atual do extrato (sem filtro de datas)
 - [x] Horizonte selecionável (+7d, +30d, +60d, +90d)
 
-### 2.6 Caixa Realizado ✅ 95%
+### 2.6 Caixa Realizado ✅ 100%
 - [x] KPIs reais do extrato (Saldo Inicial, Entradas, Saídas, Saldo Final, EBT2)
 - [x] DRE sidebar com dados reais (10 linhas DRE)
 - [x] Footer DRE real (Resultado, MC, EBT1, NOP, TDCF%)
 - [x] Drill-down Q/M/W com dados reais do extrato via caixaBuilder.ts
 - [x] ChartGrid recebe dados via props (não importa mocks internamente)
-- [ ] **PENDENTE**: DetailPanel ainda usa mock para breakdown por cliente
+- [x] DetailPanel com dados reais: rankings por favorecido + composição por categoria
+- [x] buildBreakdownByFavorecido(): agrupa lançamentos por favorecido/grupo DRE
+- [x] buildBreakdownByCategoria(): agrupa por nivel2 do planoContas com %
+- [x] Pareto chart com dados reais
 
 ### 2.7 Conciliação 🔶 50%
 - [x] Hooks conectados (useConcilMovimentacao, useConcilResumo, useConcilDia)
@@ -108,31 +118,25 @@
 
 ## 3. PENDÊNCIAS E BUGS CONHECIDOS
 
-### 3.1 CP/CR — Pagamentos Parciais (BUG ATIVO)
-**Problema**: O `ListarMovimentos` da Omie pode retornar `nValPago` como acumulado (running total) ou individual por movimento. A lógica tenta detectar, mas nem sempre funciona corretamente.
+### 3.1 CP/CR — Baixas Individuais (LIMITAÇÃO API)
+**Status**: Investigado exaustivamente, sem solução via API.
 
-**Arquivo**: `altmax-api/app/routers/cp_cr.py` → `_get_movement_map()`
+**Investigação realizada**:
+- `ConsultarContaPagar`: não tem campo `baixas`, `pagamento` = null
+- `ListarMovimentos`: retorna 1 registro consolidado por título
+- `PesquisarLancamento`: método não existe
+- `ListarPagamentos`, `ObterPagamentos`, `ListarBaixas`: métodos não existem
+- `ConsultarMovFinanceiro`, `ObterMovFinanceiro`: métodos não existem
+- Cross-ref com extrato bancário: funciona mas perde rastreabilidade de desconto/juros/multa
 
-**Comportamento esperado**:
-- Título R$ 1M com 2 pagamentos (R$ 500K + R$ 250K)
-- Deveria mostrar: Pago = 750K, Em Aberto = 250K, Status = Parcial
-- Expandir: 2 linhas com datas e valores individuais
+**Solução atual**: Exibir pagamento consolidado do ListarMovimentos com data, valor, desconto, juros e multa totais. Dados corretos, apenas sem o breakdown por pagamento individual.
 
-**Possível solução**: Investigar o formato exato do `ListarMovimentos` — se `nValPago` é acumulado, usar delta. Se individual, somar. O Power Query do usuário usa `res[nValPago]` diretamente.
-
-**Referência Power Query do usuário** (está no chat): O Power Query faz `cTpLancamento = "CP"` e `nRegPorPagina = 500`, depois expande `detalhes.nCodTitulo` para amarrar com o CP/CR.
-
-### 3.2 Mock Data ainda presente em alguns fallbacks
-**Arquivos afetados**:
-- `src/app/bi/financeiro/cp-cr/page.tsx` — temporal data fallback removido (usa [])
-- `src/components/caixa/DetailPanel.tsx` — ainda importa mocks para breakdown
-- `src/app/bi/financeiro/conciliacao/page.tsx` — usa CONCIL_DATA como fallback
-
-### 3.3 Conciliação não validada com dados reais
+### 3.2 Conciliação não validada com dados reais
 Os endpoints `/conciliacao/calendario`, `/conciliacao/movimentacao`, `/conciliacao/dia/{data}` existem mas usam `ListarLancCC` que funciona diferente do `ListarExtrato`.
 
-### 3.4 Caracteres HTML entities
-Alguns nomes de favorecidos aparecem com `&amp;` em vez de `&` (ex: "M &amp; B CONSULTORIA"). Precisa decode no frontend ou API.
+### 3.3 Mock Data remanescente
+- `src/app/bi/financeiro/conciliacao/page.tsx` — usa CONCIL_DATA como fallback
+- `src/lib/mocks/` — arquivos de mock ainda existem como fallback
 
 ---
 
@@ -142,8 +146,10 @@ Alguns nomes de favorecidos aparecem com `&amp;` em vez de `&` (ex: "M &amp; B C
 |---|---|---|
 | `financas/extrato/` → `ListarExtrato` | `listar_extrato()` | Extrato com favorecido, natureza, saldo |
 | `financas/contapagar/` → `ListarContasPagar` | `listar_contas_pagar()` | CP |
+| `financas/contapagar/` → `ConsultarContaPagar` | `consultar_conta_pagar()` | Detalhes CP (sem baixas) |
 | `financas/contareceber/` → `ListarContasReceber` | `listar_contas_receber()` | CR |
-| `financas/mf/` → `ListarMovimentos` | `listar_movimentos("CP"/"CR")` | Liquidação parcial |
+| `financas/contareceber/` → `ConsultarContaReceber` | `consultar_conta_receber()` | Detalhes CR (sem baixas) |
+| `financas/mf/` → `ListarMovimentos` | `listar_movimentos("CP"/"CR")` | Liquidação (consolidado) |
 | `geral/clientes/` → `ListarClientes` | `listar_clientes()` | Nomes de clientes |
 | `geral/clientes/` → `ConsultarCliente` | `consultar_cliente(codigo)` | Nome individual |
 | `geral/contacorrente/` → `ListarContasCorrentes` | `listar_contas_correntes()` | Contas bancárias |
@@ -157,7 +163,7 @@ Alguns nomes de favorecidos aparecem com `&amp;` em vez de `&` (ex: "M &amp; B C
 ```
 src/
 ├── hooks/
-│   ├── useAPI.ts              # Hooks de API (useExtrato, useCP, useCR, etc.)
+│   ├── useAPI.ts              # Hooks de API (useExtrato, useCP, useCR, useBaixas, etc.)
 │   └── useEmpresaId.ts        # Bridge authStore ↔ empresaStore
 ├── store/
 │   ├── authStore.ts            # JWT, user, empresas, permissões
@@ -170,14 +176,14 @@ src/
 │   ├── types.ts                # Tipos da API (ExtratoAPI, LancamentoAPI, etc.)
 │   ├── transformers.ts         # API → componentes (transformExtrato, transformCPCR)
 │   ├── planoContas.ts          # Categorias Omie → DRE (nivel1, nivel2, grupoDRE)
-│   ├── caixaBuilder.ts         # Extrato → CaixaLevelData (Q/M/W drill-down)
+│   ├── caixaBuilder.ts         # Extrato → CaixaLevelData + breakdowns por favorecido/categoria
 │   ├── formatters.ts           # fmtBRL, fmtK, parseDMY
-│   └── mocks/                  # Dados mock (fallback)
+│   └── mocks/                  # Dados mock (fallback conciliação)
 ├── app/bi/financeiro/
 │   ├── layout.tsx              # BI Shell (navbar, chat, auth guard)
 │   ├── page.tsx                # Dashboard Executivo
 │   ├── extrato/page.tsx        # Extrato bancário
-│   ├── cp-cr/page.tsx          # Contas a Pagar/Receber
+│   ├── cp-cr/page.tsx          # Contas a Pagar/Receber + ExpandedPayments
 │   ├── fluxo/page.tsx          # Fluxo de Caixa
 │   ├── caixa/page.tsx          # Caixa Realizado
 │   └── conciliacao/page.tsx    # Conciliação
@@ -193,10 +199,10 @@ src/
 ```
 app/
 ├── services/
-│   └── omie_client.py          # Cliente async Omie (retry, rate limit)
+│   └── omie_client.py          # Cliente async Omie (retry, rate limit, consultar_conta_pagar/receber)
 ├── routers/
 │   ├── extrato.py              # /empresas/{id}/extrato + /saldos + cache flush
-│   ├── cp_cr.py                # /empresas/{id}/cp, /cr + movimentos + resumo
+│   ├── cp_cr.py                # /empresas/{id}/cp, /cr + /baixas + movimentos + resumo
 │   ├── fluxo_caixa.py          # /empresas/{id}/fluxo-caixa
 │   ├── conciliacao.py          # /empresas/{id}/conciliacao/*
 │   └── auth.py                 # /auth/login, /auth/me
@@ -217,8 +223,10 @@ app/
 | `client_names` | 3600s (1h) | Mapa código→nome de clientes |
 | `cp_{inicio}_{fim}` | 600s (10min) | Contas a pagar por período |
 | `cr_{inicio}_{fim}` | 600s (10min) | Contas a receber por período |
-| `movimentos_cp` | 600s (10min) | Movimentos CP (liquidação parcial) |
-| `movimentos_cr` | 600s (10min) | Movimentos CR (liquidação parcial) |
+| `movimentos_cp` | 600s (10min) | Movimentos CP (liquidação) |
+| `movimentos_cr` | 600s (10min) | Movimentos CR (liquidação) |
+| `baixas_cp_{codigo}` | 600s (10min) | Pagamentos de um título CP |
+| `baixas_cr_{codigo}` | 600s (10min) | Pagamentos de um título CR |
 
 **Flush manual**: `POST /empresas/{id}/cache/flush` (ou botão 🔄 na navbar)
 
@@ -258,6 +266,14 @@ EBT2 = EBT1 + RNOP - DNOP
 - `ListarLancCC` (`financas/contacorrentelancamentos/`): sem favorecido, formato diferente — **LEGADO**
 - `ListarExtrato` **NÃO suporta paginação** — chamada única por conta
 - `ListarExtrato` limite de ~90 dias por chamada — usar janelas
+
+### Limitação: Baixas Individuais da Omie
+- A API Omie não expõe pagamentos individuais (baixas) de um título
+- ConsultarContaPagar: sem campo `baixas`, `pagamento` = null
+- ListarMovimentos: 1 registro consolidado por título
+- Métodos testados e inexistentes: PesquisarLancamento, ListarPagamentos, ObterPagamentos, ListarBaixas, ConsultarMovFinanceiro, ObterMovFinanceiro
+- Cross-ref com extrato bancário funciona mas perde desconto/juros/multa
+- Solução: exibir consolidado do ListarMovimentos (com desc/juros/multa)
 
 ### Autenticação
 - Token JWT em cookie `access_token`
