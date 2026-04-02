@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "audit:bundle": "node scripts/check-bundle-secrets.js",
+    "build:secure": "next build && npm run audit:bundle",
     "start": "next start",
     "lint": "next lint"
   },
