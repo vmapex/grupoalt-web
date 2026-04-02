@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
-import { CAIXA_DATA, WEEKLY } from '@/lib/mocks/caixaData'
+import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 import { CATEGORIAS } from '@/lib/planoContas'
 import { buildQuarterly, buildMonthly, buildWeekly, buildBreakdownByFavorecido, buildBreakdownByCategoria } from '@/lib/caixaBuilder'
 import { fmtK, fmtBRL } from '@/lib/formatters'
@@ -41,10 +41,11 @@ export default function PageCaixa() {
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
 
   // Build level data from real extrato
-  const quarterlyData = useMemo(() => lancamentos.length ? buildQuarterly(lancamentos as any) : CAIXA_DATA.quarterly, [lancamentos])
-  const monthlyData = useMemo(() => lancamentos.length ? buildMonthly(lancamentos as any) : CAIXA_DATA.monthly, [lancamentos])
+  const EMPTY_LEVEL: CaixaLevelData = { labels: [], RB: [], TD: [], CV: [], CF: [], RN: [], DN: [] }
+  const quarterlyData = useMemo(() => lancamentos.length ? buildQuarterly(lancamentos as any) : EMPTY_LEVEL, [lancamentos])
+  const monthlyData = useMemo(() => lancamentos.length ? buildMonthly(lancamentos as any) : EMPTY_LEVEL, [lancamentos])
   const weeklyDataMap = useMemo(() => {
-    if (!lancamentos.length) return WEEKLY
+    if (!lancamentos.length) return {}
     const map: Record<string, ReturnType<typeof buildWeekly>> = {}
     for (const label of monthlyData.labels) {
       map[label] = buildWeekly(lancamentos as any, label)

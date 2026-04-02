@@ -8,7 +8,7 @@ import { SortHeader } from '@/components/ui/SortHeader'
 import { KPICard } from '@/components/ui/KPICard'
 import { fmtBRL, fmtK, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
-import { CONCIL_DATA, type ConcilEntry } from '@/lib/mocks/concilData'
+import type { ConcilEntry } from '@/lib/mocks/concilData'
 import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { transformConcilMovimento } from '@/lib/transformers'
@@ -36,33 +36,6 @@ const MONTHS: { year: number; month: number; label: string }[] = (() => {
 const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
 
 const BANK_FILTERS = ['Todos', 'Itau', 'Banco do Brasil', 'Bradesco', 'Santander'] as const
-
-// ---------- deterministic day entries ----------
-function genDayEntries(dateKey: string) {
-  const seedFn = (i: number) => Math.abs(Math.sin(i * 7919 + 104729) * 233280) % 1
-  const entry = CONCIL_DATA[dateKey]
-  if (!entry) return []
-
-  const descs = [
-    'PIX Recebido - Cargill', 'TED Enviada - Ipiranga', 'PAGTO Boleto - INSS',
-    'PIX Recebido - BRF', 'Transferencia - Folha', 'PAGTO DAS - Simples',
-    'PIX Recebido - Marfrig', 'TED Enviada - Shell', 'PAGTO Boleto - Aluguel',
-    'PIX Recebido - Beauvallet',
-  ]
-  const dateNum = dateKey.split('-').map(Number).reduce((a, b) => a * 100 + b, 0)
-  const results: { hora: string; desc: string; valor: number }[] = []
-  for (let i = 0; i < 10; i++) {
-    const s = seedFn(dateNum + i)
-    const h = 8 + Math.floor(s * 10)
-    const m = Math.floor(seedFn(dateNum + i + 100) * 60)
-    results.push({
-      hora: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-      desc: descs[i],
-      valor: Math.round((seedFn(dateNum + i + 200) - 0.35) * 30000 * 100) / 100,
-    })
-  }
-  return results
-}
 
 // ---------- CalendarMonth component ----------
 interface CalendarMonthProps {
@@ -182,7 +155,7 @@ export default function PageConciliacao() {
   // Use API data or fallback to mock
   const baseData: Record<string, ConcilEntry> = useMemo(() => {
     if (concilAPI?.length) return transformConcilMovimento(concilAPI)
-    return CONCIL_DATA
+    return {}
   }, [concilAPI])
 
   // --- filtered entries by bank ---
@@ -308,7 +281,7 @@ export default function PageConciliacao() {
         valor: l.valor,
       }))
     }
-    return genDayEntries(selectedDay)
+    return []
   }, [selectedDay, diaAPI])
 
   const handleSort = (field: string) => setSort((s) => toggleSort(s, field))

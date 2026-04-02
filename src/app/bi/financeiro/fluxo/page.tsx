@@ -12,7 +12,7 @@ import { KPICard } from '@/components/ui/KPICard'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
-import { mockCPFull as fallbackCP, mockCRFull as fallbackCR } from '@/lib/mocks/cpcrData'
+import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -47,8 +47,8 @@ export default function PageFluxo() {
   const { data: crRaw } = useCR(empresaId, { registros: 500 })
 
   // Use API data or fallback — SOMENTE títulos em aberto
-  const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : fallbackCP), [cpRaw])
-  const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : fallbackCR), [crRaw])
+  const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
+  const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []), [crRaw])
   const cpAberto = useMemo(() => cpData.filter((c) => c.status !== 'PAGO'), [cpData])
   const crAberto = useMemo(() => crData.filter((c) => c.status !== 'RECEBIDO'), [crData])
 

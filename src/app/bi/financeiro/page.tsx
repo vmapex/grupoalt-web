@@ -10,8 +10,7 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { CATEGORIAS } from '@/lib/planoContas'
-import { mockExtrato, mockContas } from '@/lib/mocks/extratoData'
-import { mockCPFull, mockCRFull } from '@/lib/mocks/cpcrData'
+
 import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -55,12 +54,12 @@ export default function DashboardExecutivo() {
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
   // Transform API or fallback
-  const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : mockCPFull), [cpRaw])
-  const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : mockCRFull), [crRaw])
+  const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
+  const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []), [crRaw])
   const lancamentos = extratoResponse?.lancamentos ?? []
 
   /* ── Computed values ──────────────────────── */
-  const saldoCaixa = extratoResponse?.saldo_atual ?? mockContas.reduce((s, c) => s + c.saldo, 0)
+  const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
   // Calcular DRE real do extrato usando planoContas
   const dreData = useMemo(() => {
@@ -199,12 +198,7 @@ export default function DashboardExecutivo() {
         banco: (l as any).banco || '',
       }))
     }
-    return mockExtrato.slice(0, 5).map((e) => ({
-      data_lancamento: e.data,
-      favorecido: e.favorecido || e.descricao,
-      valor: e.valor,
-      banco: e.banco,
-    }))
+    return []
   }, [lancamentos])
 
   /* ── Progress ring vars ────────────────────── */

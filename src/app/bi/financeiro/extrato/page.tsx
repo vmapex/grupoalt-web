@@ -5,7 +5,6 @@ import { useThemeStore } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { ConcilBadge } from '@/components/ui/ConcilBadge'
 import { getCatDesc } from '@/lib/mocks/extratoData'
-import { mockExtrato as fallbackExtrato, mockContas as fallbackContas } from '@/lib/mocks/extratoData'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
@@ -34,11 +33,11 @@ export default function PageExtrato() {
 
   // Extract data from response or fallback
   const extrato: ExtratoLancamento[] = useMemo(
-    () => (extratoResponse?.lancamentos ? transformExtrato(extratoResponse.lancamentos, new Map()) : fallbackExtrato),
+    () => (extratoResponse?.lancamentos ? transformExtrato(extratoResponse.lancamentos, new Map()) : []),
     [extratoResponse],
   )
   const contas: ContaSaldo[] = useMemo(
-    () => (extratoResponse?.saldos_contas ? transformSaldos(extratoResponse.saldos_contas) : fallbackContas),
+    () => (extratoResponse?.saldos_contas ? transformSaldos(extratoResponse.saldos_contas) : []),
     [extratoResponse],
   )
   const saldoInicial = extratoResponse?.saldo_inicial ?? 0
