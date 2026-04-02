@@ -11,16 +11,19 @@ import { BarLabelVar } from '@/components/charts/BarLabelVar'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK } from '@/lib/formatters'
 import type { CaixaLevelData, DetailDef } from '@/lib/mocks/caixaData'
+import type { DREBreakdowns, CatBreakdowns } from '@/lib/caixaBuilder'
 
 interface DetailPanelProps {
   defKey: string
   d: CaixaLevelData
+  breakdowns?: DREBreakdowns | null
+  catBreakdowns?: CatBreakdowns | null
   onBack: () => void
 }
 
 const sum = (arr: number[]) => arr.reduce((s, v) => s + (v || 0), 0)
 
-export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
+export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: DetailPanelProps) {
   const t = useThemeStore((s) => s.tokens)
 
   const def = useMemo((): DetailDef => {
@@ -33,23 +36,8 @@ export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
           { l: 'Melhor Mês', v: fmtK(Math.max(...d.RB)), c: t.green },
           { l: 'Pior Mês', v: fmtK(Math.min(...d.RB.filter(v => v > 0)) || 0), c: t.amber },
         ],
-        breakdown: [
-          { item: 'Frete Rodoviário', valor: 128400, pct: 60.9 },
-          { item: 'Frete Frigorífico', valor: 52300, pct: 24.8 },
-          { item: 'Serviço de Entrega', valor: 18200, pct: 8.6 },
-          { item: 'Locação de Veículos', valor: 8500, pct: 4.0 },
-          { item: 'Outros', valor: 3352, pct: 1.6 },
-        ],
-        clientes: [
-          { nome: 'CARGILL SA', valor: 128900 },
-          { nome: 'BEAUVALLET IND', valor: 85200 },
-          { nome: 'BRF SA', valor: 67800 },
-          { nome: 'MARFRIG GLOBAL', valor: 56400 },
-          { nome: 'JHS ALIMENTOS', valor: 42300 },
-          { nome: 'MINERVA FOODS', valor: 41200 },
-          { nome: 'FRIBAL FRIGORÍFICO', valor: 34500 },
-          { nome: 'Outros clientes', valor: 18700 },
-        ],
+        breakdown: catBreakdowns?.RoB ?? [],
+        clientes: breakdowns?.RoB ?? [],
       },
       tdcf: {
         title: 'T.D.C.F. (Deduções)', key: 'TD', color: t.amber,
@@ -59,20 +47,8 @@ export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
           { l: 'PIS/COFINS', v: fmtK(sum(d.TD) * 0.72), c: t.amber },
           { l: 'ISS/ICMS', v: fmtK(sum(d.TD) * 0.28), c: t.amber },
         ],
-        breakdown: [
-          { item: 'PIS (1,65%)', valor: 3478, pct: 11.2 },
-          { item: 'COFINS (7,6%)', valor: 16017, pct: 51.4 },
-          { item: 'ICMS', valor: 8400, pct: 27.0 },
-          { item: 'ISS', valor: 2100, pct: 6.7 },
-          { item: 'Outras deduções', valor: 1174, pct: 3.8 },
-        ],
-        clientes: [
-          { nome: 'COFINS (Federal)', valor: 16017 },
-          { nome: 'ICMS (Estadual)', valor: 8400 },
-          { nome: 'PIS (Federal)', valor: 3478 },
-          { nome: 'ISS (Municipal)', valor: 2100 },
-          { nome: 'Outras deduções', valor: 1174 },
-        ],
+        breakdown: catBreakdowns?.TDCF ?? [],
+        clientes: breakdowns?.TDCF ?? [],
       },
       cv: {
         title: 'Custo Variável', key: 'CV', color: t.red,
@@ -82,25 +58,8 @@ export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
           { l: 'Diesel', v: fmtK(sum(d.CV) * 0.45), c: t.red },
           { l: 'Pedágios', v: fmtK(sum(d.CV) * 0.12), c: t.amber },
         ],
-        breakdown: [
-          { item: 'Diesel / Combustível', valor: 69458, pct: 45.0 },
-          { item: 'Agregados (Frete)', valor: 38588, pct: 25.0 },
-          { item: 'Pedágios', valor: 18522, pct: 12.0 },
-          { item: 'Pneus / Manutenção', valor: 15435, pct: 10.0 },
-          { item: 'Seguro Carga', valor: 7716, pct: 5.0 },
-          { item: 'Outros CV', valor: 4632, pct: 3.0 },
-        ],
-        clientes: [
-          { nome: 'Posto Ipiranga (Diesel)', valor: 38200 },
-          { nome: 'Posto Shell (Diesel)', valor: 31258 },
-          { nome: 'Agregados Diversos', valor: 38588 },
-          { nome: 'Autopista Litoral (Pedágio)', valor: 10800 },
-          { nome: 'CCR Via Lagos (Pedágio)', valor: 7722 },
-          { nome: 'Bridgestone (Pneus)', valor: 9200 },
-          { nome: 'Oficina Central (Manutenção)', valor: 6235 },
-          { nome: 'Porto Seguro (Seguro)', valor: 7716 },
-          { nome: 'Outros fornecedores', valor: 4632 },
-        ],
+        breakdown: catBreakdowns?.CV ?? [],
+        clientes: breakdowns?.CV ?? [],
       },
       cf: {
         title: 'Custo Fixo', key: 'CF', color: t.orange,
@@ -110,25 +69,8 @@ export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
           { l: 'Folha', v: fmtK(sum(d.CF) * 0.52), c: t.orange },
           { l: 'Aluguel/Infra', v: fmtK(sum(d.CF) * 0.18), c: t.amber },
         ],
-        breakdown: [
-          { item: 'Folha de Pagamento', valor: 47050, pct: 52.0 },
-          { item: 'Encargos (INSS/FGTS)', valor: 14496, pct: 16.0 },
-          { item: 'Aluguel / Infraestrutura', valor: 16286, pct: 18.0 },
-          { item: 'Seguros (Frota/Patrimonial)', valor: 6334, pct: 7.0 },
-          { item: 'TI / Sistemas', valor: 2714, pct: 3.0 },
-          { item: 'Outros CF', valor: 3600, pct: 4.0 },
-        ],
-        clientes: [
-          { nome: 'Folha Motoristas', valor: 28500 },
-          { nome: 'Folha Administrativo', valor: 18550 },
-          { nome: 'INSS Patronal', valor: 8900 },
-          { nome: 'FGTS', valor: 5596 },
-          { nome: 'Aluguel Galpão Inhumas', valor: 8200 },
-          { nome: 'Aluguel Escritório SP', valor: 8086 },
-          { nome: 'Porto Seguro (Seguros)', valor: 6334 },
-          { nome: 'Omie / TI', valor: 2714 },
-          { nome: 'Outros', valor: 3600 },
-        ],
+        breakdown: catBreakdowns?.CF ?? [],
+        clientes: breakdowns?.CF ?? [],
       },
       saldoNop: {
         title: 'Saldo NOP', key: null, color: t.purple,
@@ -138,25 +80,9 @@ export function DetailPanel({ defKey, d, onBack }: DetailPanelProps) {
           { l: 'Despesa NOP', v: fmtK(sum(d.DN)), c: t.red },
           { l: '% sobre RoB', v: ((sum(d.RN) - sum(d.DN)) / sum(d.RB) * 100).toFixed(1) + '%', c: t.text },
         ],
-        breakdown: [
-          { item: 'Rendimentos Financeiros', valor: 52400, pct: 56.5 },
-          { item: 'Recuperação de Despesas', valor: 24800, pct: 26.8 },
-          { item: 'Venda de Ativos', valor: 15502, pct: 16.7 },
-        ],
-        breakdownDN: [
-          { item: 'Juros / IOF', valor: 9800, pct: 45.5 },
-          { item: 'Multas e Penalidades', valor: 4200, pct: 19.5 },
-          { item: 'Depreciação Acelerada', valor: 3800, pct: 17.6 },
-          { item: 'Perdas Financeiras', valor: 2100, pct: 9.7 },
-          { item: 'Outras DNOP', valor: 1653, pct: 7.7 },
-        ],
-        clientes: [
-          { nome: 'Itaú (Rendimentos)', valor: 32400 },
-          { nome: 'Banco do Brasil (Rend.)', valor: 20000 },
-          { nome: 'Venda Caminhão VHN-4J22', valor: 15502 },
-          { nome: 'Recuperação sinistro', valor: 14800 },
-          { nome: 'Ressarcimento clientes', valor: 10000 },
-        ],
+        breakdown: catBreakdowns?.RNOP ?? [],
+        breakdownDN: catBreakdowns?.DNOP ?? [],
+        clientes: breakdowns?.RNOP ?? [],
       },
     }
     return defs[defKey]

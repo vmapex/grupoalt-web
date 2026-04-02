@@ -4,7 +4,7 @@ import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { CAIXA_DATA, WEEKLY } from '@/lib/mocks/caixaData'
 import { CATEGORIAS } from '@/lib/planoContas'
-import { buildQuarterly, buildMonthly, buildWeekly } from '@/lib/caixaBuilder'
+import { buildQuarterly, buildMonthly, buildWeekly, buildBreakdownByFavorecido, buildBreakdownByCategoria } from '@/lib/caixaBuilder'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
 import { DrillBar } from '@/components/caixa/DrillBar'
@@ -81,6 +81,16 @@ export default function PageCaixa() {
     return { rob, tdcf, cv, cf, mc, rnop, dnop, ebt1, ebt2 }
   }, [lancamentos])
 
+  // Breakdowns para DetailPanel
+  const breakdowns = useMemo(
+    () => lancamentos.length ? buildBreakdownByFavorecido(lancamentos as any) : null,
+    [lancamentos],
+  )
+  const catBreakdowns = useMemo(
+    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any) : null,
+    [lancamentos],
+  )
+
   const getLevelData = useCallback(() => {
     if (level === 'quarterly') return quarterlyData
     if (level === 'monthly') return monthlyData
@@ -148,7 +158,7 @@ export default function PageCaixa() {
 
       {/* DASHBOARD VIEW */}
       {caixaView === 'dashboard' && detailView && (
-        <DetailPanel defKey={detailView} d={d} onBack={() => setDetailView(null)} />
+        <DetailPanel defKey={detailView} d={d} breakdowns={breakdowns} catBreakdowns={catBreakdowns} onBack={() => setDetailView(null)} />
       )}
 
       {caixaView === 'dashboard' && !detailView && (

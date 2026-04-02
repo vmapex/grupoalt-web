@@ -98,3 +98,99 @@ export function buildWeekly(lancamentos: Lancamento[], month: string): CaixaLeve
   const keys = [`S1·${mName}`, `S2·${mName}`, `S3·${mName}`, `S4·${mName}`]
   return toLevel(groups, keys)
 }
+
+// ── Breakdown por favorecido dentro de cada grupo DRE ────────────────────────
+
+export interface FavBreakdownItem {
+  nome: string
+  valor: number
+}
+
+export interface DREBreakdowns {
+  RoB: FavBreakdownItem[]
+  TDCF: FavBreakdownItem[]
+  CV: FavBreakdownItem[]
+  CF: FavBreakdownItem[]
+  RNOP: FavBreakdownItem[]
+  DNOP: FavBreakdownItem[]
+}
+
+interface LancamentoWithFav extends Lancamento {
+  favorecido?: string | null
+}
+
+export interface CatBreakdownItem {
+  item: string
+  valor: number
+  pct: number
+}
+
+export interface CatBreakdowns {
+  RoB: CatBreakdownItem[]
+  TDCF: CatBreakdownItem[]
+  CV: CatBreakdownItem[]
+  CF: CatBreakdownItem[]
+  RNOP: CatBreakdownItem[]
+  DNOP: CatBreakdownItem[]
+}
+
+export function buildBreakdownByCategoria(lancamentos: Lancamento[]): CatBreakdowns {
+  const groups: Record<string, Record<string, number>> = {
+    RoB: {}, TDCF: {}, CV: {}, CF: {}, RNOP: {}, DNOP: {},
+  }
+
+  for (const l of lancamentos) {
+    const cat = l.categoria || ''
+    const info = CATEGORIAS[cat]
+    if (!info) continue
+    const grupo = info.grupoDRE
+    if (!groups[grupo]) continue
+    const label = info.nivel2 || info.nome || cat
+    groups[grupo][label] = (groups[grupo][label] || 0) + Math.abs(l.valor)
+  }
+
+  const toSorted = (map: Record<string, number>): CatBreakdownItem[] => {
+    const total = Object.values(map).reduce((s, v) => s + v, 0)
+    return Object.entries(map)
+      .map(([item, valor]) => ({ item, valor: Math.round(valor), pct: total > 0 ? Math.round((valor / total) * 1000) / 10 : 0 }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 10)
+  }
+
+  return {
+    RoB: toSorted(groups.RoB),
+    TDCF: toSorted(groups.TDCF),
+    CV: toSorted(groups.CV),
+    CF: toSorted(groups.CF),
+    RNOP: toSorted(groups.RNOP),
+    DNOP: toSorted(groups.DNOP),
+  }
+}
+
+export function buildBreakdownByFavorecido(lancamentos: LancamentoWithFav[]): DREBreakdowns {
+  const groups: Record<string, Record<string, number>> = {
+    RoB: {}, TDCF: {}, CV: {}, CF: {}, RNOP: {}, DNOP: {},
+  }
+
+  for (const l of lancamentos) {
+    const grupo = getGrupoDRE(l.categoria)
+    if (!grupo || !groups[grupo]) continue
+    const fav = (l.favorecido || '').trim() || 'Sem favorecido'
+    groups[grupo][fav] = (groups[grupo][fav] || 0) + Math.abs(l.valor)
+  }
+
+  const toSorted = (map: Record<string, number>): FavBreakdownItem[] =>
+    Object.entries(map)
+      .map(([nome, valor]) => ({ nome, valor: Math.round(valor) }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 15) // top 15
+
+  return {
+    RoB: toSorted(groups.RoB),
+    TDCF: toSorted(groups.TDCF),
+    CV: toSorted(groups.CV),
+    CF: toSorted(groups.CF),
+    RNOP: toSorted(groups.RNOP),
+    DNOP: toSorted(groups.DNOP),
+  }
+}
