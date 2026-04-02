@@ -11,9 +11,10 @@ import { Badge } from '@/components/ui/Badge'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
+import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { getCatDesc } from '@/lib/mocks/extratoData'
 import { CATEGORIAS } from '@/lib/planoContas'
+import { useBaixas } from '@/hooks/useAPI'
 
 function getCatNivel2(catCode: string): string {
   const info = CATEGORIAS[catCode]
@@ -29,6 +30,56 @@ import { transformCPCR } from '@/lib/transformers'
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
+}
+
+/** Componente que busca baixas on-demand via ConsultarContaPagar/Receber */
+function ExpandedPayments({ empresaId, tipo, codigo, fallbackPagamentos }: {
+  empresaId: number | null
+  tipo: 'CP' | 'CR'
+  codigo: number
+  fallbackPagamentos: PagamentoDetalhe[]
+}) {
+  const t = useThemeStore((s) => s.tokens)
+  const { data: baixasResp, loading } = useBaixas(empresaId, tipo, codigo)
+
+  // Usar baixas da API se disponíveis, senão fallback dos movimentos
+  const pagamentos = (baixasResp?.baixas && baixasResp.baixas.length > 0)
+    ? baixasResp.baixas
+    : fallbackPagamentos
+
+  return (
+    <div className="mx-8 my-2 rounded-lg overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+      <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider font-semibold flex items-center gap-2" style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}>
+        Pagamentos Realizados ({loading ? '...' : pagamentos.length})
+        {loading && <Loader2 size={10} className="animate-spin" style={{ color: t.blue }} />}
+      </div>
+      <table className="w-full text-[10px]">
+        <thead>
+          <tr style={{ background: `${t.bg}88` }}>
+            <th className="text-left px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Data</th>
+            <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Valor Pago</th>
+            <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Desconto</th>
+            <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Juros</th>
+            <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Multa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pagamentos.map((p, pi) => (
+            <tr key={pi} style={{ borderTop: pi > 0 ? `1px solid ${t.border}22` : 'none' }}>
+              <td className="px-3 py-1.5 font-mono" style={{ color: t.text }}>{p.data || '—'}</td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: t.green }}>{fmtBRL(p.valor)}</td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.desconto > 0 ? t.blue : t.mutedDim }}>{p.desconto > 0 ? fmtBRL(p.desconto) : '—'}</td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.juros > 0 ? t.amber : t.mutedDim }}>{p.juros > 0 ? fmtBRL(p.juros) : '—'}</td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.multa > 0 ? t.red : t.mutedDim }}>{p.multa > 0 ? fmtBRL(p.multa) : '—'}</td>
+            </tr>
+          ))}
+          {!loading && pagamentos.length === 0 && (
+            <tr><td colSpan={5} className="px-3 py-3 text-center" style={{ color: t.muted }}>Nenhum pagamento encontrado</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 export default function PageCPCR() {
@@ -323,19 +374,20 @@ export default function PageCPCR() {
                     </thead>
                     <tbody>
                       {dataSorted.map((r, i) => {
-                        const hasPgtos = r.pagamentos && r.pagamentos.length > 0
+                        const isPaid = ['PAGO', 'RECEBIDO', 'PARCIAL'].includes(r.status)
+                        const isExpandable = isPaid && r.valor_pago > 0
                         const isExpanded = expandedRow === i
-                        const lastPgto = hasPgtos ? r.pagamentos[r.pagamentos.length - 1] : null
+                        const lastPgto = r.pagamentos?.length > 0 ? r.pagamentos[r.pagamentos.length - 1] : null
                         return (
                           <>{/* Main row */}
                           <tr
                             key={i}
                             className="transition-colors hover:bg-surface-hover"
-                            style={{ borderBottom: isExpanded ? 'none' : `1px solid ${t.border}22`, cursor: hasPgtos ? 'pointer' : 'default' }}
-                            onClick={() => hasPgtos ? setExpandedRow(isExpanded ? null : i) : undefined}
+                            style={{ borderBottom: isExpanded ? 'none' : `1px solid ${t.border}22`, cursor: isExpandable ? 'pointer' : 'default' }}
+                            onClick={() => isExpandable ? setExpandedRow(isExpanded ? null : i) : undefined}
                           >
                             <td className="px-1 py-2.5 text-center" style={{ width: 24 }}>
-                              {hasPgtos && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
+                              {isExpandable && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
                             </td>
                             <td className="px-3 py-2.5 font-medium">{r.fav}</td>
                             <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
@@ -346,37 +398,16 @@ export default function PageCPCR() {
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{lastPgto?.data || '—'}</td>
                             <td className="px-3 py-2.5 text-center"><Badge status={r.status} /></td>
                           </tr>
-                          {/* Expanded payment details */}
-                          {isExpanded && hasPgtos && (
+                          {/* Expanded payment details — fetches baixas on-demand */}
+                          {isExpanded && isExpandable && (
                             <tr key={`${i}-exp`} style={{ borderBottom: `1px solid ${t.border}22` }}>
                               <td colSpan={9} style={{ padding: 0 }}>
-                                <div className="mx-8 my-2 rounded-lg overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-                                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider font-semibold" style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}>
-                                    Pagamentos Realizados ({r.pagamentos.length})
-                                  </div>
-                                  <table className="w-full text-[10px]">
-                                    <thead>
-                                      <tr style={{ background: `${t.bg}88` }}>
-                                        <th className="text-left px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Data</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Valor Pago</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Desconto</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Juros</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold" style={{ color: t.muted }}>Multa</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {r.pagamentos.map((p, pi) => (
-                                        <tr key={pi} style={{ borderTop: pi > 0 ? `1px solid ${t.border}22` : 'none' }}>
-                                          <td className="px-3 py-1.5 font-mono" style={{ color: t.text }}>{p.data || '—'}</td>
-                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: t.green }}>{fmtBRL(p.valor)}</td>
-                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.desconto > 0 ? t.blue : t.mutedDim }}>{p.desconto > 0 ? fmtBRL(p.desconto) : '—'}</td>
-                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.juros > 0 ? t.amber : t.mutedDim }}>{p.juros > 0 ? fmtBRL(p.juros) : '—'}</td>
-                                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: p.multa > 0 ? t.red : t.mutedDim }}>{p.multa > 0 ? fmtBRL(p.multa) : '—'}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
+                                <ExpandedPayments
+                                  empresaId={empresaId}
+                                  tipo={tab}
+                                  codigo={r.codigo}
+                                  fallbackPagamentos={r.pagamentos || []}
+                                />
                               </td>
                             </tr>
                           )}

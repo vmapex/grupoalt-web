@@ -137,6 +137,28 @@ export function useCRResumo(empresaId: number | null, dtInicio?: string, dtFim?:
   )
 }
 
+// ── Baixas (pagamentos individuais, on-demand) ──────────────
+
+interface BaixaItem {
+  data: string | null
+  valor: number
+  desconto: number
+  juros: number
+  multa: number
+  codigo_baixa?: number
+}
+
+interface BaixasResponse {
+  baixas: BaixaItem[]
+}
+
+export function useBaixas(empresaId: number | null, tipo: 'CP' | 'CR', codigo: number | null) {
+  const endpoint = tipo === 'CP' ? 'cp' : 'cr'
+  return useApi<BaixasResponse>(
+    empresaId && codigo ? `/empresas/${empresaId}/${endpoint}/${codigo}/baixas` : null,
+  )
+}
+
 // ── Fluxo de Caixa ───────────────────────────────────────────
 
 export function useFluxoCaixa(empresaId: number | null, dataFim?: string) {

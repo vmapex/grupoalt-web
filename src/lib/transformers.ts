@@ -80,6 +80,7 @@ export function transformSaldos(items: SaldoAPI[]): ContaSaldo[] {
 
 export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaPagarReceber[] {
   return items.map((l) => ({
+    codigo: l.codigo,
     fav: l.favorecido,
     valor: l.valor,
     valor_pago: l.valor_pago ?? 0,
