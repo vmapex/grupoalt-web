@@ -34,6 +34,16 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         setNotifCount(notifRes.data.nao_lidas || 0)
         // Sync empresaStore with real empresas from API
         setTimeout(() => syncFromAuth(), 0)
+
+        // Redirect admin without empresas to setup wizard
+        if (data.is_admin && (!data.empresas || data.empresas.length === 0)) {
+          const path = window.location.pathname
+          if (!path.startsWith('/portal/setup') && !path.startsWith('/portal/admin')) {
+            router.push('/portal/setup')
+            return
+          }
+        }
+
         setLoading(false)
       })
       .catch((err) => {
@@ -59,6 +69,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       faturamento: 'Faturamento', custos: 'Custos', contabil: 'Contábil',
       controladoria: 'Controladoria', operacoes: 'Operações',
       organograma: 'Organograma', mvv: 'Missão | Visão | Valores',
+      setup: 'Setup Inicial',
     }
     return parts.map(p => labels[p] || p)
   })()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react'
+import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
 
 interface UserData {
@@ -10,7 +10,7 @@ interface UserData {
   permissoes: { id: number; modulo: string; acao: string; empresa_id: number | null }[]
   unidades: { id: number; nome: string; empresa_id: number }[]
 }
-interface EmpresaOption { id: number; nome: string; cnpj: string | null }
+interface EmpresaOption { id: number; nome: string; cnpj: string | null; tem_credencial?: boolean }
 interface UnidadeData { id: number; nome: string; codigo: string | null; ativa: boolean }
 
 const MODULOS: Record<string, string[]> = {
@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [testResults, setTestResults] = useState<Record<number, { sucesso: boolean; mensagem: string } | null>>({})
+  const [testing, setTesting] = useState<number | null>(null)
 
   // Forms
   const [userForm, setUserForm] = useState({ nome: '', email: '', senha: '', is_admin: false })
@@ -49,7 +51,7 @@ export default function AdminPage() {
     try {
       const [usersRes, empresasRes] = await Promise.all([
         api.get('/gestao/usuarios'),
-        api.get('/gestao/empresas'),
+        api.get('/admin/empresas').catch(() => api.get('/gestao/empresas')),
       ])
       setUsuarios(usersRes.data)
       setEmpresas(empresasRes.data)
@@ -121,7 +123,21 @@ export default function AdminPage() {
     try {
       await api.put(`/admin/empresas/${empresaId}/credenciais`, { app_key: appKey, app_secret: appSecret })
       alert('Credenciais salvas com sucesso!')
+      loadData()
     } catch (err: any) { alert(err?.response?.data?.detail || 'Erro ao salvar credenciais') }
+  }
+
+  // Testar credenciais Omie
+  const testarCredenciais = async (empresaId: number, appKey: string, appSecret: string) => {
+    setTesting(empresaId)
+    setTestResults(prev => ({ ...prev, [empresaId]: null }))
+    try {
+      const res = await api.post('/admin/credenciais/testar', { app_key: appKey, app_secret: appSecret })
+      setTestResults(prev => ({ ...prev, [empresaId]: res.data }))
+    } catch (err: any) {
+      setTestResults(prev => ({ ...prev, [empresaId]: { sucesso: false, mensagem: err?.response?.data?.detail || 'Erro de conexao' } }))
+    }
+    setTesting(null)
   }
 
   // Unidade actions
@@ -262,7 +278,14 @@ export default function AdminPage() {
                     <div className="text-sm font-medium text-white">{emp.nome}</div>
                     {emp.cnpj && <div className="text-xs text-zinc-500 font-mono">{emp.cnpj}</div>}
                   </div>
-                  <span className="text-xs text-zinc-500">ID: {emp.id}</span>
+                  <div className="flex items-center gap-2">
+                    {emp.tem_credencial ? (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" title="Credenciais configuradas" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-amber-400" title="Sem credenciais" />
+                    )}
+                    <span className="text-xs text-zinc-500">ID: {emp.id}</span>
+                  </div>
                   {isExp ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
                 </button>
                 {isExp && (
@@ -286,17 +309,38 @@ export default function AdminPage() {
                           placeholder="Insira o App Secret da Omie"
                         />
                       </div>
-                      <button
-                        onClick={() => {
-                          const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
-                          const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
-                          if (key && secret) saveCredenciais(emp.id, key, secret)
-                          else alert('Preencha App Key e App Secret')
-                        }}
-                        className="bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2 text-sm font-bold transition-all"
-                      >
-                        Salvar Credenciais
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
+                            const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
+                            if (key && secret) testarCredenciais(emp.id, key, secret)
+                            else alert('Preencha App Key e App Secret')
+                          }}
+                          disabled={testing === emp.id}
+                          className="flex items-center gap-2 border border-zinc-700 hover:border-blue-500/40 text-zinc-200 rounded-xl px-4 py-2 text-sm font-medium transition-all disabled:opacity-50"
+                        >
+                          {testing === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5" />}
+                          Testar Conexao
+                        </button>
+                        <button
+                          onClick={() => {
+                            const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
+                            const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
+                            if (key && secret) saveCredenciais(emp.id, key, secret)
+                            else alert('Preencha App Key e App Secret')
+                          }}
+                          className="bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2 text-sm font-bold transition-all"
+                        >
+                          Salvar Credenciais
+                        </button>
+                      </div>
+                      {testResults[emp.id] && (
+                        <div className={`flex items-center gap-2 mt-2 text-xs font-medium ${testResults[emp.id]!.sucesso ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {testResults[emp.id]!.sucesso ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {testResults[emp.id]!.mensagem}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
