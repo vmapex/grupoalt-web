@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
+import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
 import { Bell, HelpCircle, ChevronRight, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
@@ -11,6 +12,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const router = useRouter()
   const pathname = usePathname()
   const { user, setAuth } = useAuthStore()
+  const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
+  const empresaSynced = useEmpresaStore((s) => s._synced)
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
 
@@ -29,6 +32,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           data.permissoes || [],
         )
         setNotifCount(notifRes.data.nao_lidas || 0)
+        // Sync empresaStore with real empresas from API
+        setTimeout(() => syncFromAuth(), 0)
         setLoading(false)
       })
       .catch((err) => {
