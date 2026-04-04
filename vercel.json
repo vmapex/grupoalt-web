@@ -3,6 +3,6 @@
   "outputDirectory": ".next",
   "framework": "nextjs",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://api.grupoalt.org.br"
+    "NEXT_PUBLIC_API_URL": "https://api.grupoalt.agr.br"
   }
 }
