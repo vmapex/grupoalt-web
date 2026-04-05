@@ -25,6 +25,7 @@ import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
+import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { transformCPCR } from '@/lib/transformers'
 
 function isoToDMY(iso: string): string {
@@ -277,6 +278,11 @@ export default function PageCPCR() {
             </button>
           ))}
         </div>
+        <ExportPDFButton
+          empresaId={empresaId}
+          endpoint={tab === 'CP' ? '/export/empresas/{empresa_id}/cp/pdf' : '/export/empresas/{empresa_id}/cr/pdf'}
+          filename={`${tab === 'CP' ? 'contas_pagar' : 'contas_receber'}.pdf`}
+        />
       </div>
 
       {/* KPI Strip */}

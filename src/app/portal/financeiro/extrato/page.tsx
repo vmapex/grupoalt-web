@@ -10,6 +10,7 @@ import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformExtrato, transformSaldos } from '@/lib/transformers'
+import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
 function isoToDMY(iso: string): string {
@@ -160,6 +161,12 @@ export default function PageExtrato() {
           <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>
             {loading ? '...' : `${filtered.length} itens`}
           </span>
+          <ExportPDFButton
+            empresaId={empresaId}
+            endpoint="/export/empresas/{empresa_id}/extrato/pdf"
+            filename={`extrato_${dt_inicio}-${dt_fim}.pdf`}
+            params={{ dt_inicio, dt_fim }}
+          />
         </div>
 
         {/* Table */}
