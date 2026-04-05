@@ -1,380 +1,653 @@
-"use client"
-import { useEffect, useRef } from 'react'
-import { useAuthStore } from '@/store/authStore'
+'use client'
 
-export default function ConciliacaoPage() {
-  const ref = useRef<HTMLDivElement>(null)
-  const { empresaAtiva } = useAuthStore()
+import { useState, useMemo } from 'react'
+import { Calendar, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { useThemeStore } from '@/store/themeStore'
+import type { ThemeTokens } from '@/store/themeStore'
+import { SortHeader } from '@/components/ui/SortHeader'
+import { KPICard } from '@/components/ui/KPICard'
+import { fmtBRL, fmtK, toggleSort, sortRows, type SortState } from '@/lib/formatters'
+import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
+import type { ConcilEntry } from '@/lib/mocks/concilData'
+import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/useAPI'
+import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { transformConcilMovimento } from '@/lib/transformers'
 
-  useEffect(() => {
-    if (!ref.current) return
+// ---------- constants ----------
+const TODAY = new Date()
+const TODAY_KEY = `${TODAY.getFullYear()}-${String(TODAY.getMonth() + 1).padStart(2, '0')}-${String(TODAY.getDate()).padStart(2, '0')}`
 
-    const empresaId = empresaAtiva?.id || 1
-    const apiUrl = window.location.origin + '/api/proxy'
+// Generate 6 months ending at current month
+const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const MONTHS: { year: number; month: number; label: string }[] = (() => {
+  const result: { year: number; month: number; label: string }[] = []
+  const now = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    result.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: `${MONTH_NAMES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,
+    })
+  }
+  return result
+})()
 
-    const html = `
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
 
-<style>
-:root {
-  --bg: #05091A;
-  --surface: rgba(255,255,255,0.034);
-  --surface2: #0d1424;
-  --border: rgba(255,255,255,0.07);
-  --blue: #38BDF8;
-  --green: #34D399;
-  --red: #F87171;
-  --amber: #FBBF24;
-  --text: #F1F5F9;
-  --muted: #64748B;
-  --purple: #C084FC;
-  --grid: rgba(56,189,248,0.02);
+const BANK_FILTERS = ['Todos', 'Itau', 'Banco do Brasil', 'Bradesco', 'Santander'] as const
+
+// ---------- CalendarMonth component ----------
+interface CalendarMonthProps {
+  year: number
+  month: number
+  label: string
+  entries: Record<string, ConcilEntry>
+  selectedDay: string | null
+  onDayClick: (key: string) => void
+  t: ThemeTokens
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg);
-  font-family: 'Syne', sans-serif;
-  color: var(--text);
-  min-height: 100vh;
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 48px 48px;
+
+function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t }: CalendarMonthProps) {
+  const firstDay = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  // Monday=0 ... Sunday=6
+  let startOffset = firstDay.getDay() - 1
+  if (startOffset < 0) startOffset = 6
+
+  const cells: (number | null)[] = []
+  for (let i = 0; i < startOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden"
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}
+    >
+      <div
+        className="text-center text-[10px] font-semibold uppercase tracking-wider py-2"
+        style={{ color: t.textSec, borderBottom: `1px solid ${t.border}` }}
+      >
+        {label}
+      </div>
+      <div className="grid grid-cols-7 gap-px px-1.5 pt-1 pb-0.5">
+        {DOW_LABELS.map((d) => (
+          <div
+            key={d}
+            className="text-center text-[7px] uppercase tracking-wide py-0.5"
+            style={{ color: t.muted }}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-px px-1.5 pb-1.5">
+        {cells.map((day, idx) => {
+          if (day === null) return <div key={idx} className="w-full aspect-square" />
+
+          const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const entry = entries[key]
+          const isToday = key === TODAY_KEY
+          const isSelected = key === selectedDay
+          const isFuture = new Date(year, month, day) > TODAY
+          const isWeekend = new Date(year, month, day).getDay() === 0 || new Date(year, month, day).getDay() === 6
+
+          let bg = 'transparent'
+          let textColor = t.muted
+
+          if (isWeekend || isFuture) {
+            textColor = `${t.muted}66`
+          } else if (entry) {
+            if (entry.conciliado) {
+              bg = `${t.green}28`
+              textColor = t.green
+            } else {
+              // Check SLA
+              const slaDate = nextBusinessDay(key)
+              const isOutSLA = TODAY > slaDate
+              if (isOutSLA) {
+                bg = `${t.red}28`
+                textColor = t.red
+              } else {
+                bg = `${t.amber}28`
+                textColor = t.amber
+              }
+            }
+          }
+
+          return (
+            <button
+              key={idx}
+              onClick={() => entry ? onDayClick(key) : undefined}
+              className="w-full aspect-square rounded text-[9px] font-mono font-medium flex items-center justify-center transition-all"
+              style={{
+                background: isSelected ? `${t.blue}35` : bg,
+                color: isSelected ? t.blue : textColor,
+                cursor: entry ? 'pointer' : 'default',
+                outline: isToday ? `1.5px solid ${t.blue}` : 'none',
+                outlineOffset: -1,
+              }}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
+// ---------- Main page ----------
+export default function PageConciliacao() {
+  const t = useThemeStore((s) => s.tokens)
+  const empresaId = useEmpresaId()
+  const [bankFilter, setBankFilter] = useState<string>('Todos')
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortState>({ field: 'date', dir: 'desc' })
 
-/* KPI STRIP */
-.kpis { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--border); }
-.kpi { padding: 14px 22px; border-right: 1px solid var(--border); cursor: default; transition: background 0.2s; }
-.kpi:last-child { border-right: none; }
-.kpi:hover { background: rgba(255,255,255,0.01); }
-.kl { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 5px; font-family: 'DM Mono', monospace; }
-.kn { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
-.kn.g { color: var(--green); } .kn.r { color: var(--red); } .kn.b { color: var(--blue); } .kn.a { color: var(--amber); }
-.ks { font-size: 9px; color: var(--muted); margin-top: 2px; }
+  // API calls
+  const { data: concilAPI, loading: loadingConcil } = useConcilMovimentacao(empresaId)
+  const { data: resumoAPI } = useConcilResumo(empresaId)
+  const { data: diaAPI } = useConcilDia(empresaId, selectedDay)
 
-/* MAIN LAYOUT */
-.layout { display: grid; grid-template-columns: 1fr 400px; min-height: calc(100vh - 115px); }
-.charts-col { border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
-.agent-col { display: flex; flex-direction: column; background: rgba(5,9,26,0.6); }
+  // Use API data or fallback to mock
+  const baseData: Record<string, ConcilEntry> = useMemo(() => {
+    if (concilAPI?.length) return transformConcilMovimento(concilAPI)
+    return {}
+  }, [concilAPI])
 
-/* MINI CARDS */
-.mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.card {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px; position: relative; overflow: hidden;
-}
-.card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  opacity: 0.5;
-}
-.card.blue::before { background: linear-gradient(90deg,transparent,var(--blue),transparent); }
-.card.green::before { background: linear-gradient(90deg,transparent,var(--green),transparent); }
-.card.red::before { background: linear-gradient(90deg,transparent,var(--red),transparent); }
-.card.amber::before { background: linear-gradient(90deg,transparent,var(--amber),transparent); }
-.card-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; font-family: 'DM Mono', monospace; }
-.card-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; margin-bottom: 3px; }
-.card-sub { font-size: 9px; color: var(--muted); }
+  // --- filtered entries by bank ---
+  const filteredEntries = useMemo(() => {
+    if (bankFilter === 'Todos') return baseData
+    const out: Record<string, ConcilEntry> = {}
+    for (const [k, v] of Object.entries(baseData)) {
+      if (v.banco === bankFilter) out[k] = v
+    }
+    return out
+  }, [bankFilter, baseData])
 
-/* CHART PLACEHOLDER */
-.chart-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-.chart-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px; font-family: 'DM Mono', monospace; }
-.bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
-.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.bar { width: 100%; border-radius: 3px 3px 0 0; transition: opacity 0.2s; }
-.bar:hover { opacity: 0.8; }
-.bar-label { font-size: 7px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  // --- all entries as sorted array for table ---
+  const allEntries = useMemo(() => Object.values(filteredEntries), [filteredEntries])
 
-/* TABLE */
-.table-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.table-card table { width: 100%; border-collapse: collapse; font-size: 10px; }
-.table-card th { padding: 8px 12px; text-align: left; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; background: rgba(0,0,0,0.2); }
-.table-card td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-.table-card tr:last-child td { border-bottom: none; }
-.badge { display: inline-flex; padding: 2px 7px; border-radius: 99px; font-size: 8px; font-weight: 600; border: 1px solid; }
-.badge.g { background: rgba(52,211,153,0.1); color: var(--green); border-color: rgba(52,211,153,0.2); }
-.badge.a { background: rgba(251,191,36,0.1); color: var(--amber); border-color: rgba(251,191,36,0.2); }
-.badge.r { background: rgba(248,113,113,0.1); color: var(--red); border-color: rgba(248,113,113,0.2); }
+  const sortedEntries = useMemo(
+    () =>
+      sortRows(allEntries, sort, (r, f) => {
+        if (f === 'date') return r.date
+        if (f === 'extrato') return r.extrato
+        if (f === 'saldoBanco') return r.saldoBanco
+        if (f === 'dif') return Math.abs(r.dif)
+        if (f === 'status') return r.conciliado ? 1 : 0
+        return 0
+      }),
+    [allEntries, sort],
+  )
 
-/* SIDE PANEL */
-.agent-col { background: rgba(5,9,26,0.6); }
-.agent-header { display: flex; align-items: center; gap: 10px; }
-</style>
+  // --- stats (use API resumo when available) ---
+  const stats = useMemo(() => {
+    if (resumoAPI) {
+      // streak still computed locally
+      let streak = 0
+      const cur = new Date(TODAY)
+      for (let i = 0; i < 90; i++) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+        if (isBusinessDay(cur)) {
+          const e = filteredEntries[key]
+          if (e && !e.conciliado) streak++
+          else if (e && e.conciliado) break
+        }
+        cur.setDate(cur.getDate() - 1)
+      }
+      return {
+        pctConcil: resumoAPI.percentual_conciliado,
+        sumDif: resumoAPI.total_divergencias,
+        maiorDif: resumoAPI.maior_diferenca,
+        streak: resumoAPI.dias_sem_conciliar ?? streak,
+        mediaExtrato: resumoAPI.media_diaria_extrato,
+      }
+    }
+    const entries = allEntries.filter((e) => new Date(e.date) <= TODAY)
+    const total = entries.length
+    const conciliados = entries.filter((e) => e.conciliado).length
+    const pctConcil = total > 0 ? (conciliados / total) * 100 : 0
 
+    const abertos = entries.filter((e) => !e.conciliado)
+    const sumDif = abertos.reduce((s, e) => s + Math.abs(e.dif), 0)
+    const maiorDif = abertos.length > 0 ? Math.max(...abertos.map((e) => Math.abs(e.dif))) : 0
 
-<!-- KPIs -->
-<div class="kpis">
-  <div class="kpi"><div class="kl">Total Conciliados</div><div class="kn g" id="kConcil">—</div><div class="ks" id="kConcilSub">Carregando...</div></div>
-  <div class="kpi"><div class="kl">Total Pendentes</div><div class="kn a" id="kPend">—</div><div class="ks" id="kPendSub">Carregando...</div></div>
-  <div class="kpi"><div class="kl">% Conciliação</div><div class="kn b" id="kPct">—</div><div class="ks">Do período</div></div>
-  <div class="kpi"><div class="kl">Saldo de Caixa</div><div class="kn a" id="kSaldo">—</div><div class="ks">Posição atual</div></div>
-</div>
-
-<!-- LAYOUT -->
-<div class="layout">
-
-  <!-- CHARTS -->
-  <div class="charts-col">
-
-    <div class="mini-grid">
-      <div class="card green">
-        <div class="card-title">Conciliados no Mês</div>
-        <div class="card-val" style="color:var(--green)" id="cMesConcil">—</div>
-        <div class="card-sub" id="cMesConcilSub">Carregando...</div>
-      </div>
-      <div class="card amber">
-        <div class="card-title">Pendentes no Mês</div>
-        <div class="card-val" style="color:var(--amber)" id="cMesPend">—</div>
-        <div class="card-sub" id="cMesPendSub">Carregando...</div>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">Heatmap de Conciliação — Últimos 5 meses</div>
-      <div id="heatmapArea" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">
-        Carregando dados...
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table>
-        <thead><tr>
-          <th>Mês</th><th>Conciliados</th><th>Pendentes</th><th>% Concil.</th><th>Status</th>
-        </tr></thead>
-        <tbody id="monthTable">
-          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <!-- DETAILS PANEL -->
-  <div class="agent-col" style="padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
-
-    <div class="agent-header" style="padding:14px 16px;border-bottom:1px solid var(--border);margin:-16px -16px 0;border-radius:0">
-      <div class="agent-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,rgba(56,189,248,0.3),rgba(52,211,153,0.2));border:1px solid rgba(56,189,248,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✓</div>
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--text)">Resumo de Conciliação</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:1px">Dados carregados da API Omie</div>
-      </div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Saldo por conta</div>
-      <div id="bankCards" style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--muted);font-size:10px">Carregando...</span></div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Estatísticas gerais</div>
-      <div id="statsPanel" style="display:flex;flex-direction:column;gap:6px"><span style="color:var(--muted);font-size:10px">Carregando...</span></div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Legenda do heatmap</div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:10px">
-        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(52,211,153,0.4);flex-shrink:0"></div><span style="color:var(--muted)">90%+ conciliado</span></div>
-        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(251,191,36,0.3);flex-shrink:0"></div><span style="color:var(--muted)">50-89% conciliado</span></div>
-        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(248,113,113,0.3);flex-shrink:0"></div><span style="color:var(--muted)">Menos de 50%</span></div>
-        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(255,255,255,0.03);flex-shrink:0"></div><span style="color:var(--muted)">Sem movimentação</span></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<script>
-const API = '${apiUrl}';
-const EMPRESA = ${empresaId};
-
-
-const fmtK = v => { const a=Math.abs(v); return (v<0?'−':'')+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(2)); };
-
-async function loadConciliacao() {
-  try {
-    // Busca extrato dos últimos 5 meses + saldos (chamada única, backend lê do PostgreSQL)
-    const fmtDMY = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-    const dFim = new Date();
-    const dIni = new Date(); dIni.setMonth(dIni.getMonth() - 5); dIni.setDate(1);
-
-    const [extratoRes, saldosRes] = await Promise.all([
-      fetch(API + '/empresas/' + EMPRESA + '/extrato?dt_inicio=' + fmtDMY(dIni) + '&dt_fim=' + fmtDMY(dFim), { credentials: 'include' }),
-      fetch(API + '/empresas/' + EMPRESA + '/saldos', { credentials: 'include' })
-    ]);
-
-    const extratoJson = await extratoRes.json();
-    const saldosJson = await saldosRes.json();
-    const lancamentos = Array.isArray(extratoJson) ? extratoJson : (extratoJson.dados || extratoJson.lancamentos || []);
-    const saldos = Array.isArray(saldosJson) ? saldosJson : (saldosJson.dados || saldosJson.contas || saldosJson.saldos || []);
-    const saldoTotal = saldos.reduce((s, c) => s + (c.saldo || 0), 0);
-    document.getElementById('kSaldo').textContent = fmtK(saldoTotal);
-
-    // Agrupa lançamentos por mês
-    const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const monthMap = {};
-    lancamentos.forEach(r => {
-      const dt = r.data_lancamento || '';
-      if (!dt || dt === '—') return;
-      const parts = dt.split('/');
-      if (parts.length < 3) return;
-      const mIdx = parseInt(parts[1]) - 1;
-      const year = parts[2];
-      const key = MONTH_NAMES[mIdx] + '/' + year.slice(2);
-      if (!monthMap[key]) monthMap[key] = { concil: 0, pend: 0 };
-      if (r.conciliado === true) monthMap[key].concil++;
-      else monthMap[key].pend++;
-    });
-
-    const meses = Object.entries(monthMap).map(([mes, v]) => ({
-      mes, conciliados: v.concil, pendentes: v.pend
-    }));
-
-    let totalConcil = 0, totalPend = 0;
-
-    const tableRows = meses.map(m => {
-      const concil = m.conciliados;
-      const pend = m.pendentes;
-      const total = concil + pend;
-      const pct = total > 0 ? Math.round(concil / total * 100) : 0;
-      totalConcil += concil;
-      totalPend += pend;
-      const badge = pct >= 90 ? '<span class="badge g">OK</span>' :
-                    pct >= 70 ? '<span class="badge a">Atenção</span>' :
-                    '<span class="badge r">Baixo</span>';
-      return '<tr>' +
-        '<td>' + m.mes + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--green)">' + concil + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--amber)">' + pend + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--blue)">' + pct + '%</td>' +
-        '<td>' + badge + '</td></tr>';
-    });
-    document.getElementById('monthTable').innerHTML = tableRows.length ? tableRows.join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Nenhum dado encontrado</td></tr>';
-
-    // KPIs
-    const totalAll = totalConcil + totalPend;
-    const pctGeral = totalAll > 0 ? Math.round(totalConcil / totalAll * 100) : 0;
-    document.getElementById('kConcil').textContent = totalConcil;
-    document.getElementById('kConcilSub').textContent = 'Lançamentos ok';
-    document.getElementById('kPend').textContent = totalPend;
-    document.getElementById('kPendSub').textContent = 'Precisam atenção';
-    document.getElementById('kPct').textContent = pctGeral + '%';
-
-    // Month cards (último mês)
-    if (meses.length > 0) {
-      const lastMonth = meses[meses.length - 1];
-      document.getElementById('cMesConcil').textContent = lastMonth.conciliados;
-      document.getElementById('cMesConcilSub').textContent = lastMonth.mes;
-      document.getElementById('cMesPend').textContent = lastMonth.pendentes;
-      document.getElementById('cMesPendSub').textContent = lastMonth.mes;
+    let streak = 0
+    const cur = new Date(TODAY)
+    for (let i = 0; i < 90; i++) {
+      const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+      if (isBusinessDay(cur)) {
+        const e = filteredEntries[key]
+        if (e && !e.conciliado) streak++
+        else if (e && e.conciliado) break
+      }
+      cur.setDate(cur.getDate() - 1)
     }
 
-    // Heatmap + side panel
-    buildHeatmap(meses);
-    updateSidePanel(saldos, totalConcil, totalPend);
+    const mediaExtrato = total > 0 ? entries.reduce((s, e) => s + Math.abs(e.extrato), 0) / total : 0
 
-  } catch(e) {
-    console.error('Erro conciliação:', e);
-    document.getElementById('heatmapArea').textContent = 'Erro ao carregar: ' + e.message;
-  }
-}
+    return { pctConcil, sumDif, maiorDif, streak, mediaExtrato }
+  }, [allEntries, filteredEntries, resumoAPI])
 
-function buildHeatmap(meses) {
-  if (!meses.length) {
-    document.getElementById('heatmapArea').textContent = 'Sem dados para heatmap';
-    return;
-  }
-
-  // Build heatmap grid from dias data if available, otherwise from monthly totals
-  let html = '<div style="display:flex;flex-direction:column;gap:8px;width:100%;padding:10px 0">';
-
-  meses.forEach(m => {
-    const concil = m.conciliados || m.conciliado || 0;
-    const pend = m.pendentes || m.pendente || 0;
-    const total = concil + pend;
-    const pct = total > 0 ? Math.round(concil / total * 100) : 0;
-    const mes = m.mes || m.month || m.periodo || '—';
-
-    // Color based on percentage
-    const color = pct >= 90 ? 'rgba(52,211,153,0.3)' :
-                  pct >= 70 ? 'rgba(251,191,36,0.3)' :
-                  pct >= 50 ? 'rgba(251,191,36,0.2)' :
-                  'rgba(248,113,113,0.3)';
-    const borderColor = pct >= 90 ? 'rgba(52,211,153,0.5)' :
-                        pct >= 70 ? 'rgba(251,191,36,0.5)' :
-                        'rgba(248,113,113,0.5)';
-
-    // If month has daily data
-    if (m.dias && Array.isArray(m.dias)) {
-      html += '<div style="margin-bottom:4px"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:DM Mono,monospace">' + mes + '</div>';
-      html += '<div style="display:flex;gap:2px;flex-wrap:wrap">';
-      m.dias.forEach(d => {
-        const dc = d.conciliados || d.conciliado || 0;
-        const dp = d.pendentes || d.pendente || 0;
-        const dt = dc + dp;
-        const dpct = dt > 0 ? Math.round(dc / dt * 100) : -1;
-        let bg = 'rgba(255,255,255,0.03)';
-        if (dpct >= 0) bg = dpct >= 90 ? 'rgba(52,211,153,0.4)' : dpct >= 50 ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.3)';
-        const dia = d.dia || d.day || '';
-        html += '<div title="' + dia + ': ' + dc + ' concil / ' + dp + ' pend" style="width:14px;height:14px;border-radius:2px;background:' + bg + ';cursor:default"></div>';
-      });
-      html += '</div></div>';
-    } else {
-      // Monthly bar
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:4px 0">';
-      html += '<div style="font-size:9px;color:var(--muted);font-family:DM Mono,monospace;width:60px">' + mes + '</div>';
-      html += '<div style="flex:1;height:20px;background:rgba(255,255,255,0.03);border-radius:4px;overflow:hidden;position:relative;border:1px solid ' + borderColor + '">';
-      html += '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width 0.5s ease"></div>';
-      html += '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;font-family:DM Mono,monospace;color:var(--text)">' + pct + '% (' + concil + '/' + total + ')</div>';
-      html += '</div></div>';
+  // --- SLA analysis for footer ---
+  const slaInfo = useMemo(() => {
+    const entries = allEntries.filter((e) => new Date(e.date) <= TODAY)
+    const pendentes = entries.filter((e) => !e.conciliado)
+    let foraSLA = 0
+    let emDia = 0
+    for (const e of pendentes) {
+      const slaDate = nextBusinessDay(e.date)
+      if (TODAY > slaDate) foraSLA++
+      else emDia++
     }
-  });
 
-  html += '</div>';
-  document.getElementById('heatmapArea').innerHTML = html;
+    // ultimo conciliado
+    const concilDates = entries.filter((e) => e.conciliado).map((e) => e.date).sort()
+    const ultimoConcil = concilDates.length > 0 ? concilDates[concilDates.length - 1] : null
+
+    // movimentacao total
+    const movTotal = entries.reduce((s, e) => s + Math.abs(e.extrato), 0)
+
+    // dias sem movimento (backwards from today)
+    let diasSemMov = 0
+    const cur = new Date(TODAY)
+    for (let i = 0; i < 90; i++) {
+      const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+      if (isBusinessDay(cur)) {
+        if (!filteredEntries[key]) {
+          diasSemMov++
+        } else {
+          break
+        }
+      }
+      cur.setDate(cur.getDate() - 1)
+    }
+
+    return { foraSLA, emDia, ultimoConcil, movTotal, diasSemMov }
+  }, [allEntries, filteredEntries])
+
+  // --- day entries for left table (API or mock) ---
+  const dayEntries = useMemo(() => {
+    if (!selectedDay) return []
+    // Use API day detail when available
+    if (diaAPI?.lancamentos?.length) {
+      return diaAPI.lancamentos.map((l) => ({
+        hora: '',
+        desc: l.descricao,
+        valor: l.valor,
+      }))
+    }
+    return []
+  }, [selectedDay, diaAPI])
+
+  const handleSort = (field: string) => setSort((s) => toggleSort(s, field))
+
+  // ---------- render ----------
+  return (
+    <div className="flex flex-col min-h-full">
+      {/* KPI Strip */}
+      <div className="grid grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <KPICard
+          label="% Conciliacao"
+          value={`${stats.pctConcil.toFixed(1).replace('.', ',')}%`}
+          color={stats.pctConcil >= 80 ? t.green : stats.pctConcil >= 60 ? t.amber : t.red}
+          accent={stats.pctConcil >= 80 ? t.green : stats.pctConcil >= 60 ? t.amber : t.red}
+          sub={`${Math.round(stats.pctConcil)}% dos dias conciliados`}
+        />
+        <KPICard
+          label="Diferencas Abertas"
+          value={`R$ ${fmtK(stats.sumDif)}`}
+          color={t.red}
+          accent={t.red}
+          sub="Soma absoluta pendentes"
+        />
+        <KPICard
+          label="Maior Diferenca"
+          value={`R$ ${fmtK(stats.maiorDif)}`}
+          color={t.amber}
+          accent={t.amber}
+        />
+        <KPICard
+          label="Dias s/ Conciliar"
+          value={`${stats.streak}d`}
+          color={stats.streak > 3 ? t.red : stats.streak > 0 ? t.amber : t.green}
+          accent={stats.streak > 3 ? t.red : t.amber}
+          sub="Streak consecutivo"
+        />
+        <KPICard
+          label="Media Diaria Extrato"
+          value={`R$ ${fmtK(stats.mediaExtrato)}`}
+          color={t.blue}
+          accent={t.blue}
+          borderRight={false}
+        />
+      </div>
+
+      {/* Filter bar */}
+      <div
+        className="flex items-center gap-3 px-5 py-2.5 shrink-0 flex-wrap"
+        style={{ borderBottom: `1px solid ${t.border}`, background: `${t.bg}88` }}
+      >
+        {/* Bank buttons */}
+        <div className="flex items-center gap-1.5">
+          {BANK_FILTERS.map((b) => (
+            <button
+              key={b}
+              onClick={() => setBankFilter(b)}
+              className="px-3 py-1 rounded text-[10px] font-medium transition-all"
+              style={{
+                background: bankFilter === b ? t.blueDim : t.surface,
+                color: bankFilter === b ? t.blue : t.textSec,
+                border: `1px solid ${bankFilter === b ? `${t.blue}44` : t.border}`,
+              }}
+            >
+              {b === 'Banco do Brasil' ? 'BB' : b}
+            </button>
+          ))}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Legend */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: `${t.green}55` }} />
+            <span className="text-[9px]" style={{ color: t.muted }}>DIF=0</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: `${t.amber}55` }} />
+            <span className="text-[9px]" style={{ color: t.muted }}>Pendente no prazo</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: `${t.red}55` }} />
+            <span className="text-[9px]" style={{ color: t.muted }}>Fora SLA</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ outline: `1.5px solid ${t.blue}`, outlineOffset: -1 }} />
+            <span className="text-[9px]" style={{ color: t.muted }}>Hoje</span>
+          </div>
+        </div>
+
+        {/* Formula pill */}
+        <div
+          className="px-2.5 py-1 rounded text-[9px] font-mono"
+          style={{ background: t.surface, color: t.muted, border: `1px solid ${t.border}` }}
+        >
+          DIF = Extrato &minus; SaldoBanco + Ajuste &rarr; DIF=0 conciliado
+        </div>
+      </div>
+
+      {/* Calendar heatmap */}
+      <div
+        className="px-5 py-4 shrink-0"
+        style={{ borderBottom: `1px solid ${t.border}` }}
+      >
+        <div className="grid grid-cols-6 gap-3">
+          {MONTHS.map((m) => (
+            <CalendarMonth
+              key={m.label}
+              year={m.year}
+              month={m.month}
+              label={m.label}
+              entries={filteredEntries}
+              selectedDay={selectedDay}
+              onDayClick={setSelectedDay}
+              t={t}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Two tables side by side */}
+      <div className="flex-1 grid" style={{ gridTemplateColumns: '1fr 1fr', minHeight: 420 }}>
+        {/* Left: Lancamentos do Dia */}
+        <div
+          className="flex flex-col min-h-0"
+          style={{ borderRight: `1px solid ${t.border}` }}
+        >
+          <div
+            className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider shrink-0"
+            style={{ color: t.textSec, borderBottom: `1px solid ${t.border}` }}
+          >
+            Lancamentos do Dia
+            {selectedDay && (
+              <span className="ml-2 font-mono" style={{ color: t.blue }}>
+                {fmtDateBR(selectedDay)}
+              </span>
+            )}
+          </div>
+          {!selectedDay || dayEntries.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center" style={{ color: t.muted }}>
+              <div className="text-center">
+                <Calendar size={32} className="mx-auto mb-3 opacity-30" />
+                <div className="text-[11px]">Selecione um dia no calendario</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th
+                      className="text-left text-[9px] uppercase tracking-wider font-mono font-semibold px-4 py-2.5"
+                      style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
+                    >
+                      Hora
+                    </th>
+                    <th
+                      className="text-left text-[9px] uppercase tracking-wider font-mono font-semibold px-4 py-2.5"
+                      style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
+                    >
+                      Descricao
+                    </th>
+                    <th
+                      className="text-right text-[9px] uppercase tracking-wider font-mono font-semibold px-4 py-2.5"
+                      style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
+                    >
+                      Valor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayEntries.map((e, i) => (
+                    <tr
+                      key={i}
+                      className="transition-colors"
+                      style={{ borderBottom: `1px solid ${t.border}` }}
+                    >
+                      <td
+                        className="px-4 py-2 text-[11px] font-mono"
+                        style={{ color: t.muted }}
+                      >
+                        {e.hora}
+                      </td>
+                      <td
+                        className="px-4 py-2 text-[11px]"
+                        style={{ color: t.text }}
+                      >
+                        {e.desc}
+                      </td>
+                      <td
+                        className="px-4 py-2 text-[11px] font-mono text-right"
+                        style={{ color: e.valor >= 0 ? t.green : t.red }}
+                      >
+                        {e.valor >= 0 ? '+' : '\u2212'}R$ {fmtBRL(e.valor)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Conciliacao Diaria sortable table */}
+        <div className="flex flex-col min-h-0">
+          <div
+            className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider shrink-0 flex items-center justify-between"
+            style={{ color: t.textSec, borderBottom: `1px solid ${t.border}` }}
+          >
+            <span>Conciliacao Diaria</span>
+            <span className="font-mono text-[9px]" style={{ color: t.muted }}>
+              {sortedEntries.length} registros
+            </span>
+          </div>
+          <div className="flex-1 overflow-auto">
+            <table className="w-full">
+              <thead className="sticky top-0" style={{ background: t.bg }}>
+                <tr>
+                  <th style={{ width: 4 }} />
+                  <SortHeader label="Data" field="date" sort={sort} onSort={handleSort} />
+                  <SortHeader label="Extrato" field="extrato" sort={sort} onSort={handleSort} align="right" />
+                  <SortHeader label="Saldo Bancos" field="saldoBanco" sort={sort} onSort={handleSort} align="right" />
+                  <SortHeader label="DIF" field="dif" sort={sort} onSort={handleSort} align="right" />
+                  <SortHeader label="ST" field="status" sort={sort} onSort={handleSort} align="center" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedEntries.map((entry) => {
+                  const isOutSLA = !entry.conciliado && TODAY > nextBusinessDay(entry.date)
+                  const isPendSLA = !entry.conciliado && !isOutSLA
+                  const barColor = entry.conciliado ? t.green : isOutSLA ? t.red : t.amber
+
+                  // days of delay for out-SLA entries
+                  let diasAtraso = 0
+                  if (isOutSLA) {
+                    const slaDate = nextBusinessDay(entry.date)
+                    diasAtraso = Math.round((TODAY.getTime() - slaDate.getTime()) / 86400000)
+                  }
+
+                  return (
+                    <tr
+                      key={entry.date}
+                      className="transition-colors group"
+                      style={{ borderBottom: `1px solid ${t.border}` }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = t.surfaceHover
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent'
+                      }}
+                    >
+                      {/* Color bar */}
+                      <td style={{ width: 4, padding: 0 }}>
+                        <div className="h-full w-1" style={{ background: barColor, minHeight: 32 }} />
+                      </td>
+                      <td className="px-3 py-2 text-[11px] font-mono" style={{ color: t.text }}>
+                        {fmtDateBR(entry.date)}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] font-mono text-right" style={{ color: t.textSec }}>
+                        R$ {fmtBRL(entry.extrato)}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] font-mono text-right" style={{ color: t.textSec }}>
+                        R$ {fmtBRL(entry.saldoBanco)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-[11px] font-mono text-right font-semibold"
+                        style={{
+                          color: entry.conciliado ? t.green : t.red,
+                        }}
+                      >
+                        {entry.conciliado ? '0,00' : fmtBRL(entry.dif)}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {entry.conciliado ? (
+                          <CheckCircle2 size={14} style={{ color: t.green }} className="inline-block" />
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <XCircle size={14} style={{ color: isOutSLA ? t.red : t.amber }} />
+                            {isOutSLA && (
+                              <span className="text-[9px] font-mono font-semibold" style={{ color: t.red }}>
+                                {diasAtraso}d
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer strip */}
+      <div
+        className="grid grid-cols-5 shrink-0"
+        style={{ borderTop: `1px solid ${t.border}`, background: t.surface }}
+      >
+        <FooterMetric
+          label="Ultimo Conciliado"
+          value={slaInfo.ultimoConcil ? fmtDateBR(slaInfo.ultimoConcil) : '\u2014'}
+          color={t.green}
+          t={t}
+        />
+        <FooterMetric
+          label="SLA D+1 Util"
+          value={slaInfo.foraSLA > 0 ? `${slaInfo.foraSLA} fora` : 'Em dia'}
+          color={slaInfo.foraSLA > 0 ? t.red : t.green}
+          t={t}
+          sub={slaInfo.foraSLA > 0 ? `${slaInfo.emDia} em dia` : undefined}
+        />
+        <FooterMetric
+          label="Movimentacao Total"
+          value={`R$ ${fmtK(slaInfo.movTotal)}`}
+          color={t.blue}
+          t={t}
+        />
+        <FooterMetric
+          label="Dias s/ Movimento"
+          value={`${slaInfo.diasSemMov}d`}
+          color={slaInfo.diasSemMov > 2 ? t.amber : t.green}
+          t={t}
+        />
+        <FooterMetric
+          label="Regra SLA"
+          value="D+1 Util"
+          color={t.muted}
+          t={t}
+          sub="Feriados BR incluidos"
+          borderRight={false}
+        />
+      </div>
+    </div>
+  )
 }
 
-function updateSidePanel(saldos, totalConcil, totalPend) {
-  const fmt = v => Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const colors = ['#38BDF8','#34D399','#FBBF24','#C084FC','#FB923C'];
-
-  // Bank cards
-  if (saldos.length) {
-    document.getElementById('bankCards').innerHTML = saldos.map((c, i) => {
-      const saldo = c.saldo || 0;
-      const nome = c.descricao || c.nome || 'Conta ' + (i+1);
-      const color = colors[i % colors.length];
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-        '<div style="display:flex;align-items:center;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:' + color + '"></div><span style="font-size:10px;color:var(--muted)">' + nome + '</span></div>' +
-        '<span style="font-family:DM Mono,monospace;font-size:11px;color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(saldo) + '</span></div>';
-    }).join('');
-  } else {
-    document.getElementById('bankCards').innerHTML = '<span style="color:var(--muted);font-size:10px">Nenhuma conta encontrada</span>';
-  }
-
-  // Stats
-  const totalAll = totalConcil + totalPend;
-  const pctGeral = totalAll > 0 ? Math.round(totalConcil / totalAll * 100) : 0;
-  document.getElementById('statsPanel').innerHTML = [
-    {label:'Total de lançamentos', val: totalAll, color:'var(--text)'},
-    {label:'Conciliados', val: totalConcil, color:'var(--green)'},
-    {label:'Pendentes', val: totalPend, color:'var(--amber)'},
-    {label:'Taxa de conciliação', val: pctGeral + '%', color:'var(--blue)'},
-  ].map(s => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-    '<span style="font-size:10px;color:var(--muted)">' + s.label + '</span>' +
-    '<span style="font-family:DM Mono,monospace;font-size:11px;color:' + s.color + '">' + s.val + '</span></div>').join('');
+// ---------- Footer metric component ----------
+interface FooterMetricProps {
+  label: string
+  value: string
+  color: string
+  t: ThemeTokens
+  sub?: string
+  borderRight?: boolean
 }
 
-loadConciliacao();
-</script>
-`
-    const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'width:100%;height:calc(100vh - 48px);border:none;display:block'
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts')
-    iframe.srcdoc = html
-    ref.current.innerHTML = ''
-    ref.current.appendChild(iframe)
-  }, [empresaAtiva])
-
-  return <div ref={ref} style={{ width:'100%', height:'calc(100vh - 48px)' }} />
+function FooterMetric({ label, value, color, t, sub, borderRight = true }: FooterMetricProps) {
+  return (
+    <div
+      className="px-4 py-2.5"
+      style={{ borderRight: borderRight ? `1px solid ${t.border}` : 'none' }}
+    >
+      <div className="text-[8px] uppercase tracking-wider mb-0.5" style={{ color: t.muted }}>
+        {label}
+      </div>
+      <div className="text-[12px] font-mono font-semibold" style={{ color }}>
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  )
 }

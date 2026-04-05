@@ -41,6 +41,11 @@ export default function AdminPage() {
   const [error, setError] = useState('')
   const [testResults, setTestResults] = useState<Record<number, { sucesso: boolean; mensagem: string } | null>>({})
   const [testing, setTesting] = useState<number | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const showToast = (type: 'success' | 'error', msg: string) => {
+    setToast({ type, msg })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   // Forms
   const [userForm, setUserForm] = useState({ nome: '', email: '', senha: '', is_admin: false })
@@ -122,9 +127,9 @@ export default function AdminPage() {
   const saveCredenciais = async (empresaId: number, appKey: string, appSecret: string) => {
     try {
       await api.put(`/admin/empresas/${empresaId}/credenciais`, { app_key: appKey, app_secret: appSecret })
-      alert('Credenciais salvas com sucesso!')
+      showToast('success', 'Credenciais salvas com sucesso!')
       loadData()
-    } catch (err: any) { alert(err?.response?.data?.detail || 'Erro ao salvar credenciais') }
+    } catch (err: any) { showToast('error', err?.response?.data?.detail || 'Erro ao salvar credenciais') }
   }
 
   // Testar credenciais Omie
@@ -159,6 +164,20 @@ export default function AdminPage() {
 
   return (
     <div>
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm flex items-center gap-2 transition-all ${
+          toast.type === 'success'
+            ? 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
+            : 'bg-red-900/90 text-red-200 border border-red-700/50'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+          {toast.msg}
+          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -315,7 +334,7 @@ export default function AdminPage() {
                             const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
                             const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
                             if (key && secret) testarCredenciais(emp.id, key, secret)
-                            else alert('Preencha App Key e App Secret')
+                            else showToast('error', 'Preencha App Key e App Secret')
                           }}
                           disabled={testing === emp.id}
                           className="flex items-center gap-2 border border-zinc-700 hover:border-blue-500/40 text-zinc-200 rounded-xl px-4 py-2 text-sm font-medium transition-all disabled:opacity-50"
@@ -328,7 +347,7 @@ export default function AdminPage() {
                             const key = (document.getElementById(`appkey-${emp.id}`) as HTMLInputElement)?.value
                             const secret = (document.getElementById(`appsecret-${emp.id}`) as HTMLInputElement)?.value
                             if (key && secret) saveCredenciais(emp.id, key, secret)
-                            else alert('Preencha App Key e App Secret')
+                            else showToast('error', 'Preencha App Key e App Secret')
                           }}
                           className="bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2 text-sm font-bold transition-all"
                         >
