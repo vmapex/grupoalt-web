@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
+import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
 import { Bell, HelpCircle, ChevronRight, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
@@ -11,6 +12,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const router = useRouter()
   const pathname = usePathname()
   const { user, setAuth } = useAuthStore()
+  const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
+  const empresaSynced = useEmpresaStore((s) => s._synced)
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
 
@@ -29,6 +32,17 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           data.permissoes || [],
         )
         setNotifCount(notifRes.data.nao_lidas || 0)
+        // Sync empresaStore with real empresas from API
+        setTimeout(() => syncFromAuth(), 0)
+
+        // Redirect admin without empresas to setup wizard
+        if (data.is_admin && (!data.empresas || data.empresas.length === 0)) {
+          const path = window.location.pathname
+          if (!path.startsWith('/portal/setup') && !path.startsWith('/portal/admin')) {
+            router.push('/portal/setup')
+          }
+        }
+
         setLoading(false)
       })
       .catch((err) => {
@@ -54,6 +68,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       faturamento: 'Faturamento', custos: 'Custos', contabil: 'Contábil',
       controladoria: 'Controladoria', operacoes: 'Operações',
       organograma: 'Organograma', mvv: 'Missão | Visão | Valores',
+      setup: 'Setup Inicial',
     }
     return parts.map(p => labels[p] || p)
   })()
