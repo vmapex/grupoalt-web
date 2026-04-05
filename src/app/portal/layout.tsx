@@ -5,7 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
-import { Bell, HelpCircle, ChevronRight, ChevronDown } from 'lucide-react'
+import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
+import { useThemeStore } from '@/store/themeStore'
+import { NotificationBell } from '@/components/nav/NotificationBell'
+import { ChatPanel } from '@/components/chat/ChatPanel'
+import { OrbitButton } from '@/components/chat/OrbitButton'
 import api from '@/lib/api'
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +20,19 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const empresaSynced = useEmpresaStore((s) => s._synced)
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
+  const themeMode = useThemeStore((s) => s.mode)
+  const toggleTheme = useThemeStore((s) => s.toggle)
+  const [chatOpen, setChatOpen] = useState(false)
+
+  // Sync dark class on <html> for CSS variables
+  useEffect(() => {
+    const root = document.documentElement
+    if (themeMode === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+  }, [themeMode])
 
   useEffect(() => {
     Promise.all([
@@ -86,11 +103,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}>
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm flex-shrink-0">
+        <header className="h-14 flex items-center justify-between px-6 backdrop-blur-sm flex-shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-elevated)' }}>
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm">
             <span className="text-zinc-500">Portal</span>
@@ -105,14 +122,16 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Notification Bell */}
-            <button className="relative p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all">
-              <Bell className="w-[18px] h-[18px]" />
-              {notifCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-[#CCA000] text-zinc-900 text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              )}
+            {/* Notification Bell — full dropdown panel */}
+            <NotificationBell />
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all"
+              aria-label="Alternar tema"
+              title={themeMode === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+            >
+              {themeMode === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             </button>
             {/* Help */}
             <button className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all">
@@ -140,6 +159,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           {children}
         </main>
       </div>
+
+      {/* Orbit Chat */}
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
+      {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}
     </div>
   )
 }

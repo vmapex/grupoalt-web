@@ -15,6 +15,9 @@ export function SortHeader({ label, field, sort, onSort, align = 'left' }: SortH
   const arrow = active ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''
   return (
     <th
+      scope="col"
+      role="columnheader"
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
       onClick={() => onSort(field)}
       className="cursor-pointer select-none whitespace-nowrap font-mono transition-colors"
       style={{

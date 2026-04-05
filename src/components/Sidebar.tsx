@@ -33,7 +33,7 @@ const sections: NavSection[] = [
     label: 'Indicadores',
     modulo: 'indicadores',
     children: [
-      { label: 'Financeiro', href: '/bi/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      { label: 'Financeiro', href: '/portal/financeiro/extrato', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
       { label: 'Operações', href: '/portal/indicadores/operacoes', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
       { label: 'Controladoria', href: '/portal/indicadores/controladoria', icon: <Landmark className="w-[18px] h-[18px]" /> },
     ],
@@ -91,7 +91,7 @@ export default function Sidebar() {
     : '?'
 
   return (
-    <aside className="w-[280px] flex flex-col bg-zinc-900 border-r border-zinc-800 relative overflow-hidden flex-shrink-0">
+    <aside className="hidden md:flex w-[280px] flex-col border-r relative overflow-hidden flex-shrink-0" style={{ background: 'var(--surface-elevated)', borderColor: 'var(--border)' }}>
       {/* Gold accent top line */}
       <div className="h-[2px] flex-shrink-0" style={{
         background: 'linear-gradient(90deg, #CCA000 0%, #E0B82E 25%, #F5E6A3 50%, #E0B82E 75%, #CCA000 100%)',

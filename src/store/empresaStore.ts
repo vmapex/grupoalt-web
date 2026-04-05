@@ -11,25 +11,6 @@ export interface Empresa {
   cor: string
 }
 
-const EMPRESAS_DEFAULT: Empresa[] = [
-  {
-    id: '1',
-    nome: 'Alt Max Transportes',
-    cnpj: '12.345.678/0001-00',
-    logoDark: null,
-    logoLight: null,
-    cor: '#38BDF8',
-  },
-  {
-    id: '2',
-    nome: 'Alt Max Logística',
-    cnpj: '12.345.678/0002-81',
-    logoDark: null,
-    logoLight: null,
-    cor: '#34D399',
-  },
-]
-
 const CORES = ['#38BDF8', '#34D399', '#FBBF24', '#F87171', '#C084FC', '#FB923C']
 
 interface EmpresaState {
@@ -45,8 +26,8 @@ interface EmpresaState {
 }
 
 export const useEmpresaStore = create<EmpresaState>((set, get) => ({
-  empresas: EMPRESAS_DEFAULT,
-  activeId: EMPRESAS_DEFAULT[0].id,
+  empresas: [],
+  activeId: '',
   _synced: false,
 
   setActive: (id) => {
@@ -59,7 +40,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
 
   getActive: () => {
     const state = get()
-    return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0]
+    return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0] || null
   },
 
   /** Pull empresas from authStore (populated by /auth/me) */

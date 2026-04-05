@@ -133,7 +133,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {data.kpis.map((kpi, i) => {
           const cfg = kpiConfig[i] || kpiConfig[0]
           const Icon = cfg.icon
@@ -158,11 +158,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* CP/CR Summary (2 cols) */}
-        <div className="col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-4">
           {/* CP and CR cards side by side */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Contas a Pagar */}
             <Link href="/portal/financeiro/cp" className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 hover:border-zinc-700 transition-all group">
               <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">Contas a Pagar</h3>
