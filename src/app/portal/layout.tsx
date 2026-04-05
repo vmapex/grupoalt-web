@@ -40,7 +40,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           const path = window.location.pathname
           if (!path.startsWith('/portal/setup') && !path.startsWith('/portal/admin')) {
             router.push('/portal/setup')
-            return
           }
         }
 
