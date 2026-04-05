@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { Bell, AlertCircle, AlertTriangle, Info, ChevronRight } from 'lucide-react'
 import { useNotificacoes, useNotificacoesContagem, marcarTodasLidas } from '@/hooks/useAPI'
@@ -18,36 +19,15 @@ interface Notification {
 const NOW = new Date()
 const YESTERDAY = new Date(NOW.getTime() - 86400000)
 
-const FALLBACK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'critical',
-    title: '3 contas atrasadas',
-    description: 'ENERGIA, INTERNET, SEGURO',
-    value: 'R$ 27.100',
-    action: { label: 'Ver detalhes', route: '/bi/financeiro/cp-cr' },
-    createdAt: NOW,
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Conciliacao: 5 dias fora SLA',
-    description: 'Maior atraso: 12d uteis',
-    action: { label: 'Ir para Conciliacao', route: '/bi/financeiro/conciliacao' },
-    createdAt: NOW,
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'info',
-    title: 'Cobertura de caixa: 0.8x',
-    description: 'Saidas previstas > entradas',
-    action: { label: 'Ver Fluxo de Caixa', route: '/bi/financeiro/fluxo' },
-    createdAt: NOW,
-    read: false,
-  },
-]
+const TIPO_MAP: Record<string, Notification['type']> = {
+  cp_atrasado: 'critical',
+  cr_atrasado: 'critical',
+  cp_vencimento_proximo: 'warning',
+  doc_aprovacao: 'info',
+  doc_rejeicao: 'warning',
+}
+
+const FALLBACK_NOTIFICATIONS: Notification[] = []
 
 function isToday(d: Date) {
   const now = new Date()
@@ -62,6 +42,7 @@ function isYesterday(d: Date) {
 
 export function NotificationBell() {
   const t = useThemeStore((s) => s.tokens)
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -74,7 +55,7 @@ export function NotificationBell() {
     if (notifsAPI?.length) {
       return notifsAPI.map((n) => ({
         id: String(n.id),
-        type: (n.tipo === 'critical' ? 'critical' : n.tipo === 'warning' ? 'warning' : 'info') as Notification['type'],
+        type: (TIPO_MAP[n.tipo] || 'info') as Notification['type'],
         title: n.titulo,
         description: n.mensagem,
         action: n.link ? { label: 'Ver detalhes', route: n.link } : undefined,
@@ -161,7 +142,7 @@ export function NotificationBell() {
               className="flex items-center gap-0.5 text-[9px] font-medium mt-1 cursor-pointer bg-transparent border-none p-0"
               style={{ color: t.blue }}
               onClick={() => {
-                // In production, navigate to n.action.route
+                if (n.action?.route) router.push(n.action.route)
                 setOpen(false)
               }}
             >

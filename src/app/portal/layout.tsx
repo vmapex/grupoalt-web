@@ -5,8 +5,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
-import { Bell, HelpCircle, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
+import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
+import { NotificationBell } from '@/components/nav/NotificationBell'
 import api from '@/lib/api'
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -118,15 +119,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Notification Bell */}
-            <button className="relative p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all" aria-label="Notificações">
-              <Bell className="w-[18px] h-[18px]" />
-              {notifCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-[#CCA000] text-zinc-900 text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              )}
-            </button>
+            {/* Notification Bell — full dropdown panel */}
+            <NotificationBell />
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
