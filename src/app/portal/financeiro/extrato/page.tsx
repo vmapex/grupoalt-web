@@ -81,11 +81,11 @@ export default function PageExtrato() {
   const maxSaldo = useMemo(() => Math.max(...contas.filter((c) => c.saldo !== 0).map((c) => Math.abs(c.saldo)), 1), [contas])
 
   return (
-    <div className="grid min-h-full" style={{ gridTemplateColumns: '1fr 240px' }}>
+    <div className="flex flex-col lg:grid min-h-full" style={{ gridTemplateColumns: '1fr 240px' }}>
       {/* Left: Table */}
       <div className="flex flex-col min-h-0" style={{ borderRight: `1px solid ${t.border}` }}>
         {/* KPIs */}
-        <div className="grid grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {/* Saldo Inicial */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saldo Inicial</div>
@@ -163,7 +163,7 @@ export default function PageExtrato() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-48 gap-2">
               <Loader2 size={18} className="animate-spin" style={{ color: t.blue }} />
@@ -230,7 +230,7 @@ export default function PageExtrato() {
       </div>
 
       {/* Right: Saldo por Conta */}
-      <div className="p-4 overflow-y-auto flex flex-col gap-3">
+      <div className="hidden lg:flex p-4 overflow-y-auto flex-col gap-3">
         <div className="text-[10px] uppercase tracking-[1.5px] font-medium" style={{ color: t.muted }}>
           Saldo por Conta
         </div>
