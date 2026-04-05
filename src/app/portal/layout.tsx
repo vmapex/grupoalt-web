@@ -8,6 +8,8 @@ import Sidebar from '@/components/Sidebar'
 import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { NotificationBell } from '@/components/nav/NotificationBell'
+import { ChatPanel } from '@/components/chat/ChatPanel'
+import { OrbitButton } from '@/components/chat/OrbitButton'
 import api from '@/lib/api'
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +22,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [notifCount, setNotifCount] = useState(0)
   const themeMode = useThemeStore((s) => s.mode)
   const toggleTheme = useThemeStore((s) => s.toggle)
+  const [chatOpen, setChatOpen] = useState(false)
 
   // Sync dark class on <html> for CSS variables
   useEffect(() => {
@@ -156,6 +159,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           {children}
         </main>
       </div>
+
+      {/* Orbit Chat */}
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
+      {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}
     </div>
   )
 }
