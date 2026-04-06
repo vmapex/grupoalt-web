@@ -34,11 +34,11 @@ export function EmpresaDropdown() {
         }}
       >
         {logo ? (
-          <img src={logo} alt={active.nome} className="h-4" />
+          <img src={logo} alt={active?.nome || 'Logo'} className="h-4" />
         ) : (
-          <Building2 size={12} style={{ color: active.cor }} />
+          <Building2 size={12} style={{ color: active?.cor || '#38BDF8' }} />
         )}
-        <span className="max-w-[100px] truncate">{active.nome}</span>
+        <span className="max-w-[100px] truncate">{active?.nome || 'Empresa'}</span>
         <ChevronDown
           size={11}
           className="transition-transform"

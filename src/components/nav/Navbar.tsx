@@ -77,10 +77,10 @@ export function Navbar() {
         </Link>
         <div className="flex items-baseline gap-2">
           {logo ? (
-            <img src={logo} alt={active.nome} style={{ height: 30 }} />
+            <img src={logo} alt={active?.nome || 'Logo'} style={{ height: 30 }} />
           ) : (
             <div className="flex items-baseline gap-2">
-              <Building2 size={16} style={{ color: active.cor }} className="self-center" />
+              <Building2 size={16} style={{ color: active?.cor || '#38BDF8' }} className="self-center" />
               <span className="font-mono text-[13px] tracking-widest font-bold" style={{ color: t.text }}>
                 ALT MAX
               </span>

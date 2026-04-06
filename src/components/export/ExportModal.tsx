@@ -153,7 +153,7 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(11)
         pdf.setTextColor(pdfTextR, pdfTextG, pdfTextB)
-        pdf.text(`${activeEmpresa.nome} — ${pageLabel}`, margin, 9)
+        pdf.text(`${activeEmpresa?.nome || 'Empresa'} — ${pageLabel}`, margin, 9)
         pdf.setFontSize(7)
         pdf.setFont('helvetica', 'normal')
         pdf.setTextColor(100, 116, 139)
@@ -181,7 +181,7 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
       console.error('Export error:', err)
       setStatus('idle')
     }
-  }, [onClose, page, activeEmpresa.nome, isDark])
+  }, [onClose, page, activeEmpresa?.nome || 'Empresa', isDark])
 
   if (!open) return null
 
@@ -293,9 +293,9 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
             >
               <div
                 className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: activeEmpresa.cor }}
+                style={{ background: activeEmpresa?.cor || '#38BDF8' }}
               />
-              <span>{activeEmpresa.nome}</span>
+              <span>{activeEmpresa?.nome || 'Empresa'}</span>
             </div>
           </div>
 

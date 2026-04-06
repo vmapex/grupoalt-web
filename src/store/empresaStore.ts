@@ -18,7 +18,7 @@ interface EmpresaState {
   activeId: string
   _synced: boolean
   setActive: (id: string) => void
-  getActive: () => Empresa
+  getActive: () => Empresa | null
   syncFromAuth: () => void
   updateEmpresa: (id: string, data: Partial<Empresa>) => void
   addEmpresa: () => void
@@ -93,7 +93,8 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
     }),
 }))
 
-export function getLogo(emp: Empresa, isDark: boolean): string | null {
+export function getLogo(emp: Empresa | null, isDark: boolean): string | null {
+  if (!emp) return null
   if (isDark) return emp.logoDark || emp.logoLight
   return emp.logoLight || emp.logoDark
 }
