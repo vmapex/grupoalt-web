@@ -5,7 +5,7 @@ import { Download, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 
 interface ExportPDFButtonProps {
-  empresaId: number | null
+  empresaId: number | string | null
   endpoint: string
   filename?: string
   params?: Record<string, string>

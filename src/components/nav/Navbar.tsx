@@ -11,8 +11,7 @@ import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
-import { ExportButton } from '@/components/export/ExportButton'
-import { ExportModal } from '@/components/export/ExportModal'
+import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const NAV = [
@@ -31,7 +30,6 @@ export function Navbar() {
   const activeId = useEmpresaStore((s) => s.activeId)
   const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
   const logo = getLogo(active, t.isDark)
-  const [exportOpen, setExportOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefresh = useCallback(async () => {
@@ -132,7 +130,30 @@ export function Navbar() {
         >
           <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
         </button>
-        <ExportButton onClick={() => setExportOpen(true)} />
+        {pathname.includes('/extrato') && (
+          <ExportPDFButton
+            empresaId={activeId}
+            endpoint="/v1/export/empresas/{empresa_id}/extrato/pdf"
+            filename="extrato.pdf"
+            label="PDF Extrato"
+          />
+        )}
+        {pathname.includes('/cp-cr') && (
+          <>
+            <ExportPDFButton
+              empresaId={activeId}
+              endpoint="/v1/export/empresas/{empresa_id}/cp/pdf"
+              filename="contas-pagar.pdf"
+              label="PDF CP"
+            />
+            <ExportPDFButton
+              empresaId={activeId}
+              endpoint="/v1/export/empresas/{empresa_id}/cr/pdf"
+              filename="contas-receber.pdf"
+              label="PDF CR"
+            />
+          </>
+        )}
         <DateRangePicker />
         <NotificationBell />
         <UnidadeDropdown />
@@ -158,7 +179,6 @@ export function Navbar() {
         </Link>
       </div>
 
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </nav>
   )
 }
