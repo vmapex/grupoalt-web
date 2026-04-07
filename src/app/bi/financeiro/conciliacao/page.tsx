@@ -35,7 +35,7 @@ const MONTHS: { year: number; month: number; label: string }[] = (() => {
 
 const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
 
-const BANK_FILTERS = ['Todos', 'Itau', 'Banco do Brasil', 'Bradesco', 'Santander'] as const
+// Bank filters are now derived dynamically from actual data (see bankFilters useMemo)
 
 // ---------- CalendarMonth component ----------
 interface CalendarMonthProps {
@@ -157,6 +157,16 @@ export default function PageConciliacao() {
     if (concilAPI?.length) return transformConcilMovimento(concilAPI)
     return {}
   }, [concilAPI])
+
+  // --- derive bank filters from actual data (only banks with movements) ---
+  const bankFilters = useMemo(() => {
+    const bancos = new Set<string>()
+    for (const v of Object.values(baseData)) {
+      if (v.banco) bancos.add(v.banco)
+    }
+    const sorted = Array.from(bancos).sort()
+    return ['Todos', ...sorted]
+  }, [baseData])
 
   // --- filtered entries by bank ---
   const filteredEntries = useMemo(() => {
@@ -334,7 +344,7 @@ export default function PageConciliacao() {
       >
         {/* Bank buttons */}
         <div className="flex items-center gap-1.5">
-          {BANK_FILTERS.map((b) => (
+          {bankFilters.map((b) => (
             <button
               key={b}
               onClick={() => setBankFilter(b)}

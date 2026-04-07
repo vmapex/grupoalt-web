@@ -15,8 +15,8 @@ import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const NAV = [
-  { href: '/bi/financeiro', label: 'Home', exact: true },
-  { href: '/bi/financeiro/caixa', label: 'Caixa Realizado' },
+  { href: '/bi/financeiro', label: 'Dashboard', exact: true },
+  { href: '/bi/financeiro/caixa?view=analise', label: 'Análise IA', match: '/bi/financeiro/caixa' },
   { href: '/bi/financeiro/extrato', label: 'Extrato' },
   { href: '/bi/financeiro/cp-cr', label: 'A Pagar/Receber' },
   { href: '/bi/financeiro/fluxo', label: 'Fluxo de Caixa' },
@@ -95,8 +95,9 @@ export function Navbar() {
         className="flex gap-0.5 rounded-lg p-0.5"
         style={{ background: `${t.text}06` }}
       >
-        {NAV.map(({ href, label, exact }: { href: string; label: string; exact?: boolean }) => {
-          const isActive = exact ? pathname === href : (pathname === href || pathname?.startsWith(href + '/'))
+        {NAV.map(({ href, label, exact, match }: { href: string; label: string; exact?: boolean; match?: string }) => {
+          const matchPath = match || href
+          const isActive = exact ? pathname === matchPath : (pathname === matchPath || pathname?.startsWith(matchPath + '/'))
           return (
             <Link
               key={href}
