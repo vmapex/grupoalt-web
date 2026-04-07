@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import { useThemeStore } from '@/store/themeStore'
+import { useAuthStore } from '@/store/authStore'
 import { Orbit, X, Send, User, Bot, Zap, Brain } from 'lucide-react'
 import api from '@/lib/api'
 
@@ -47,6 +48,7 @@ const PAGE_LABELS: Record<string, string> = {
 
 export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelProps) {
   const t = useThemeStore((s) => s.tokens)
+  const empresaAtiva = useAuthStore((s) => s.empresaAtiva)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -89,6 +91,7 @@ export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelP
       const res = await api.post('/orbit/chat', {
         messages: apiMessages,
         financial_context: `Página atual: ${pageLabel}`,
+        empresa_id: empresaAtiva?.id || null,
       })
 
       const data = res.data
