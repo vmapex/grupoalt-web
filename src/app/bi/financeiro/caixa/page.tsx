@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
@@ -33,14 +33,6 @@ export default function PageCaixa() {
   const [selMonth, setSelMonth] = useState<string | null>(null)
   const [caixaView, setCaixaView] = useState<'dashboard' | 'analise'>('dashboard')
   const [detailView, setDetailView] = useState<string | null>(null)
-
-  // Sync view from URL query param (?view=analise)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('view') === 'analise') {
-      setCaixaView('analise')
-    }
-  }, [])
 
   // API calls for KPI strip with date range
   const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)

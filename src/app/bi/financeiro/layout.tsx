@@ -7,12 +7,14 @@ import { useAuthStore } from '@/store/authStore'
 import { Navbar } from '@/components/nav/Navbar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
+import { BarChart3, Sparkles } from 'lucide-react'
 import api from '@/lib/api'
 
 export default function BIFinanceiroLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { mode, tokens: t } = useThemeStore()
   const [chatOpen, setChatOpen] = useState(false)
+  const [biView, setBiView] = useState<'dashboard' | 'analise'>('dashboard')
   const pathname = usePathname()
   const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
   const synced = useEmpresaStore((s) => s._synced)
@@ -50,11 +52,72 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
     }
   }, [mode])
 
+  // Reset view to dashboard when navigating to a new page
+  useEffect(() => {
+    setBiView('dashboard')
+  }, [pathname])
+
   return (
     <div className="flex flex-col h-screen" style={{ background: t.bg, color: t.text }}>
       <Navbar />
+      {/* Sub-bar: Dashboard / Análise IA — visible on all BI pages */}
+      <div
+        className="flex items-center justify-between px-5 shrink-0"
+        style={{ height: 38, borderBottom: `1px solid ${t.border}`, background: `${t.bg}CC` }}
+      >
+        <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: `${t.text}06` }}>
+          {[
+            { id: 'dashboard' as const, label: 'Dashboard', Icon: BarChart3, accent: t.blue, dim: t.blueDim },
+            { id: 'analise' as const, label: 'Análise IA', Icon: Sparkles, accent: t.purple, dim: t.purpleDim },
+          ].map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setBiView(v.id)}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-md text-[10px] border-none cursor-pointer transition-all"
+              style={{
+                color: biView === v.id ? v.accent : t.muted,
+                background: biView === v.id ? v.dim : 'transparent',
+                fontWeight: biView === v.id ? 600 : 400,
+              }}
+            >
+              <v.Icon size={11} strokeWidth={biView === v.id ? 2 : 1.5} />
+              {v.label}
+            </button>
+          ))}
+        </div>
+        {biView === 'analise' && (
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg"
+            style={{ background: `${t.purple}0A`, border: `1px solid ${t.purple}22` }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: t.purple }} />
+            <span className="text-[9px] font-semibold" style={{ color: t.purple }}>Agente IA ativo</span>
+          </div>
+        )}
+      </div>
       <main className="flex-1 overflow-auto">
-        {children}
+        {biView === 'dashboard' ? (
+          children
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center max-w-md px-6">
+              <div className="flex items-center justify-center w-16 h-16 rounded-2xl mx-auto mb-4" style={{ background: t.purpleDim }}>
+                <Sparkles size={28} style={{ color: t.purple }} />
+              </div>
+              <h2 className="text-lg font-semibold mb-2" style={{ color: t.text }}>Análise IA</h2>
+              <p className="text-sm mb-4" style={{ color: t.muted }}>
+                O agente Claude analisará os dados da página atual e fornecerá insights financeiros automaticamente.
+              </p>
+              <button
+                onClick={() => setChatOpen(true)}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                style={{ background: t.purple, color: '#fff' }}
+              >
+                Abrir Orbit para análise
+              </button>
+            </div>
+          </div>
+        )}
       </main>
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
       {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}

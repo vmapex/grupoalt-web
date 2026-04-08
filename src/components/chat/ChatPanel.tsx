@@ -91,7 +91,7 @@ export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelP
       const res = await api.post('/orbit/chat', {
         messages: apiMessages,
         financial_context: `Página atual: ${pageLabel}`,
-        empresa_id: empresaAtiva?.id || null,
+        empresa_id: empresaAtiva?.id ? Number(empresaAtiva.id) : null,
       })
 
       const data = res.data
