@@ -144,10 +144,15 @@ export default function DashboardExecutivo() {
   /* ── Fluxo projetado 30d (from API or CP/CR) ── */
   const fluxoData = useMemo(() => {
     if (fluxoAPI?.diario?.length) {
-      return fluxoAPI.diario.slice(0, 30).map((d, i) => ({
-        dia: `D${i + 1}`,
-        saldo: Math.round(d.saldo_acumulado),
-      }))
+      return fluxoAPI.diario.slice(0, 30).map((d, i) => {
+        const saldo = Math.round(d.saldo_acumulado)
+        return {
+          dia: `D${i + 1}`,
+          saldo,
+          saldoPos: saldo >= 0 ? saldo : 0,
+          saldoNeg: saldo < 0 ? saldo : 0,
+        }
+      })
     }
     // Fallback: simple projection from saldo + CP/CR schedule
     let saldo = saldoCaixa
@@ -157,7 +162,13 @@ export default function DashboardExecutivo() {
     const avgDailyCP = cpOpen.reduce((s, r) => s + r.valor, 0) / 30
     return Array.from({ length: 30 }, (_, i) => {
       saldo += avgDailyCR - avgDailyCP
-      return { dia: `D${i + 1}`, saldo: Math.round(saldo) }
+      const rounded = Math.round(saldo)
+      return {
+        dia: `D${i + 1}`,
+        saldo: rounded,
+        saldoPos: rounded >= 0 ? rounded : 0,
+        saldoNeg: rounded < 0 ? rounded : 0,
+      }
     })
   }, [saldoCaixa, fluxoAPI, cpData, crData])
 
@@ -336,7 +347,7 @@ export default function DashboardExecutivo() {
           className="relative rounded-xl p-4"
           style={{ background: t.surface, border: `1px solid ${t.border}` }}
         >
-          <GlowLine color={t.green} />
+          <GlowLine color={fluxo30d >= 0 ? t.green : t.red} />
           <div className="text-[11px] font-semibold mb-3" style={{ color: t.textSec }}>
             Fluxo Projetado 30d
           </div>
@@ -344,9 +355,13 @@ export default function DashboardExecutivo() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={fluxoData}>
                 <defs>
-                  <linearGradient id="fluxoGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="fluxoGradGreen" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={t.green} stopOpacity={0.3} />
                     <stop offset="100%" stopColor={t.green} stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="fluxoGradRed" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0%" stopColor={t.red} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={t.red} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} stroke={t.gridLine} />
@@ -367,11 +382,21 @@ export default function DashboardExecutivo() {
                 <ReferenceLine y={0} stroke={t.red} strokeDasharray="4 4" strokeOpacity={0.5} />
                 <Area
                   type="monotone"
-                  dataKey="saldo"
-                  name="Saldo"
+                  dataKey="saldoPos"
+                  name="Saldo +"
                   stroke={t.green}
                   strokeWidth={1.5}
-                  fill="url(#fluxoGrad)"
+                  fill="url(#fluxoGradGreen)"
+                  connectNulls={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="saldoNeg"
+                  name="Saldo −"
+                  stroke={t.red}
+                  strokeWidth={1.5}
+                  fill="url(#fluxoGradRed)"
+                  connectNulls={false}
                 />
               </AreaChart>
             </ResponsiveContainer>

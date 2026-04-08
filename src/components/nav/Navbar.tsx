@@ -11,13 +11,12 @@ import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
-import { ExportButton } from '@/components/export/ExportButton'
-import { ExportModal } from '@/components/export/ExportModal'
+import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const NAV = [
-  { href: '/bi/financeiro', label: 'Home', exact: true },
-  { href: '/bi/financeiro/caixa', label: 'Caixa Realizado' },
+  { href: '/bi/financeiro', label: 'Dashboard', exact: true },
+  { href: '/bi/financeiro/caixa?view=analise', label: 'Análise IA', match: '/bi/financeiro/caixa' },
   { href: '/bi/financeiro/extrato', label: 'Extrato' },
   { href: '/bi/financeiro/cp-cr', label: 'A Pagar/Receber' },
   { href: '/bi/financeiro/fluxo', label: 'Fluxo de Caixa' },
@@ -31,7 +30,6 @@ export function Navbar() {
   const activeId = useEmpresaStore((s) => s.activeId)
   const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
   const logo = getLogo(active, t.isDark)
-  const [exportOpen, setExportOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefresh = useCallback(async () => {
@@ -97,8 +95,9 @@ export function Navbar() {
         className="flex gap-0.5 rounded-lg p-0.5"
         style={{ background: `${t.text}06` }}
       >
-        {NAV.map(({ href, label, exact }: { href: string; label: string; exact?: boolean }) => {
-          const isActive = exact ? pathname === href : (pathname === href || pathname?.startsWith(href + '/'))
+        {NAV.map(({ href, label, exact, match }: { href: string; label: string; exact?: boolean; match?: string }) => {
+          const matchPath = match || href
+          const isActive = exact ? pathname === matchPath : (pathname === matchPath || pathname?.startsWith(matchPath + '/'))
           return (
             <Link
               key={href}
@@ -132,7 +131,30 @@ export function Navbar() {
         >
           <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
         </button>
-        <ExportButton onClick={() => setExportOpen(true)} />
+        {pathname.includes('/extrato') && (
+          <ExportPDFButton
+            empresaId={activeId}
+            endpoint="/v1/export/empresas/{empresa_id}/extrato/pdf"
+            filename="extrato.pdf"
+            label="PDF Extrato"
+          />
+        )}
+        {pathname.includes('/cp-cr') && (
+          <>
+            <ExportPDFButton
+              empresaId={activeId}
+              endpoint="/v1/export/empresas/{empresa_id}/cp/pdf"
+              filename="contas-pagar.pdf"
+              label="PDF CP"
+            />
+            <ExportPDFButton
+              empresaId={activeId}
+              endpoint="/v1/export/empresas/{empresa_id}/cr/pdf"
+              filename="contas-receber.pdf"
+              label="PDF CR"
+            />
+          </>
+        )}
         <DateRangePicker />
         <NotificationBell />
         <UnidadeDropdown />
@@ -158,7 +180,6 @@ export function Navbar() {
         </Link>
       </div>
 
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </nav>
   )
 }

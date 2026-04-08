@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
-import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
+import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon, Menu } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { NotificationBell } from '@/components/nav/NotificationBell'
 import { ChatPanel } from '@/components/chat/ChatPanel'
@@ -22,7 +22,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [notifCount, setNotifCount] = useState(0)
   const themeMode = useThemeStore((s) => s.mode)
   const toggleTheme = useThemeStore((s) => s.toggle)
+  const t = useThemeStore((s) => s.tokens)
   const [chatOpen, setChatOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [hoverThemeBtn, setHoverThemeBtn] = useState(false)
+  const [hoverHelpBtn, setHoverHelpBtn] = useState(false)
+  const [hoverUserBtn, setHoverUserBtn] = useState(false)
 
   // Sync dark class on <html> for CSS variables
   useEffect(() => {
@@ -96,25 +101,36 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950">
-        <div className="text-zinc-500 text-sm">Carregando portal...</div>
+      <div className="flex items-center justify-center h-screen" style={{ background: t.bg }}>
+        <div className="text-sm" style={{ color: t.muted }}>Carregando portal...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}>
-      <Sidebar />
+    <div className="flex h-screen overflow-hidden" style={{ background: t.bg, color: t.text, fontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}>
+      <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-14 flex items-center justify-between px-6 backdrop-blur-sm flex-shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-elevated)' }}>
-          {/* Breadcrumb */}
+        <header className="h-14 flex items-center justify-between px-6 backdrop-blur-sm flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}`, background: t.surfaceElevated }}>
+          {/* Hamburger (mobile) + Breadcrumb */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-zinc-500">Portal</span>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-xl transition-all"
+              style={{ color: t.muted }}
+              aria-label="Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span style={{ color: t.muted }}>Portal</span>
             {breadcrumb.map((part, i) => (
               <span key={i} className="flex items-center gap-2">
-                <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-                <span className={i === breadcrumb.length - 1 ? 'text-zinc-100 font-medium' : 'text-zinc-500'}>
+                <ChevronRight className="w-3.5 h-3.5" style={{ color: t.muted }} />
+                <span
+                  className={i === breadcrumb.length - 1 ? 'font-medium' : ''}
+                  style={{ color: i === breadcrumb.length - 1 ? t.text : t.muted }}
+                >
                   {part}
                 </span>
               </span>
@@ -127,35 +143,54 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all"
+              className="p-2 rounded-xl transition-all"
+              style={{
+                color: hoverThemeBtn ? t.text : t.muted,
+                background: hoverThemeBtn ? t.surfaceHover : 'transparent',
+              }}
+              onMouseEnter={() => setHoverThemeBtn(true)}
+              onMouseLeave={() => setHoverThemeBtn(false)}
               aria-label="Alternar tema"
               title={themeMode === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
             >
               {themeMode === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             </button>
             {/* Help */}
-            <button className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all">
+            <button
+              className="p-2 rounded-xl transition-all"
+              style={{
+                color: hoverHelpBtn ? t.text : t.muted,
+                background: hoverHelpBtn ? t.surfaceHover : 'transparent',
+              }}
+              onMouseEnter={() => setHoverHelpBtn(true)}
+              onMouseLeave={() => setHoverHelpBtn(false)}
+            >
               <HelpCircle className="w-[18px] h-[18px]" />
             </button>
 
-            <div className="w-px h-6 bg-zinc-800" />
+            <div className="w-px h-6" style={{ background: t.border }} />
 
             {/* User */}
-            <button className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl hover:bg-zinc-800 transition-all">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] rounded-xl flex items-center justify-center text-zinc-900 text-xs font-bold shadow-sm">
+            <button
+              className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl transition-all"
+              style={{ background: hoverUserBtn ? t.surfaceHover : 'transparent' }}
+              onMouseEnter={() => setHoverUserBtn(true)}
+              onMouseLeave={() => setHoverUserBtn(false)}
+            >
+              <div className="w-8 h-8 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] rounded-xl flex items-center justify-center text-xs font-bold shadow-sm" style={{ color: '#18181b' }}>
                 {userInitials}
               </div>
               <div className="text-left">
-                <div className="text-sm font-medium text-zinc-200 leading-tight">{user?.nome?.split(' ').slice(0, 2).join(' ')}</div>
-                <div className="text-xs text-zinc-500 leading-tight">{user?.is_admin ? 'Administrador' : 'Usuário'}</div>
+                <div className="text-sm font-medium leading-tight" style={{ color: t.text }}>{user?.nome?.split(' ').slice(0, 2).join(' ')}</div>
+                <div className="text-xs leading-tight" style={{ color: t.muted }}>{user?.is_admin ? 'Administrador' : 'Usuário'}</div>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+              <ChevronDown className="w-3.5 h-3.5" style={{ color: t.muted }} />
             </button>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-zinc-950">
+        <main className="flex-1 overflow-y-auto p-6" style={{ background: t.bg }}>
           {children}
         </main>
       </div>

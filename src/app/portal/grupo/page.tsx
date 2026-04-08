@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { useThemeStore } from '@/store/themeStore'
 import Link from 'next/link'
 import api from '@/lib/api'
 import {
@@ -58,9 +59,11 @@ const quickActions = [
 
 export default function DashboardPage() {
   const { grupoAtivo, empresaAtiva } = useAuthStore()
+  const t = useThemeStore((s) => s.tokens)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hoveredAction, setHoveredAction] = useState<string | null>(null)
 
   useEffect(() => {
     const empresaId = empresaAtiva?.id
@@ -93,7 +96,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex items-center gap-3 text-zinc-400">
+        <div className="flex items-center gap-3" style={{ color: t.muted }}>
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Carregando dados da Omie...</span>
         </div>
@@ -104,10 +107,10 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-md text-center">
+        <div className="rounded-2xl p-8 max-w-md text-center" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-white mb-2">Dados indisponiveis</h2>
-          <p className="text-sm text-zinc-400 leading-relaxed">{error}</p>
+          <h2 className="text-lg font-semibold mb-2" style={{ color: t.text }}>Dados indisponiveis</h2>
+          <p className="text-sm leading-relaxed" style={{ color: t.muted }}>{error}</p>
           <Link href="/portal/admin" className="inline-block mt-4 text-sm text-[#E0B82E] hover:text-[#CCA000] font-medium">
             Ir para Admin
           </Link>
@@ -124,8 +127,8 @@ export default function DashboardPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">Dashboard</h1>
-            <p className="text-sm text-zinc-400">
+            <h1 className="text-2xl font-semibold tracking-tight mb-1" style={{ color: t.text }}>Dashboard</h1>
+            <p className="text-sm" style={{ color: t.muted }}>
               Visao geral — {empresaAtiva?.nome || grupoAtivo?.nome || 'Grupo ALT'}
             </p>
           </div>
@@ -138,14 +141,14 @@ export default function DashboardPage() {
           const cfg = kpiConfig[i] || kpiConfig[0]
           const Icon = cfg.icon
           return (
-            <div key={kpi.label} className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-zinc-700 transition-all">
+            <div key={kpi.label} className="rounded-2xl p-5 transition-all" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{kpi.label}</span>
+                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: t.muted }}>{kpi.label}</span>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: cfg.bg }}>
                   <Icon className="w-4 h-4" style={{ color: cfg.color }} />
                 </div>
               </div>
-              <div className="text-2xl font-semibold text-white mb-1">{kpi.formatted}</div>
+              <div className="text-2xl font-semibold mb-1" style={{ color: t.text }}>{kpi.formatted}</div>
               {kpi.change && (
                 <div className={`flex items-center gap-1 text-xs font-medium ${kpi.up ? 'text-emerald-400' : 'text-red-400'}`}>
                   {kpi.up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
@@ -164,25 +167,25 @@ export default function DashboardPage() {
           {/* CP and CR cards side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Contas a Pagar */}
-            <Link href="/portal/financeiro/cp" className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 hover:border-zinc-700 transition-all group">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">Contas a Pagar</h3>
+            <Link href="/portal/financeiro/cp" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+              <h3 className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: t.muted }}>Contas a Pagar</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-zinc-400">Total Aberto</span>
-                  <span className="text-lg font-semibold text-white font-mono">{fmtBRL(data.cp.total_aberto)}</span>
+                  <span className="text-sm" style={{ color: t.muted }}>Total Aberto</span>
+                  <span className="text-lg font-semibold font-mono" style={{ color: t.text }}>{fmtBRL(data.cp.total_aberto)}</span>
                 </div>
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-zinc-400">A Vencer</span>
+                  <span className="text-sm" style={{ color: t.muted }}>A Vencer</span>
                   <span className="text-sm text-amber-400 font-mono">{fmtBRL(data.cp.total_a_vencer)}</span>
                 </div>
                 {data.cp.total_atrasado > 0 && (
                   <div className="flex justify-between items-baseline">
-                    <span className="text-sm text-zinc-400">Atrasado</span>
+                    <span className="text-sm" style={{ color: t.muted }}>Atrasado</span>
                     <span className="text-sm text-red-400 font-mono">{fmtBRL(data.cp.total_atrasado)}</span>
                   </div>
                 )}
-                <div className="pt-2 border-t border-zinc-800">
-                  <span className="text-xs text-zinc-500">{data.cp.quantidade_aberto} titulo(s) aberto(s)</span>
+                <div className="pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
+                  <span className="text-xs" style={{ color: t.muted }}>{data.cp.quantidade_aberto} titulo(s) aberto(s)</span>
                   {data.cp.quantidade_atrasado > 0 && (
                     <span className="text-xs text-red-400 ml-2">({data.cp.quantidade_atrasado} atrasado(s))</span>
                   )}
@@ -191,40 +194,40 @@ export default function DashboardPage() {
             </Link>
 
             {/* Contas a Receber */}
-            <Link href="/portal/financeiro/cr" className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 hover:border-zinc-700 transition-all group">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">Contas a Receber</h3>
+            <Link href="/portal/financeiro/cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+              <h3 className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: t.muted }}>Contas a Receber</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-zinc-400">Total Aberto</span>
-                  <span className="text-lg font-semibold text-white font-mono">{fmtBRL(data.cr.total_aberto)}</span>
+                  <span className="text-sm" style={{ color: t.muted }}>Total Aberto</span>
+                  <span className="text-lg font-semibold font-mono" style={{ color: t.text }}>{fmtBRL(data.cr.total_aberto)}</span>
                 </div>
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-zinc-400">A Vencer</span>
+                  <span className="text-sm" style={{ color: t.muted }}>A Vencer</span>
                   <span className="text-sm text-emerald-400 font-mono">{fmtBRL(data.cr.total_a_vencer)}</span>
                 </div>
                 {data.cr.total_atrasado > 0 && (
                   <div className="flex justify-between items-baseline">
-                    <span className="text-sm text-zinc-400">Atrasado</span>
+                    <span className="text-sm" style={{ color: t.muted }}>Atrasado</span>
                     <span className="text-sm text-red-400 font-mono">{fmtBRL(data.cr.total_atrasado)}</span>
                   </div>
                 )}
-                <div className="pt-2 border-t border-zinc-800">
-                  <span className="text-xs text-zinc-500">{data.cr.quantidade_aberto} titulo(s) aberto(s)</span>
+                <div className="pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
+                  <span className="text-xs" style={{ color: t.muted }}>{data.cr.quantidade_aberto} titulo(s) aberto(s)</span>
                 </div>
               </div>
             </Link>
           </div>
 
           {/* Próximos Vencimentos */}
-          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
+          <div className="rounded-2xl p-6" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold text-white">Proximos Vencimentos</h3>
+              <h3 className="text-base font-semibold" style={{ color: t.text }}>Proximos Vencimentos</h3>
               <Link href="/portal/financeiro/cp" className="text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
                 Ver todos
               </Link>
             </div>
             {data.proximos_vencimentos.length === 0 ? (
-              <p className="text-sm text-zinc-500">Nenhum vencimento proximo.</p>
+              <p className="text-sm" style={{ color: t.muted }}>Nenhum vencimento proximo.</p>
             ) : (
               <div className="space-y-0">
                 {data.proximos_vencimentos.slice(0, 6).map((v, i) => {
@@ -239,17 +242,17 @@ export default function DashboardPage() {
                   const border = isAtrasado ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.2)'
 
                   return (
-                    <div key={i} className={`flex items-center gap-3 py-3 ${i < data.proximos_vencimentos.length - 1 && i < 5 ? 'border-b border-zinc-800/50' : ''}`}>
+                    <div key={i} className={`flex items-center gap-3 py-3`} style={i < data.proximos_vencimentos.length - 1 && i < 5 ? { borderBottom: `1px solid ${t.border}` } : undefined}>
                       <div className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0" style={{ background: bg, border: `1px solid ${border}` }}>
                         <span className="text-[10px] font-medium leading-none" style={{ color }}>{mes}</span>
                         <span className="text-sm font-bold leading-tight" style={{ color }}>{dia}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-zinc-200 font-medium truncate">{v.favorecido}</p>
-                        <p className="text-xs text-zinc-500">{v.categoria || 'Sem categoria'}</p>
+                        <p className="text-sm font-medium truncate" style={{ color: t.text }}>{v.favorecido}</p>
+                        <p className="text-xs" style={{ color: t.muted }}>{v.categoria || 'Sem categoria'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-mono text-zinc-200">{fmtBRL(v.valor)}</p>
+                        <p className="text-sm font-mono" style={{ color: t.text }}>{fmtBRL(v.valor)}</p>
                         {isAtrasado && <span className="text-[10px] text-red-400 font-medium">ATRASADO</span>}
                       </div>
                     </div>
@@ -263,19 +266,27 @@ export default function DashboardPage() {
         {/* Right Panel */}
         <div className="space-y-4">
           {/* Quick Actions */}
-          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-            <h3 className="text-base font-semibold text-white mb-5">Acesso Rapido</h3>
+          <div className="rounded-2xl p-6" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            <h3 className="text-base font-semibold mb-5" style={{ color: t.text }}>Acesso Rapido</h3>
             <div className="space-y-1">
               {quickActions.map((action) => {
                 const Icon = action.icon
+                const isHovered = hoveredAction === action.href
                 return (
-                  <Link key={action.href} href={action.href} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    className="flex items-center gap-3 p-3 rounded-xl transition-colors group"
+                    style={{ background: isHovered ? t.surfaceHover : 'transparent' }}
+                    onMouseEnter={() => setHoveredAction(action.href)}
+                    onMouseLeave={() => setHoveredAction(null)}
+                  >
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: action.bg }}>
                       <Icon className="w-4 h-4" style={{ color: action.color }} />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">{action.title}</div>
-                      <div className="text-xs text-zinc-500">{action.desc}</div>
+                      <div className="text-sm font-medium transition-colors" style={{ color: isHovered ? t.text : t.textSec }}>{action.title}</div>
+                      <div className="text-xs" style={{ color: t.muted }}>{action.desc}</div>
                     </div>
                   </Link>
                 )
@@ -284,10 +295,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Contas Bancarias summary */}
-          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-            <h3 className="text-base font-semibold text-white mb-3">Contas Bancarias</h3>
-            <div className="text-3xl font-semibold text-white font-mono mb-1">{data.total_contas}</div>
-            <p className="text-xs text-zinc-500">contas ativas no Omie</p>
+          <div className="rounded-2xl p-6" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            <h3 className="text-base font-semibold mb-3" style={{ color: t.text }}>Contas Bancarias</h3>
+            <div className="text-3xl font-semibold font-mono mb-1" style={{ color: t.text }}>{data.total_contas}</div>
+            <p className="text-xs" style={{ color: t.muted }}>contas ativas no Omie</p>
             <Link href="/portal/financeiro/extrato" className="inline-block mt-3 text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
               Ver extrato completo
             </Link>
