@@ -71,11 +71,18 @@ Portal (/portal/*) → Layout com Sidebar + Header
 BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 ```
 
-**MIGRAÇÃO EM ANDAMENTO: Omie API → PostgreSQL como fonte de dados**
-- `/extrato`, `/contas`, `/saldos` — JÁ MIGRADOS para ler do PostgreSQL
-- `/cp`, `/cr`, `/dashboard`, `/conciliacao`, `/fluxo-caixa` — PENDENTES (ainda chamam Omie diretamente)
-- Sync: APScheduler a cada 60min + webhooks incrementais (CP/CR/Lancamentos)
-- Dados sincronizados: LancamentoCC, ContaPagar, ContaReceber, ContaCorrente
+**MIGRAÇÃO CONCLUÍDA: Omie API → PostgreSQL como fonte de dados**
+- TODOS os endpoints BI leem do PostgreSQL (<100ms):
+  - `/extrato`, `/contas`, `/saldos` — LancamentoCC, ContaCorrente
+  - `/cp`, `/cr`, `/cp/resumo`, `/cr/resumo` — ContaPagar, ContaReceber
+  - `/cp/{codigo}/baixas`, `/cr/{codigo}/baixas` — BaixaFinanceira
+  - `/dashboard` — queries agregadas CP + CR + ContaCorrente
+  - `/conciliacao/*` (4 endpoints) — LancamentoCC
+  - `/fluxo-caixa`, `/fluxo-caixa/diario`, `/fluxo-caixa/mensal` — CP + CR
+- Sync: APScheduler a cada 60min + webhooks incrementais (CP/CR/Lancamentos/Baixas)
+- Sync on-demand: se DB vazio, sincroniza automaticamente
+- Cache flush: `POST /cache/flush` dispara sync completo em background
+- Webhooks invalidam cache automaticamente apos sync
 
 - Auth: JWT em httpOnly cookies, interceptor 401 com refresh automático
 - Frontend proxeia via Next.js rewrites, axios com baseURL '/api/proxy/v1'
@@ -102,17 +109,14 @@ BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 4. ~~**Análise IA era placeholder**~~ — **RESOLVIDO.** Agora abre Orbit automaticamente + mostra conteúdo da página.
 5. ~~**Navbar BI não responsiva**~~ — **RESOLVIDO.** Tabs com scroll horizontal, logo oculto em mobile, controles adaptivos.
 
-### MIGRAÇÃO DB — PENDÊNCIAS (Fase 5 em andamento)
+### MIGRAÇÃO DB — CONCLUÍDA (sessao 09/04/2026)
 
-1. **CP/CR ainda chama Omie API** — Migrar `cp_cr.py` para ler do PostgreSQL (pattern igual ao extrato). Schema e sync já preparados (status, valor_aberto, codigo_cliente_fornecedor).
-
-2. **Dashboard ainda chama Omie API** — Migrar `dashboard.py` para queries SQL agregadas em CP + CR + lançamentos.
-
-3. **Conciliação ainda chama Omie API** — Migrar `conciliacao.py` para ler de lancamentos_cc no DB.
-
-4. **Fluxo de Caixa ainda chama Omie API** — Migrar `fluxo_caixa.py` para queries em CP + CR filtradas por status.
-
-5. **Webhooks incrementais para LancamentoCC** — Adicionar handlers para `Financas.LancamentoCC.Incluido/Alterado` em webhook.py.
+1. ~~**CP/CR ainda chama Omie API**~~ — **MIGRADO.** cp_cr.py le do PostgreSQL (ContaPagar, ContaReceber, BaixaFinanceira).
+2. ~~**Dashboard ainda chama Omie API**~~ — **MIGRADO.** dashboard.py agrega do DB.
+3. ~~**Conciliacao ainda chama Omie API**~~ — **MIGRADO.** conciliacao.py le LancamentoCC do DB.
+4. ~~**Fluxo de Caixa ainda chama Omie API**~~ — **MIGRADO.** fluxo_caixa.py le CP/CR do DB.
+5. ~~**Webhooks sem cache invalidation**~~ — **RESOLVIDO.** webhook.py invalida cache apos sync.
+6. ~~**Navbar cache flush hardcoded empresa_id=1**~~ — **RESOLVIDO.** Usa activeId do store.
 
 ### MELHORIAS PENDENTES
 
@@ -166,7 +170,7 @@ ALERTAS_INTERVAL_MINUTES=30 (opcional)
 ```
 
 ## Limitações conhecidas
-- **Omie API não expõe baixas individuais** — ListarMovimentos retorna consolidado
-- **ListarExtrato não tem paginação** — Usa janelas de 90 dias como workaround
-- **Rate limit Omie** — 5 req/s, erros REDUNDANT tratados com retry + backoff
+- **Omie API chamada apenas durante sync** — Endpoints BI leem 100% do PostgreSQL
+- **Rate limit Omie** — 5 req/s, erros REDUNDANT tratados com retry + backoff (apenas no sync)
 - **Token tracking in-memory** — Orbit usa dict em memória. Com múltiplos workers, migrar para Redis.
+- **Baixas usa delete+re-insert** — sync_baixas() recria todas as baixas a cada sync (sem ID unico da Omie)
