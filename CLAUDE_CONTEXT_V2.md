@@ -58,23 +58,31 @@ Sou o desenvolvedor do portal financeiro multi-tenant do Grupo ALT, integrado co
 - Exportar PDF: endpoints para extrato, CP, CR (xhtml2pdf + Jinja2 template)
 - Orbit chatbot: roteamento Haiku/Sonnet por complexidade, limites de token por role
 
-## Arquitetura atual
+## Arquitetura atual (atualizada 09/04/2026)
 
 ```
-Vercel (Next.js) → /api/proxy/v1/* → Railway (FastAPI /v1/*) → Omie API
+Vercel (Next.js) → /api/proxy/v1/* → Railway (FastAPI /v1/*) → PostgreSQL (<100ms)
                                           ↓
                                    PostgreSQL + Redis
+                                          ↑
+                        Omie API → sync_service (60min) + webhooks (real-time)
 
 Portal (/portal/*) → Layout com Sidebar + Header
 BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 ```
 
+**MIGRAÇÃO EM ANDAMENTO: Omie API → PostgreSQL como fonte de dados**
+- `/extrato`, `/contas`, `/saldos` — JÁ MIGRADOS para ler do PostgreSQL
+- `/cp`, `/cr`, `/dashboard`, `/conciliacao`, `/fluxo-caixa` — PENDENTES (ainda chamam Omie diretamente)
+- Sync: APScheduler a cada 60min + webhooks incrementais (CP/CR/Lancamentos)
+- Dados sincronizados: LancamentoCC, ContaPagar, ContaReceber, ContaCorrente
+
 - Auth: JWT em httpOnly cookies, interceptor 401 com refresh automático
 - Frontend proxeia via Next.js rewrites, axios com baseURL '/api/proxy/v1'
 - Backend: cada empresa tem OmieCredencial (app_key + app_secret_enc Fernet)
 - Schema isolado por empresa: emp_{slug} no PostgreSQL
-- Roteamento de modelo Orbit: Haiku (queries simples) / Sonnet (análises complexas)
-- Token limits por role: viewer 5K/dia, gestor 25K/dia, admin 100K/dia
+- Orbit: Haiku/Sonnet com contexto financeiro do DB (CP, CR, extrato, fluxo)
+- Cache TTLs: extrato 1h, dashboard 30min, dimensões 2h
 
 ## Pendências e bugs identificados em produção
 
@@ -86,25 +94,35 @@ BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 4. ~~**ExportPDFButton vs ExportModal**~~ — **Não há conflito.** ExportModal nunca foi implementado. Só ExportPDFButton existe, usado na Navbar do BI para extrato e CP/CR.
 5. ~~**Notificações no /bi/financeiro**~~ — **RESOLVIDO.** NotificationBell usa n.link dinâmico vindo da API.
 
-### BUGS ATUAIS
+### BUGS RESOLVIDOS (sessão 09/04/2026)
 
-1. **ChatPanel PAGE_LABELS sem rotas BI** — Orbit context pill mostra "Portal" quando aberto no BI. PAGE_LABELS só tinha rotas /portal/*. **Fix aplicado em 09/04/2026** — adicionadas rotas /bi/financeiro/*.
+1. ~~**ChatPanel PAGE_LABELS sem rotas BI**~~ — **RESOLVIDO.** Adicionadas rotas /bi/financeiro/* ao PAGE_LABELS.
+2. ~~**Orbit erro 500 na segunda mensagem**~~ — **RESOLVIDO.** Causa: import inválido `_get_omie_client` em orbit_chat.py (não existia em deps.py). Removido.
+3. ~~**Orbit sem dados do extrato**~~ — **RESOLVIDO.** orbit_chat.py agora busca EmpLancamentoCC do PostgreSQL (últimos 200 lançamentos) para contexto.
+4. ~~**Análise IA era placeholder**~~ — **RESOLVIDO.** Agora abre Orbit automaticamente + mostra conteúdo da página.
+5. ~~**Navbar BI não responsiva**~~ — **RESOLVIDO.** Tabs com scroll horizontal, logo oculto em mobile, controles adaptivos.
 
-2. **ExportPDFButton só em 2 páginas** — Navbar.tsx só mostra botão PDF em /extrato e /cp-cr. Falta nas demais páginas do BI (caixa, fluxo, conciliação, dashboard). Depende de endpoints de export existirem no backend.
+### MIGRAÇÃO DB — PENDÊNCIAS (Fase 5 em andamento)
 
-3. **Análise IA é placeholder** — A view "Análise IA" no layout do BI (toggle Dashboard/Análise IA) é apenas um placeholder com texto e botão "Abrir Orbit". Não tem análise automática real.
+1. **CP/CR ainda chama Omie API** — Migrar `cp_cr.py` para ler do PostgreSQL (pattern igual ao extrato). Schema e sync já preparados (status, valor_aberto, codigo_cliente_fornecedor).
+
+2. **Dashboard ainda chama Omie API** — Migrar `dashboard.py` para queries SQL agregadas em CP + CR + lançamentos.
+
+3. **Conciliação ainda chama Omie API** — Migrar `conciliacao.py` para ler de lancamentos_cc no DB.
+
+4. **Fluxo de Caixa ainda chama Omie API** — Migrar `fluxo_caixa.py` para queries em CP + CR filtradas por status.
+
+5. **Webhooks incrementais para LancamentoCC** — Adicionar handlers para `Financas.LancamentoCC.Incluido/Alterado` em webhook.py.
 
 ### MELHORIAS PENDENTES
 
-4. **Responsividade mobile — Navbar BI** — A Navbar do BI (6 tabs + controles) não colapsa em mobile. Tabs podem estourar em telas < 768px.
+6. **ExportPDFButton só em 2 páginas** — Falta em caixa, fluxo, conciliação. Depende de endpoints de export no backend.
 
-5. **Portal /portal/financeiro/ sem navegação entre páginas** — As páginas /portal/financeiro/* existem como React components mas não têm navegação entre elas (sem tabs/navbar).
+7. **Portal /portal/financeiro/ sem navegação** — Sem tabs/navbar entre as páginas financeiras do portal.
 
-6. **Indicadores endpoint placeholder** — /v1/grupos/{id}/indicadores retorna "em_desenvolvimento"
+8. **Indicadores endpoint placeholder** — /v1/grupos/{id}/indicadores retorna "em_desenvolvimento"
 
-7. **Falta testes de integração** — Os 45 testes são unitários. Faltam testes de integração com httpx AsyncClient testando endpoints reais.
-
-8. **Falta testes no frontend** — grupoalt-web tem zero cobertura de testes. Prioridade: formatters.ts, sla.ts, hooks críticos.
+9. **Falta testes** — Backend: 45 unitários, zero integração. Frontend: zero cobertura.
 
 ## Arquivos-chave
 
