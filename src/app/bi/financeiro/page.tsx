@@ -202,7 +202,15 @@ export default function DashboardExecutivo() {
   /* ── Ultimas movimentacoes ─────────────────── */
   const ultimasMov = useMemo(() => {
     if (lancamentos.length) {
-      return lancamentos.slice(0, 5).map((l) => ({
+      const sorted = [...lancamentos].sort((a, b) => {
+        const dA = (a as any).data_lancamento || ''
+        const dB = (b as any).data_lancamento || ''
+        // Parse DD/MM/YYYY → comparable
+        const pA = dA.split('/').reverse().join('')
+        const pB = dB.split('/').reverse().join('')
+        return pB.localeCompare(pA)
+      })
+      return sorted.slice(0, 5).map((l) => ({
         data_lancamento: (l as any).data_lancamento || '',
         favorecido: (l as any).favorecido || (l as any).descricao || '',
         valor: (l as any).valor || 0,
