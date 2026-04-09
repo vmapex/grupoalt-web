@@ -36,7 +36,10 @@ export function Navbar() {
     setRefreshing(true)
     try {
       // Flush API cache for this empresa
-      await api.post(`/empresas/${activeId}/cache/flush`).catch(() => {})
+      const id = useEmpresaStore.getState().activeId
+      if (id) {
+        await api.post(`/empresas/${id}/cache/flush`).catch(() => {})
+      }
       // Reload page
       window.location.reload()
     } catch {
