@@ -57,12 +57,19 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
     setBiView('dashboard')
   }, [pathname])
 
+  // Auto-open chat when switching to Análise IA mode
+  useEffect(() => {
+    if (biView === 'analise' && !chatOpen) {
+      setChatOpen(true)
+    }
+  }, [biView]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="flex flex-col h-screen" style={{ background: t.bg, color: t.text }}>
       <Navbar />
       {/* Sub-bar: Dashboard / Análise IA — visible on all BI pages */}
       <div
-        className="flex items-center justify-between px-5 shrink-0"
+        className="flex items-center justify-between px-3 md:px-5 shrink-0"
         style={{ height: 38, borderBottom: `1px solid ${t.border}`, background: `${t.bg}CC` }}
       >
         <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: `${t.text}06` }}>
@@ -96,28 +103,7 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
         )}
       </div>
       <main className="flex-1 overflow-auto">
-        {biView === 'dashboard' ? (
-          children
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-md px-6">
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl mx-auto mb-4" style={{ background: t.purpleDim }}>
-                <Sparkles size={28} style={{ color: t.purple }} />
-              </div>
-              <h2 className="text-lg font-semibold mb-2" style={{ color: t.text }}>Análise IA</h2>
-              <p className="text-sm mb-4" style={{ color: t.muted }}>
-                O agente Claude analisará os dados da página atual e fornecerá insights financeiros automaticamente.
-              </p>
-              <button
-                onClick={() => setChatOpen(true)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                style={{ background: t.purple, color: '#fff' }}
-              >
-                Abrir Orbit para análise
-              </button>
-            </div>
-          </div>
-        )}
+        {children}
       </main>
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
       {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}

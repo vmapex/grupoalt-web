@@ -44,6 +44,13 @@ const PAGE_LABELS: Record<string, string> = {
   '/portal/financeiro/fluxo': 'Fluxo de Caixa',
   '/portal/financeiro/conciliacao': 'Conciliação',
   '/portal/admin': 'Configurações',
+  '/bi/financeiro': 'Dashboard BI',
+  '/bi/financeiro/caixa': 'Caixa Realizado',
+  '/bi/financeiro/extrato': 'Extrato',
+  '/bi/financeiro/cp-cr': 'A Pagar/Receber',
+  '/bi/financeiro/fluxo': 'Fluxo de Caixa',
+  '/bi/financeiro/conciliacao': 'Conciliação',
+  '/bi/financeiro/admin': 'Configurações BI',
 }
 
 export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelProps) {

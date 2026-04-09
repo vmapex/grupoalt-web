@@ -51,7 +51,7 @@ export function Navbar() {
 
   return (
     <nav
-      className="flex items-center justify-between px-5 sticky top-0 z-30 shrink-0"
+      className="flex items-center justify-between px-3 md:px-5 sticky top-0 z-30 shrink-0"
       style={{
         height: 52,
         borderBottom: `1px solid ${t.border}`,
@@ -59,7 +59,7 @@ export function Navbar() {
       }}
     >
       {/* Left: Back to Portal + Logo */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3 shrink-0">
         <Link
           href="/portal/grupo"
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] no-underline transition-all"
@@ -71,9 +71,9 @@ export function Navbar() {
           title="Voltar ao Portal"
         >
           <ArrowLeft size={11} />
-          Portal
+          <span className="hidden sm:inline">Portal</span>
         </Link>
-        <div className="flex items-baseline gap-2">
+        <div className="hidden md:flex items-baseline gap-2">
           {logo ? (
             <img src={logo} alt={active?.nome || 'Logo'} style={{ height: 30 }} />
           ) : (
@@ -90,10 +90,10 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Center: Tabs */}
+      {/* Center: Tabs — scrollable on mobile */}
       <div
-        className="flex gap-0.5 rounded-lg p-0.5"
-        style={{ background: `${t.text}06` }}
+        className="flex gap-0.5 rounded-lg p-0.5 overflow-x-auto mx-2 md:mx-0 shrink min-w-0"
+        style={{ background: `${t.text}06`, scrollbarWidth: 'none' }}
       >
         {NAV.map(({ href, label, exact }: { href: string; label: string; exact?: boolean }) => {
           const isActive = exact ? pathname === href : (pathname === href || pathname?.startsWith(href + '/'))
@@ -101,7 +101,7 @@ export function Navbar() {
             <Link
               key={href}
               href={href}
-              className="px-3 py-1 rounded-md text-[10px] no-underline transition-all"
+              className="px-2.5 md:px-3 py-1 rounded-md text-[10px] no-underline transition-all whitespace-nowrap shrink-0"
               style={{
                 color: isActive ? t.blue : t.muted,
                 background: isActive ? t.blueDim : 'transparent',
@@ -115,7 +115,7 @@ export function Navbar() {
       </div>
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
         <button
           onClick={handleRefresh}
           disabled={refreshing}
@@ -154,11 +154,15 @@ export function Navbar() {
             />
           </>
         )}
-        <DateRangePicker />
+        <div className="hidden md:flex items-center gap-2">
+          <DateRangePicker />
+          <UnidadeDropdown />
+        </div>
         <NotificationBell />
-        <UnidadeDropdown />
         <ThemeToggle />
-        <EmpresaDropdown />
+        <div className="hidden sm:block">
+          <EmpresaDropdown />
+        </div>
         <Link
           href="/bi/financeiro/admin"
           className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"

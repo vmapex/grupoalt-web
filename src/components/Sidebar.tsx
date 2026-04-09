@@ -125,7 +125,7 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
         <div className="relative">
           <div
             className="w-10 h-10 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] border-2 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm"
-            style={{ borderColor: t.border, color: t.isDark ? '#18181b' : '#18181b' }}
+            style={{ borderColor: t.border, color: '#18181b' }}
           >
             {userInitials}
           </div>

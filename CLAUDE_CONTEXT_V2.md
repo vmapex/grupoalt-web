@@ -78,32 +78,33 @@ BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 
 ## Pendências e bugs identificados em produção
 
-### BUGS — Devem ser corrigidos primeiro
+### BUGS RESOLVIDOS (auditoria 09/04/2026)
 
-1. **BI financeiro sem botão "Voltar ao Portal"** — O layout /bi/financeiro (src/app/bi/financeiro/layout.tsx) não tem breadcrumb ou botão para retornar ao portal. Usuário fica preso no dash financeiro.
+1. ~~**BI financeiro sem botão "Voltar ao Portal"**~~ — **RESOLVIDO.** Navbar.tsx tem Link para /portal/grupo com ArrowLeft + "Portal".
+2. ~~**Orbit retornando respostas genéricas**~~ — **RESOLVIDO.** ChatPanel.tsx chama /orbit/chat real com tracking de tokens (Haiku/Sonnet).
+3. ~~**Tema light incompleto no portal**~~ — **RESOLVIDO.** Todos os componentes (Sidebar, Portal layout, BI layout) usam useThemeStore com tokens dinâmicos. Sem classes hardcoded dark.
+4. ~~**ExportPDFButton vs ExportModal**~~ — **Não há conflito.** ExportModal nunca foi implementado. Só ExportPDFButton existe, usado na Navbar do BI para extrato e CP/CR.
+5. ~~**Notificações no /bi/financeiro**~~ — **RESOLVIDO.** NotificationBell usa n.link dinâmico vindo da API.
 
-2. **Orbit retornando respostas genéricas** — Na última verificação o Orbit estava mostrando respostas mock. Precisa validar se após o deploy correto está chamando /v1/orbit/chat. Se não, pode ser que o ChatPanel do /bi/financeiro/layout.tsx ainda use o mock antigo (verificar se esse layout importa o ChatPanel atualizado).
+### BUGS ATUAIS
 
-3. **Tema light incompleto no portal** — O toggle Sun/Moon existe no header, mas o shell do portal (Sidebar, header, content area) ainda usa classes hardcoded dark (bg-zinc-950, text-zinc-100, border-zinc-800). Apenas o header foi convertido para CSS variables. O Sidebar usa CSS vars parcialmente. O `<main>` ainda tem `bg-zinc-950` hardcoded.
+1. **ChatPanel PAGE_LABELS sem rotas BI** — Orbit context pill mostra "Portal" quando aberto no BI. PAGE_LABELS só tinha rotas /portal/*. **Fix aplicado em 09/04/2026** — adicionadas rotas /bi/financeiro/*.
 
-4. **ExportPDFButton vs ExportModal** — Existem DOIS sistemas de export coexistindo:
-   - ExportModal (antigo) — modal complexo com opções de gráficos/tabelas/IA, usado pelo /bi/financeiro
-   - ExportPDFButton (novo) — botão simples que chama /v1/export/*/pdf, adicionado nas páginas /portal/financeiro
-   - Precisam ser consolidados ou claramente separados
+2. **ExportPDFButton só em 2 páginas** — Navbar.tsx só mostra botão PDF em /extrato e /cp-cr. Falta nas demais páginas do BI (caixa, fluxo, conciliação, dashboard). Depende de endpoints de export existirem no backend.
 
-5. **Notificações no /bi/financeiro** — O layout do BI usa NotificationBell do nav/NotificationBell.tsx (que aponta para /bi/financeiro/cp-cr nos links). Agora que as notificações são reais, os links de ação devem apontar para o contexto correto (/bi/ ou /portal/).
+3. **Análise IA é placeholder** — A view "Análise IA" no layout do BI (toggle Dashboard/Análise IA) é apenas um placeholder com texto e botão "Abrir Orbit". Não tem análise automática real.
 
 ### MELHORIAS PENDENTES
 
-6. **Documentos — acesso pelo Sidebar** — A página /portal/documentos funciona com CRUD real, mas o Sidebar aponta para sub-páginas individuais (processos, políticas, planejamentos) que agora redirecionam. Seria melhor ter um link direto para /portal/documentos.
+4. **Responsividade mobile — Navbar BI** — A Navbar do BI (6 tabs + controles) não colapsa em mobile. Tabs podem estourar em telas < 768px.
 
-7. **Portal /portal/financeiro/ sem navegação entre páginas** — As páginas /portal/financeiro/* existem como React components mas não têm navegação entre elas (sem tabs/navbar). Se o usuário acessar diretamente, fica sem como navegar entre extrato/cp/caixa/fluxo.
+5. **Portal /portal/financeiro/ sem navegação entre páginas** — As páginas /portal/financeiro/* existem como React components mas não têm navegação entre elas (sem tabs/navbar).
 
-8. **Responsividade mobile — Sidebar sem hamburger menu** — Sidebar fica hidden em mobile mas não tem menu hamburger para abrir/fechar.
+6. **Indicadores endpoint placeholder** — /v1/grupos/{id}/indicadores retorna "em_desenvolvimento"
 
-9. **Indicadores endpoint placeholder** — /v1/grupos/{id}/indicadores retorna "em_desenvolvimento"
+7. **Falta testes de integração** — Os 45 testes são unitários. Faltam testes de integração com httpx AsyncClient testando endpoints reais.
 
-10. **Falta testes de integração** — Os 45 testes são unitários. Faltam testes de integração com httpx AsyncClient testando endpoints reais.
+8. **Falta testes no frontend** — grupoalt-web tem zero cobertura de testes. Prioridade: formatters.ts, sla.ts, hooks críticos.
 
 ## Arquivos-chave
 
@@ -126,7 +127,7 @@ BI Financeiro (/bi/financeiro/*) → Layout dedicado com Navbar própria
 - src/store/unidadeStore.ts — Unidades via API real
 - src/store/themeStore.ts — Dark/light tokens + toggle
 - src/app/portal/layout.tsx — Auth guard, theme toggle, NotificationBell, ChatPanel
-- src/app/bi/financeiro/layout.tsx — Layout dedicado BI (SEM botão voltar)
+- src/app/bi/financeiro/layout.tsx — Layout dedicado BI com Navbar (botão voltar ao portal + tabs)
 - src/components/chat/ChatPanel.tsx — Orbit conectado à API real
 - src/components/nav/NotificationBell.tsx — Painel dropdown real
 - src/components/ui/ExportPDFButton.tsx — Download PDF via API
