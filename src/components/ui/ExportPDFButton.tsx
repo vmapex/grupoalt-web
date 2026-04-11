@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import api from '@/lib/api'
 
 interface ExportPDFButtonProps {
@@ -38,6 +39,7 @@ export function ExportPDFButton({
       URL.revokeObjectURL(link.href)
     } catch (err) {
       console.error('Erro ao exportar PDF:', err)
+      toast.error('Erro ao exportar PDF. Tente novamente.')
     } finally {
       setLoading(false)
     }
