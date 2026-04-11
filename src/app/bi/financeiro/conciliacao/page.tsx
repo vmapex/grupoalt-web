@@ -285,10 +285,10 @@ export default function PageConciliacao() {
     if (!selectedDay) return []
     // Use API day detail when available
     if (diaAPI?.lancamentos?.length) {
-      return diaAPI.lancamentos.map((l) => ({
+      return diaAPI.lancamentos.map((l: Record<string, unknown>) => ({
         hora: '',
-        desc: l.descricao,
-        valor: l.valor,
+        desc: (l.favorecido as string) || (l.descricao as string) || '',
+        valor: l.valor as number,
       }))
     }
     return []
@@ -453,7 +453,7 @@ export default function PageConciliacao() {
                       className="text-left text-[9px] uppercase tracking-wider font-mono font-semibold px-4 py-2.5"
                       style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
                     >
-                      Descricao
+                      Favorecido
                     </th>
                     <th
                       className="text-right text-[9px] uppercase tracking-wider font-mono font-semibold px-4 py-2.5"

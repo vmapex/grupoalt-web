@@ -83,7 +83,7 @@ export function Navbar() {
             <div className="flex items-baseline gap-2">
               <Building2 size={16} style={{ color: active?.cor || '#38BDF8' }} className="self-center" />
               <span className="font-mono text-[13px] tracking-widest font-bold" style={{ color: t.text }}>
-                ALT MAX
+                {active?.nome || 'GRUPO ALT'}
               </span>
             </div>
           )}
@@ -136,7 +136,7 @@ export function Navbar() {
         {pathname.includes('/extrato') && (
           <ExportPDFButton
             empresaId={activeId}
-            endpoint="/v1/export/empresas/{empresa_id}/extrato/pdf"
+            endpoint="/export/empresas/{empresa_id}/extrato/pdf"
             filename="extrato.pdf"
             label="PDF Extrato"
           />
@@ -145,13 +145,13 @@ export function Navbar() {
           <>
             <ExportPDFButton
               empresaId={activeId}
-              endpoint="/v1/export/empresas/{empresa_id}/cp/pdf"
+              endpoint="/export/empresas/{empresa_id}/cp/pdf"
               filename="contas-pagar.pdf"
               label="PDF CP"
             />
             <ExportPDFButton
               empresaId={activeId}
-              endpoint="/v1/export/empresas/{empresa_id}/cr/pdf"
+              endpoint="/export/empresas/{empresa_id}/cr/pdf"
               filename="contas-receber.pdf"
               label="PDF CR"
             />

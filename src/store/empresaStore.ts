@@ -1,5 +1,6 @@
 'use client'
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { useAuthStore } from './authStore'
 
 export interface Empresa {
@@ -25,73 +26,87 @@ interface EmpresaState {
   removeEmpresa: (id: string) => void
 }
 
-export const useEmpresaStore = create<EmpresaState>((set, get) => ({
-  empresas: [],
-  activeId: '',
-  _synced: false,
+export const useEmpresaStore = create<EmpresaState>()(
+  persist(
+    (set, get) => ({
+      empresas: [],
+      activeId: '',
+      _synced: false,
 
-  setActive: (id) => {
-    set({ activeId: id })
-    // Also sync to authStore if empresa exists there
-    const auth = useAuthStore.getState()
-    const emp = auth.empresas.find((e) => e.id === Number(id))
-    if (emp) auth.setEmpresaAtiva(emp)
-  },
+      setActive: (id) => {
+        set({ activeId: id })
+        // Also sync to authStore if empresa exists there
+        const auth = useAuthStore.getState()
+        const emp = auth.empresas.find((e) => e.id === Number(id))
+        if (emp) auth.setEmpresaAtiva(emp)
+      },
 
-  getActive: () => {
-    const state = get()
-    return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0] || null
-  },
+      getActive: () => {
+        const state = get()
+        return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0] || null
+      },
 
-  /** Pull empresas from authStore (populated by /auth/me) */
-  syncFromAuth: () => {
-    const auth = useAuthStore.getState()
-    if (!auth.empresas.length) return
+      /** Pull empresas from authStore (populated by /auth/me) */
+      syncFromAuth: () => {
+        const auth = useAuthStore.getState()
+        if (!auth.empresas.length) return
 
-    const empresas: Empresa[] = auth.empresas.map((e, i) => ({
-      id: String(e.id),
-      nome: e.nome,
-      cnpj: e.cnpj || '',
-      logoDark: null,
-      logoLight: null,
-      cor: CORES[i % CORES.length],
-    }))
+        const empresas: Empresa[] = auth.empresas.map((e, i) => ({
+          id: String(e.id),
+          nome: e.nome,
+          cnpj: e.cnpj || '',
+          logoDark: null,
+          logoLight: null,
+          cor: CORES[i % CORES.length],
+        }))
 
-    const activeId = auth.empresaAtiva ? String(auth.empresaAtiva.id) : empresas[0]?.id || '1'
-    set({ empresas, activeId, _synced: true })
-  },
+        // Respect persisted activeId if it's still a valid empresa
+        const persistedId = get().activeId
+        const isPersistedValid = persistedId && empresas.some((e) => e.id === persistedId)
+        const activeId = isPersistedValid
+          ? persistedId
+          : auth.empresaAtiva ? String(auth.empresaAtiva.id) : empresas[0]?.id || '1'
 
-  updateEmpresa: (id, data) =>
-    set((s) => ({
-      empresas: s.empresas.map((e) => (e.id === id ? { ...e, ...data } : e)),
-    })),
+        set({ empresas, activeId, _synced: true })
+      },
 
-  addEmpresa: () =>
-    set((s) => {
-      const newId = String(Date.now())
-      return {
-        empresas: [
-          ...s.empresas,
-          {
-            id: newId,
-            nome: 'Nova Empresa',
-            cnpj: '00.000.000/0000-00',
-            logoDark: null,
-            logoLight: null,
-            cor: '#38BDF8',
-          },
-        ],
-      }
+      updateEmpresa: (id, data) =>
+        set((s) => ({
+          empresas: s.empresas.map((e) => (e.id === id ? { ...e, ...data } : e)),
+        })),
+
+      addEmpresa: () =>
+        set((s) => {
+          const newId = String(Date.now())
+          return {
+            empresas: [
+              ...s.empresas,
+              {
+                id: newId,
+                nome: 'Nova Empresa',
+                cnpj: '00.000.000/0000-00',
+                logoDark: null,
+                logoLight: null,
+                cor: '#38BDF8',
+              },
+            ],
+          }
+        }),
+
+      removeEmpresa: (id) =>
+        set((s) => {
+          if (s.empresas.length <= 1) return s
+          const filtered = s.empresas.filter((e) => e.id !== id)
+          const activeId = s.activeId === id ? filtered[0].id : s.activeId
+          return { empresas: filtered, activeId }
+        }),
     }),
-
-  removeEmpresa: (id) =>
-    set((s) => {
-      if (s.empresas.length <= 1) return s
-      const filtered = s.empresas.filter((e) => e.id !== id)
-      const activeId = s.activeId === id ? filtered[0].id : s.activeId
-      return { empresas: filtered, activeId }
-    }),
-}))
+    {
+      name: 'altmax-empresa',
+      partialize: (state) => ({ activeId: state.activeId }),
+    }
+  )
+)
 
 export function getLogo(emp: Empresa | null, isDark: boolean): string | null {
   if (!emp) return null

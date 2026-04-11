@@ -132,7 +132,7 @@ export default function PageCPCR() {
     () => sortRows(data, sort, (r, f) => {
       if (f === 'fav') return r.fav
       if (f === 'categoria') return getCatDesc(r.cat)
-      if (f === 'grupo') return getCatNivel2(r.cat)
+      if (f === 'categoria') return getCatDesc(r.cat)
       if (f === 'vcto') return parseDMY(r.vcto)
       if (f === 'valor') return r.valor
       if (f === 'valor_pago') return r.valor_pago
@@ -363,7 +363,7 @@ export default function PageCPCR() {
                       <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
                         <th style={{ width: 24 }} />
                         <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
-                        <SortHeader label="Grupo" field="grupo" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Pago" field="valor_pago" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
@@ -390,7 +390,7 @@ export default function PageCPCR() {
                               {isExpandable && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
                             </td>
                             <td className="px-3 py-2.5 font-medium">{r.fav}</td>
-                            <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
+                            <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatDesc(r.cat)}</td>
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>

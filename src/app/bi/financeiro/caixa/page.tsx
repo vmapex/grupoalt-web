@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback, useMemo } from 'react'
-import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 import { CATEGORIAS } from '@/lib/planoContas'
@@ -31,7 +31,6 @@ export default function PageCaixa() {
   const dt_fim = isoToDMY(dateTo)
   const [level, setLevel] = useState<Level>('monthly')
   const [selMonth, setSelMonth] = useState<string | null>(null)
-  const [caixaView, setCaixaView] = useState<'dashboard' | 'analise'>('dashboard')
   const [detailView, setDetailView] = useState<string | null>(null)
 
   // API calls for KPI strip with date range
@@ -120,49 +119,14 @@ export default function PageCaixa() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* View toggle bar */}
-      <div
-        className="flex items-center justify-between px-5 shrink-0"
-        style={{ height: 38, borderBottom: `1px solid ${t.border}`, background: `${t.bg}CC` }}
-      >
-        <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: `${t.text}06` }}>
-          {[
-            { id: 'dashboard' as const, label: 'Dashboard', Icon: BarChart3, accent: t.blue, dim: t.blueDim },
-            { id: 'analise' as const, label: 'Análise IA', Icon: Sparkles, accent: t.purple, dim: t.purpleDim },
-          ].map((v) => (
-            <button
-              key={v.id}
-              onClick={() => { setCaixaView(v.id); setDetailView(null) }}
-              className="flex items-center gap-1.5 px-3.5 py-1 rounded-md text-[10px] border-none cursor-pointer transition-all"
-              style={{
-                color: caixaView === v.id ? v.accent : t.muted,
-                background: caixaView === v.id ? v.dim : 'transparent',
-                fontWeight: caixaView === v.id ? 600 : 400,
-                fontFamily: 'inherit',
-              }}
-            >
-              <v.Icon size={11} strokeWidth={caixaView === v.id ? 2 : 1.5} />
-              {v.label}
-            </button>
-          ))}
-        </div>
-        {caixaView === 'analise' && (
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg"
-            style={{ background: `${t.purple}0A`, border: `1px solid ${t.purple}22` }}
-          >
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: t.purple }} />
-            <span className="text-[9px] font-semibold" style={{ color: t.purple }}>Agente IA ativo</span>
-          </div>
-        )}
-      </div>
+      {/* View toggle bar removed — provided by parent layout (bi/financeiro/layout.tsx) */}
 
       {/* DASHBOARD VIEW */}
-      {caixaView === 'dashboard' && detailView && (
+      {detailView && (
         <DetailPanel defKey={detailView} d={d} breakdowns={breakdowns} catBreakdowns={catBreakdowns} onBack={() => setDetailView(null)} />
       )}
 
-      {caixaView === 'dashboard' && !detailView && (
+      {!detailView && (
         <>
           {/* KPI Strip */}
           <KPIStrip
@@ -232,18 +196,6 @@ export default function PageCaixa() {
         </>
       )}
 
-      {/* ANÁLISE IA VIEW — placeholder */}
-      {caixaView === 'analise' && (
-        <div className="flex-1 flex items-center justify-center" style={{ color: t.muted }}>
-          <div className="text-center">
-            <Sparkles size={40} className="mx-auto mb-4 opacity-30" />
-            <div className="text-sm font-semibold mb-1">Análise IA</div>
-            <div className="text-[11px] max-w-xs">
-              O agente Claude será integrado aqui para análise financeira em tempo real.
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
