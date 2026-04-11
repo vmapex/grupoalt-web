@@ -68,6 +68,10 @@ export const useEmpresaStore = create<EmpresaState>()(
           : auth.empresaAtiva ? String(auth.empresaAtiva.id) : empresas[0]?.id || '1'
 
         set({ empresas, activeId, _synced: true })
+
+        // Sync empresaAtiva no authStore para manter consistência
+        const authEmp = auth.empresas.find((e) => String(e.id) === activeId)
+        if (authEmp) auth.setEmpresaAtiva(authEmp)
       },
 
       updateEmpresa: (id, data) =>

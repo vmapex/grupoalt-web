@@ -15,7 +15,11 @@ export function useEmpresaId(): number | null {
   const empresaAtiva = useAuthStore((s) => s.empresaAtiva)
   const biActiveId = useEmpresaStore((s) => s.activeId)
 
+  // Priorizar empresaStore.activeId (persisted) sobre authStore.empresaAtiva (default)
+  if (biActiveId) {
+    const parsed = parseInt(biActiveId, 10)
+    if (!isNaN(parsed)) return parsed
+  }
   if (empresaAtiva?.id) return empresaAtiva.id
-  const parsed = parseInt(biActiveId, 10)
-  return isNaN(parsed) ? null : parsed
+  return null
 }

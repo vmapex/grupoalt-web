@@ -95,8 +95,8 @@ export default function DashboardExecutivo() {
     [crData],
   )
 
-  const concilPct = concilResumoAPI?.percentual_conciliado ?? 87
-  const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 38400
+  const concilPct = concilResumoAPI?.percentual_conciliado ?? 0
+  const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 0
 
   const kpis: KPICardData[] = useMemo(() => [
     { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, route: '/bi/financeiro/extrato' },
@@ -226,8 +226,8 @@ export default function DashboardExecutivo() {
 
   /* ── SLA data ──────────────────────────────── */
   const slaStatus = useMemo(() => ({
-    dentroSLA: 42,
-    foraSLA: concilResumoAPI?.total_divergencias ?? 3,
+    dentroSLA: concilResumoAPI ? Math.round(concilResumoAPI.percentual_conciliado) : 0,
+    foraSLA: concilResumoAPI?.total_divergencias ?? 0,
     ultimoConcil: '',
     streak: concilResumoAPI?.dias_sem_conciliar ?? 0,
   }), [concilResumoAPI])
