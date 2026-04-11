@@ -211,3 +211,17 @@ export async function marcarNotificacaoLida(id: number) {
 export async function marcarTodasLidas() {
   return api.post('/notificacoes/ler-todas')
 }
+
+// ── Categorias Omie (dinâmicas) ─────────────────────────────
+
+export interface CategoriaAPIItem {
+  descricao: string
+  nivel1: string
+  nivel2: string
+}
+
+export function useCategorias(empresaId: number | null) {
+  return useApi<Record<string, CategoriaAPIItem>>(
+    empresaId ? `/empresas/${empresaId}/categorias` : null,
+  )
+}

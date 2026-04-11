@@ -226,6 +226,31 @@ export function calcularDRE(lancamentos: Array<{ valor: number; categoria: strin
 }
 
 /**
+ * Converte resposta da API /categorias para formato CategoriaInfo.
+ * Infere grupoDRE e op usando lógica de prefixo existente.
+ * Retorna mapa pronto para uso como CATEGORIAS.
+ */
+export function buildCategoriasFromAPI(
+  apiData: Record<string, { descricao: string; nivel1: string; nivel2: string }>
+): Record<string, CategoriaInfo> {
+  const result: Record<string, CategoriaInfo> = {}
+  for (const [codigo, info] of Object.entries(apiData)) {
+    const grupoDRE = getGrupoDRE(codigo)
+    if (!grupoDRE) continue
+    const op: '+' | '-' = codigo.startsWith('1.') ? '+' : '-'
+    result[codigo] = {
+      codigo,
+      nome: info.descricao,
+      nivel2: info.nivel2 || '',
+      nivel1: info.nivel1 || '',
+      grupoDRE,
+      op,
+    }
+  }
+  return result
+}
+
+/**
  * Calcula DRE agrupado por mês.
  * Retorna { 'Out/25': { RoB, TDCF, ... }, 'Nov/25': { ... }, ... }
  */

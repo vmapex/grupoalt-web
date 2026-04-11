@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useAuthStore } from '@/store/authStore'
+import { useBiViewStore } from '@/store/biViewStore'
 import { Navbar } from '@/components/nav/Navbar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
@@ -14,7 +15,8 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
   const router = useRouter()
   const { mode, tokens: t } = useThemeStore()
   const [chatOpen, setChatOpen] = useState(false)
-  const [biView, setBiView] = useState<'dashboard' | 'analise'>('dashboard')
+  const biView = useBiViewStore((s) => s.view)
+  const setBiView = useBiViewStore((s) => s.setView)
   const pathname = usePathname()
   const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
   const synced = useEmpresaStore((s) => s._synced)
@@ -57,10 +59,10 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
     setBiView('dashboard')
   }, [pathname])
 
-  // Auto-open chat when switching to Análise IA mode
+  // Close overlay chat when switching to analise (chat is embedded in the view)
   useEffect(() => {
-    if (biView === 'analise' && !chatOpen) {
-      setChatOpen(true)
+    if (biView === 'analise' && chatOpen) {
+      setChatOpen(false)
     }
   }, [biView]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,8 +107,12 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
       <main className="flex-1 overflow-auto">
         {children}
       </main>
-      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
-      {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}
+      {biView !== 'analise' && (
+        <>
+          <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} currentPage={pathname} />
+          {!chatOpen && <OrbitButton onClick={() => setChatOpen(true)} />}
+        </>
+      )}
     </div>
   )
 }

@@ -6,10 +6,12 @@ import {
 } from 'recharts'
 import { ArrowUpRight, Clock, ShieldCheck } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
+import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { CATEGORIAS } from '@/lib/planoContas'
+import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
@@ -38,7 +40,13 @@ interface WaterfallItem {
   pctOfMax: number
 }
 
-export default function DashboardExecutivo() {
+export default function FinanceiroPage() {
+  const biView = useBiViewStore((s) => s.view)
+  if (biView === 'analise') return <AnaliseIAView />
+  return <DashboardExecutivo />
+}
+
+function DashboardExecutivo() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
   const dateFrom = useDateRangeStore((s) => s.from)
