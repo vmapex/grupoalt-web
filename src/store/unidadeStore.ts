@@ -41,7 +41,7 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
     set({ loading: true, selectedIds: [] })
 
     try {
-      const res = await api.get(`/admin/empresas/${empresaId}/unidades`)
+      const res = await api.get(`/gestao/empresas/${empresaId}/unidades`)
       const data = res.data as Array<{ id: number; nome: string; codigo: string | null }>
       const projetos: Projeto[] = data.map((u) => ({
         id: String(u.id),

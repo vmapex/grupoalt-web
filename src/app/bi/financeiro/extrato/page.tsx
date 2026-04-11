@@ -181,6 +181,7 @@ export default function PageExtrato() {
                   <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                   <SortHeader label="Favorecido" field="descricao" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                  <SortHeader label="NF" field="nf" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Status" field="status" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="center" />
                 </tr>
@@ -210,6 +211,7 @@ export default function PageExtrato() {
                         {isE ? '+' : '\u2212'} {fmtBRL(r.valor)}
                       </td>
                       <td className="px-3.5 py-2.5 max-w-[200px] truncate" title={r.descricao}>{r.favorecido}</td>
+                      <td className="px-3.5 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.nf || '—'}</td>
                       <td
                         className="px-3.5 py-2.5 text-[10px] max-w-[140px] truncate"
                         style={{ color: t.muted }}

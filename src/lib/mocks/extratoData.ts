@@ -40,6 +40,7 @@ export interface ExtratoLancamento {
   catCod: string
   conciliado: boolean
   banco: string
+  nf: string
 }
 
 const descricoes = [
@@ -65,6 +66,7 @@ export const mockExtrato: ExtratoLancamento[] = Array.from({ length: 20 }, (_, i
   catCod: catCods[i % 12],
   conciliado: i % 3 !== 0,
   banco: bancos[i % 5],
+  nf: '',
 }))
 
 export interface ContaSaldo {

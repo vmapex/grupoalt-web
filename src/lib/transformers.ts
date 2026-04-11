@@ -60,6 +60,7 @@ export function transformExtrato(items: ExtratoAPI[], contas: Map<number, string
     catCod: r.categoria || '',
     conciliado: r.conciliado,
     banco: r.banco || contas.get(r.conta_id ?? 0) || 'N/D',
+    nf: r.documento || '',
   }))
 }
 
@@ -89,6 +90,8 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
     banco: '',
+    nf: l.numero_documento || '',
+    pa: l.numero_parcela || '',
     pagamentos: (l.pagamentos || []).map((p) => ({
       data: p.data,
       valor: p.valor,

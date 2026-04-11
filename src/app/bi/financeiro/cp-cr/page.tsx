@@ -363,6 +363,8 @@ export default function PageCPCR() {
                       <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
                         <th style={{ width: 24 }} />
                         <SortHeader label="Favorecido" field="fav" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="NF" field="nf" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="PA" field="pa" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
@@ -390,6 +392,8 @@ export default function PageCPCR() {
                               {isExpandable && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
                             </td>
                             <td className="px-3 py-2.5 font-medium">{r.fav}</td>
+                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.nf || '—'}</td>
+                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.pa || '—'}</td>
                             <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatDesc(r.cat)}</td>
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
@@ -401,7 +405,7 @@ export default function PageCPCR() {
                           {/* Expanded payment details — fetches baixas on-demand */}
                           {isExpanded && isExpandable && (
                             <tr key={`${i}-exp`} style={{ borderBottom: `1px solid ${t.border}22` }}>
-                              <td colSpan={9} style={{ padding: 0 }}>
+                              <td colSpan={11} style={{ padding: 0 }}>
                                 <ExpandedPayments
                                   empresaId={empresaId}
                                   tipo={tab}

@@ -70,6 +70,7 @@ export interface LancamentoAPI {
   saldo: number
   status: string  // A VENCER | ATRASADO | PAGO | RECEBIDO | PARCIAL
   numero_documento: string | null
+  numero_parcela: string | null
   observacao: string | null
   pagamentos: PagamentoDetalheAPI[]
 }

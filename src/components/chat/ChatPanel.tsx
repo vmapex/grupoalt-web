@@ -17,6 +17,12 @@ interface ChatPanelProps {
   open: boolean
   onClose: () => void
   currentPage?: string
+  /** When true, renders as inline flex column instead of fixed overlay */
+  embedded?: boolean
+  /** Override suggested questions */
+  suggestions?: string[]
+  /** Financial context string sent to /orbit/chat */
+  financialContext?: string
 }
 
 interface TokenUsage {
@@ -53,7 +59,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/bi/financeiro/admin': 'Configurações BI',
 }
 
-export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelProps) {
+export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = false, suggestions: customSuggestions, financialContext }: ChatPanelProps) {
   const t = useThemeStore((s) => s.tokens)
   const empresaAtiva = useAuthStore((s) => s.empresaAtiva)
   const [messages, setMessages] = useState<Message[]>([])
@@ -97,7 +103,7 @@ export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelP
       const apiMessages = newMessages.map((m) => ({ role: m.role, content: m.content }))
       const res = await api.post('/orbit/chat', {
         messages: apiMessages,
-        financial_context: `Página atual: ${pageLabel}`,
+        financial_context: financialContext || `Página atual: ${pageLabel}`,
         empresa_id: empresaAtiva?.id ? Number(empresaAtiva.id) : null,
       })
 
@@ -143,6 +149,184 @@ export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelP
 
   const usagePct = usage ? Math.min(100, (usage.tokens_used / usage.tokens_limit) * 100) : 0
 
+  const activeSuggestions = customSuggestions || SUGGESTIONS
+
+  // Embedded mode: render as inline flex column
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-full" style={{ background: t.bg, borderLeft: `1px solid ${t.border}` }}>
+        {/* Agent Header */}
+        <div
+          className="flex items-center gap-3 px-4 shrink-0"
+          style={{
+            height: 56,
+            borderBottom: `1px solid ${t.border}`,
+            background: `linear-gradient(135deg, rgba(192,132,252,0.04), rgba(56,189,248,0.02))`,
+          }}
+        >
+          <div
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: 32, height: 32,
+              background: `linear-gradient(135deg, rgba(192,132,252,0.3), rgba(56,189,248,0.2))`,
+              border: `1px solid rgba(192,132,252,0.3)`,
+              fontSize: 14,
+              color: t.purple,
+            }}
+          >
+            &#10022;
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-bold" style={{ color: t.text }}>Claude — Analista Financeiro</div>
+            <div className="text-[9px]" style={{ color: t.muted }}>Analisa os dados do dashboard em tempo real</div>
+          </div>
+          <div className="flex items-center gap-1.5" style={{ color: t.purple }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: t.purple }} />
+            <span className="text-[9px] font-semibold">Online</span>
+          </div>
+        </div>
+
+        {/* Context Pill + Usage */}
+        <div className="px-4 py-2 shrink-0 flex items-center justify-between" style={{ borderBottom: `1px solid ${t.border}` }}>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-medium font-mono" style={{ background: `rgba(52,211,153,0.06)`, color: `rgba(52,211,153,0.7)`, border: `1px solid rgba(52,211,153,0.15)` }}>
+            <span>&#x2B21;</span> Contexto: DRE + Caixa + CP/CR
+          </span>
+          {usage && (
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: `${t.text}10` }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${usagePct}%`, background: usagePct > 80 ? t.red : usagePct > 50 ? t.amber : t.green }} />
+              </div>
+              <span className="text-[8px] font-mono" style={{ color: t.muted }}>
+                {((usage.tokens_used / 1000).toFixed(1))}K/{((usage.tokens_limit / 1000).toFixed(0))}K
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Token limit error */}
+        {error && (
+          <div className="px-4 py-2 text-[10px] shrink-0" style={{ background: t.redDim, color: t.red }}>{error}</div>
+        )}
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {messages.length === 0 && !isTyping && (
+            <div className="flex flex-col items-center justify-center h-full gap-4 py-8">
+              <div className="flex items-center justify-center rounded-2xl" style={{ width: 48, height: 48, background: `linear-gradient(135deg, rgba(192,132,252,0.15), rgba(56,189,248,0.1))`, border: `1px solid rgba(192,132,252,0.2)` }}>
+                <span style={{ fontSize: 22, color: t.purple }}>&#10022;</span>
+              </div>
+              <div className="text-center">
+                <div className="text-[12px] font-medium mb-1" style={{ color: t.textSec }}>Olá! Já carreguei os dados financeiros.</div>
+                <div className="text-[10px]" style={{ color: t.muted }}>Posso analisar resultados, identificar riscos e gerar resumos.</div>
+              </div>
+            </div>
+          )}
+
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 mt-0.5" style={{ background: `linear-gradient(135deg, rgba(192,132,252,0.3), rgba(56,189,248,0.2))`, border: `1px solid rgba(192,132,252,0.3)` }}>
+                  <span style={{ fontSize: 10, color: t.purple }}>&#10022;</span>
+                </div>
+              )}
+              <div className="flex flex-col max-w-[85%]">
+                <div
+                  className="rounded-xl px-3 py-2 text-[11px] leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    background: msg.role === 'user' ? `rgba(56,189,248,0.12)` : `rgba(255,255,255,0.04)`,
+                    color: msg.role === 'user' ? t.blue : t.text,
+                    border: `1px solid ${msg.role === 'user' ? `rgba(56,189,248,0.2)` : t.border}`,
+                    borderRadius: msg.role === 'user' ? '12px 2px 12px 12px' : '2px 12px 12px 12px',
+                  }}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === 'assistant' && msg.model && (
+                  <div className="flex items-center gap-1 mt-0.5 ml-1">
+                    {msg.classification === 'haiku' ? <Zap size={8} style={{ color: t.green }} /> : <Brain size={8} style={{ color: t.purple }} />}
+                    <span className="text-[7px] font-mono" style={{ color: t.mutedDim }}>{msg.classification === 'haiku' ? 'Haiku' : 'Sonnet'}</span>
+                  </div>
+                )}
+              </div>
+              {msg.role === 'user' && (
+                <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 mt-0.5" style={{ background: `rgba(56,189,248,0.15)`, border: `1px solid rgba(56,189,248,0.2)` }}>
+                  <User size={12} style={{ color: t.blue }} />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex gap-2 justify-start">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 mt-0.5" style={{ background: `linear-gradient(135deg, rgba(192,132,252,0.3), rgba(56,189,248,0.2))`, border: `1px solid rgba(192,132,252,0.3)` }}>
+                <span style={{ fontSize: 10, color: t.purple }}>&#10022;</span>
+              </div>
+              <div className="rounded-xl px-3 py-2.5 flex items-center gap-1" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: t.purple, animationDelay: `${i * 200}ms` }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Suggestions */}
+        {messages.length < 3 && !isTyping && (
+          <div className="px-4 pb-2 shrink-0 flex flex-col gap-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
+            <div className="w-full pt-2 pb-1 text-[8px] uppercase tracking-wider font-mono" style={{ color: t.muted }}>Perguntas sugeridas</div>
+            {activeSuggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => sendMessage(s)}
+                className="px-3 py-1.5 rounded-lg text-[10px] transition-colors cursor-pointer text-left"
+                style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.textSec }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(192,132,252,0.4)`; e.currentTarget.style.color = t.purple; e.currentTarget.style.background = `rgba(192,132,252,0.06)` }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.textSec; e.currentTarget.style.background = t.surface }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="px-3 py-3 shrink-0" style={{ borderTop: `1px solid ${t.border}`, background: `rgba(5,9,26,0.5)` }}>
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Pergunte sobre os dados do dashboard..."
+              rows={1}
+              className="flex-1 bg-transparent border outline-none resize-none text-[11px] leading-relaxed rounded-lg px-3 py-2"
+              style={{ color: t.text, borderColor: t.border, background: t.surface, maxHeight: 80 }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = `rgba(192,132,252,0.4)` }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = t.border }}
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || isTyping}
+              className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-all cursor-pointer"
+              style={{
+                background: input.trim() && !isTyping ? `rgba(192,132,252,0.15)` : t.surface,
+                border: `1px solid ${input.trim() && !isTyping ? `rgba(192,132,252,0.3)` : t.border}`,
+                color: input.trim() && !isTyping ? t.purple : t.muted,
+                opacity: input.trim() && !isTyping ? 1 : 0.4,
+              }}
+              aria-label="Enviar mensagem"
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Overlay mode (original behavior)
   return (
     <>
       {/* Backdrop */}
@@ -310,7 +494,7 @@ export function ChatPanel({ open, onClose, currentPage = '/portal' }: ChatPanelP
         {messages.length < 3 && !isTyping && (
           <div className="px-4 pb-2 shrink-0 flex flex-wrap gap-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
             <div className="w-full pt-2 pb-1 text-[8px] uppercase tracking-wider" style={{ color: t.muted }}>Sugestões</div>
-            {SUGGESTIONS.map((s) => (
+            {activeSuggestions.map((s) => (
               <button
                 key={s}
                 onClick={() => sendMessage(s)}
