@@ -38,18 +38,25 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
   loading: false,
 
   fetchProjetos: async (empresaId: string) => {
+    if (!empresaId) {
+      set({ projetos: [], loading: false, selectedIds: [] })
+      return
+    }
     set({ loading: true, selectedIds: [] })
 
     try {
       const res = await api.get(`/gestao/empresas/${empresaId}/unidades`)
-      const data = res.data as Array<{ id: number; nome: string; codigo: string | null }>
-      const projetos: Projeto[] = data.map((u) => ({
-        id: String(u.id),
-        nome: u.nome,
-        codigo: u.codigo || '',
-      }))
+      const data = res.data as Array<{ id: number; nome: string; codigo: string | null; ativa: boolean }>
+      const projetos: Projeto[] = data
+        .filter((u) => u.ativa !== false)
+        .map((u) => ({
+          id: String(u.id),
+          nome: u.nome,
+          codigo: u.codigo || '',
+        }))
       set({ projetos, loading: false })
-    } catch {
+    } catch (err) {
+      console.warn('[unidadeStore] fetchProjetos falhou:', err)
       set({ projetos: [], loading: false })
     }
   },
