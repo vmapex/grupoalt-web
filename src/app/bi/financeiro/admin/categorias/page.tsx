@@ -4,10 +4,9 @@ import Link from 'next/link'
 import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useCategorias, updateCategoriaGrupoDRE } from '@/hooks/useAPI'
-import { CATEGORIAS, buildCategoriasFromAPI, getGrupoDRE, type CategoriaInfo } from '@/lib/planoContas'
+import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa } from '@/hooks/useAPI'
+import { CATEGORIAS, buildCategoriasFromAPI, type CategoriaInfo } from '@/lib/planoContas'
 import { GlowLine } from '@/components/ui/GlowLine'
-import api from '@/lib/api'
 
 /* ── Cores dos grupos DRE ─────────────────────────────────────── */
 const GRUPO_COLORS: Record<string, string> = {
@@ -144,20 +143,25 @@ export default function AdminCategoriasPage() {
     })
   }
 
-  /* ── Sincronizar da Omie ───────────────────────────────────── */
+  /* ── Sincronizar da Omie (apenas categorias, síncrono) ────── */
   const handleSync = async () => {
     if (!empresaId || syncing) return
     setSyncing(true)
     setSyncMessage('')
     try {
-      await api.post(`/sync/empresas/${empresaId}`)
-      setSyncMessage('✓ Sincronização iniciada em segundo plano. Atualize em alguns segundos.')
-      setTimeout(() => {
-        refetch()
-        setSyncMessage('')
-      }, 4000)
+      const result = await syncCategoriasEmpresa(empresaId)
+      if (result.aviso) {
+        setSyncMessage(`⚠ ${result.aviso}`)
+      } else {
+        setSyncMessage(`✓ ${result.sincronizadas} categorias sincronizadas da Omie.`)
+      }
+      // Refetch imediato (sync já foi concluído)
+      refetch()
+      setTimeout(() => setSyncMessage(''), 5000)
     } catch (err: any) {
-      setSyncMessage(`✗ Erro: ${err?.response?.data?.detail || err.message}`)
+      const detail = err?.response?.data?.detail || err.message || 'Erro desconhecido'
+      setSyncMessage(`✗ ${detail}`)
+      setTimeout(() => setSyncMessage(''), 8000)
     } finally {
       setSyncing(false)
     }
@@ -256,9 +260,9 @@ export default function AdminCategoriasPage() {
         <div
           className="px-3 py-2 rounded-lg text-[10px]"
           style={{
-            background: syncMessage.startsWith('✓') ? t.greenDim : t.redDim,
-            color: syncMessage.startsWith('✓') ? t.green : t.red,
-            border: `1px solid ${syncMessage.startsWith('✓') ? t.green : t.red}33`,
+            background: syncMessage.startsWith('✓') ? t.greenDim : syncMessage.startsWith('⚠') ? t.amberDim : t.redDim,
+            color: syncMessage.startsWith('✓') ? t.green : syncMessage.startsWith('⚠') ? t.amber : t.red,
+            border: `1px solid ${syncMessage.startsWith('✓') ? t.green : syncMessage.startsWith('⚠') ? t.amber : t.red}33`,
           }}
         >
           {syncMessage}

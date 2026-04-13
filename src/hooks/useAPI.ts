@@ -239,3 +239,12 @@ export async function updateCategoriaGrupoDRE(
     grupo_dre: grupoDre,
   })
 }
+
+/** Sincroniza APENAS o plano de contas (categorias) da Omie — síncrono.
+ *  Retorna `{ sincronizadas, empresa_id }` quando bem-sucedido. */
+export async function syncCategoriasEmpresa(empresaId: number) {
+  const res = await api.post<{ sincronizadas: number; empresa_id: number; aviso?: string }>(
+    `/empresas/${empresaId}/categorias/sync`,
+  )
+  return res.data
+}
