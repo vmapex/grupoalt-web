@@ -49,7 +49,9 @@ export function Navbar() {
 
   // Carrega projetos/unidades sempre que a empresa muda
   useEffect(() => {
-    fetchProjetos(activeId)
+    if (activeId) {
+      fetchProjetos(activeId)
+    }
   }, [activeId, fetchProjetos])
 
   return (

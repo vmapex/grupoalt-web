@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, type ChangeEvent } from 'react'
-import { Settings, Upload, Trash2, Pencil, Plus, X } from 'lucide-react'
+import Link from 'next/link'
+import { Settings, Upload, Trash2, Pencil, Plus, X, Tag } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
 
@@ -184,9 +185,51 @@ export default function PageAdmin() {
           Configurações
         </h1>
       </div>
-      <p style={{ fontSize: 13, color: t.textSec, margin: '0 0 24px 0' }}>
+      <p style={{ fontSize: 13, color: t.textSec, margin: '0 0 16px 0' }}>
         Gerencie as empresas cadastradas, logos e informações.
       </p>
+
+      {/* Sub-navigation tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
+        <Link
+          href="/bi/financeiro/admin"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            color: t.blue,
+            background: t.blueDim,
+            border: `1px solid ${t.blue}33`,
+            textDecoration: 'none',
+          }}
+        >
+          <Settings size={12} />
+          Empresas
+        </Link>
+        <Link
+          href="/bi/financeiro/admin/categorias"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            color: t.muted,
+            background: 'transparent',
+            border: `1px solid ${t.border}`,
+            textDecoration: 'none',
+          }}
+        >
+          <Tag size={12} />
+          Plano de Contas
+        </Link>
+      </div>
 
       {/* Add button */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>

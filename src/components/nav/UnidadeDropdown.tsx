@@ -18,14 +18,15 @@ export function UnidadeDropdown() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  if (projetos.length === 0) return null
-
+  const hasProjetos = projetos.length > 0
   const allSelected = isAllSelected()
   const count = selectedIds.length
 
   // Label dinâmico
   let label = 'Todas unidades'
-  if (count === 1) {
+  if (!hasProjetos && !loading) {
+    label = 'Sem unidades'
+  } else if (count === 1) {
     const p = projetos.find((p) => p.id === selectedIds[0])
     label = p?.nome || '1 unidade'
   } else if (count > 1) {
@@ -98,6 +99,22 @@ export function UnidadeDropdown() {
           </button>
 
           <div style={{ height: 1, background: t.border }} />
+
+          {/* Estado vazio */}
+          {!hasProjetos && !loading && (
+            <div className="px-3 py-4 text-center" style={{ color: t.muted }}>
+              <div className="text-[10px] mb-1">Nenhuma unidade cadastrada</div>
+              <div className="text-[8px]" style={{ color: t.mutedDim }}>
+                Cadastre projetos na Omie ou sincronize manualmente
+              </div>
+            </div>
+          )}
+
+          {loading && (
+            <div className="px-3 py-4 text-center text-[10px]" style={{ color: t.muted }}>
+              Carregando...
+            </div>
+          )}
 
           {/* Lista de projetos com checkbox */}
           {projetos.map((p) => {
