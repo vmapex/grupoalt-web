@@ -1,10 +1,10 @@
 'use client'
 import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon } from 'lucide-react'
+import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon, Square, CheckSquare, Layers } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa } from '@/hooks/useAPI'
+import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa, bulkUpdateCategoriasGrupoDRE } from '@/hooks/useAPI'
 import { CATEGORIAS, buildCategoriasFromAPI, type CategoriaInfo } from '@/lib/planoContas'
 import { GlowLine } from '@/components/ui/GlowLine'
 
@@ -43,6 +43,23 @@ export default function AdminCategoriasPage() {
   const [savingCodigo, setSavingCodigo] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const editDropdownRef = useRef<HTMLDivElement>(null)
+  // Bulk-edit
+  const [selectedCodigos, setSelectedCodigos] = useState<Set<string>>(new Set())
+  const [bulkEditing, setBulkEditing] = useState(false)
+  const bulkDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Fechar bulk dropdown ao clicar fora
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (bulkDropdownRef.current && !bulkDropdownRef.current.contains(e.target as Node)) {
+        setBulkEditing(false)
+      }
+    }
+    if (bulkEditing) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [bulkEditing])
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -89,6 +106,65 @@ export default function AdminCategoriasPage() {
     if (!apiData || !apiData[codigo]) return false
     return apiData[codigo].grupo_dre !== null && apiData[codigo].grupo_dre !== undefined
   }
+
+  /** Verifica se uma categoria pode ser editada (veio da API) */
+  const canEditCategoria = (codigo: string): boolean => {
+    return !!apiData && !!apiData[codigo]
+  }
+
+  /** Toggle de selecao de uma categoria */
+  const toggleSelect = (codigo: string) => {
+    setSelectedCodigos((prev) => {
+      const next = new Set(prev)
+      if (next.has(codigo)) next.delete(codigo)
+      else next.add(codigo)
+      return next
+    })
+  }
+
+  /** Seleciona todas as categorias de uma lista (filtrando as editaveis) */
+  const selectMany = (codigos: string[]) => {
+    setSelectedCodigos((prev) => {
+      const next = new Set(prev)
+      for (const c of codigos) {
+        if (canEditCategoria(c)) next.add(c)
+      }
+      return next
+    })
+  }
+
+  /** Deseleciona todas as categorias de uma lista */
+  const deselectMany = (codigos: string[]) => {
+    setSelectedCodigos((prev) => {
+      const next = new Set(prev)
+      for (const c of codigos) next.delete(c)
+      return next
+    })
+  }
+
+  /** Aplica um grupo DRE em todas as categorias selecionadas via bulk endpoint */
+  const handleBulkApply = async (grupoDre: string | null) => {
+    if (!empresaId || selectedCodigos.size === 0) return
+    setBulkEditing(false)
+    const codigos = Array.from(selectedCodigos)
+    try {
+      const result = await bulkUpdateCategoriasGrupoDRE(empresaId, codigos, grupoDre)
+      const label = grupoDre ? `em ${grupoDre}` : 'sem override'
+      setToast({
+        msg: `✓ ${result.updated} categoria${result.updated !== 1 ? 's' : ''} atualizada${result.updated !== 1 ? 's' : ''} ${label}`,
+        type: 'ok',
+      })
+      setSelectedCodigos(new Set())
+      refetch()
+    } catch (err: any) {
+      setToast({
+        msg: `✗ Erro ao aplicar em lote: ${err?.response?.data?.detail || err.message}`,
+        type: 'err',
+      })
+    }
+  }
+
+  const clearSelection = () => setSelectedCodigos(new Set())
 
   /* ── Merge: API (dinâmico) > CATEGORIAS (estático) ─────────── */
   const categorias = useMemo<Record<string, CategoriaInfo>>(() => {
@@ -193,6 +269,122 @@ export default function AdminCategoriasPage() {
           }}
         >
           {toast.msg}
+        </div>
+      )}
+
+      {/* Barra flutuante de edicao em lote */}
+      {selectedCodigos.size > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl"
+          style={{
+            transform: 'translateX(-50%)',
+            background: t.surfaceElevated,
+            border: `1px solid ${t.purple}44`,
+            boxShadow: t.tooltipShadow,
+            minWidth: 440,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <Layers size={14} style={{ color: t.purple }} />
+            <div>
+              <div className="text-[11px] font-semibold" style={{ color: t.text }}>
+                {selectedCodigos.size} categoria{selectedCodigos.size !== 1 ? 's' : ''} selecionada{selectedCodigos.size !== 1 ? 's' : ''}
+              </div>
+              <div className="text-[9px]" style={{ color: t.muted }}>
+                Aplique um grupo DRE em lote
+              </div>
+            </div>
+          </div>
+          <div className="flex-1" />
+          <div ref={bulkDropdownRef} className="relative">
+            <button
+              onClick={() => setBulkEditing(!bulkEditing)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer"
+              style={{
+                background: t.purpleDim,
+                border: `1px solid ${t.purple}44`,
+                color: t.purple,
+                fontSize: 10,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+              }}
+            >
+              <Pencil size={10} />
+              Aplicar grupo DRE
+              <ChevronDown size={10} style={{ transform: bulkEditing ? 'rotate(180deg)' : 'none' }} />
+            </button>
+            {bulkEditing && (
+              <div
+                className="absolute bottom-full mb-2 right-0 rounded-lg overflow-hidden"
+                style={{
+                  background: t.surfaceElevated,
+                  border: `1px solid ${t.borderHover}`,
+                  boxShadow: t.tooltipShadow,
+                  minWidth: 280,
+                }}
+              >
+                <div
+                  className="px-3 py-2 text-[8px] uppercase tracking-wider"
+                  style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
+                >
+                  Aplicar em {selectedCodigos.size} categoria{selectedCodigos.size !== 1 ? 's' : ''}
+                </div>
+                {grupoOrder.map((g) => {
+                  const color = GRUPO_COLORS[g]
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => handleBulkApply(g)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[10px] cursor-pointer transition-colors"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: t.textSec,
+                        fontFamily: 'inherit',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = `${color}14` }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <span
+                        className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-mono font-semibold"
+                        style={{
+                          background: `${color}22`,
+                          color,
+                          border: `1px solid ${color}44`,
+                        }}
+                      >
+                        {g}
+                      </span>
+                      <span className="flex-1 truncate">{GRUPO_LABELS[g]}</span>
+                    </button>
+                  )
+                })}
+                <div style={{ height: 1, background: t.border }} />
+                <button
+                  onClick={() => handleBulkApply(null)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-[9px] cursor-pointer"
+                  style={{ background: 'transparent', border: 'none', color: t.muted, fontFamily: 'inherit' }}
+                >
+                  <RefreshCw size={10} />
+                  <span>Remover override (usar padrão)</span>
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={clearSelection}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer"
+            style={{
+              background: 'transparent',
+              border: `1px solid ${t.border}`,
+              color: t.muted,
+              fontSize: 10,
+              fontFamily: 'inherit',
+            }}
+          >
+            <XIcon size={10} />
+            Limpar
+          </button>
         </div>
       )}
 
@@ -358,6 +550,12 @@ export default function AdminCategoriasPage() {
           const totalNoGrupo = Object.values(nivel2Map).reduce((s, arr) => s + arr.length, 0)
           const isExpanded = expandedGroups.has(grupo) || filter.length > 0
 
+          // Códigos deste grupo que podem ser selecionados (vieram da API)
+          const grupoCodigos = Object.values(nivel2Map).flat().map((c) => c.codigo).filter(canEditCategoria)
+          const grupoSelectedCount = grupoCodigos.filter((c) => selectedCodigos.has(c)).length
+          const grupoAllSelected = grupoCodigos.length > 0 && grupoSelectedCount === grupoCodigos.length
+          const grupoSomeSelected = grupoSelectedCount > 0 && grupoSelectedCount < grupoCodigos.length
+
           return (
             <div
               key={grupo}
@@ -365,48 +563,93 @@ export default function AdminCategoriasPage() {
               style={{ background: t.surface, border: `1px solid ${t.border}` }}
             >
               <GlowLine color={grupoColor} />
-              <button
-                onClick={() => toggleGroup(grupo)}
-                className="w-full flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                }}
+              <div
+                className="w-full flex items-center gap-2 px-4 py-3"
+                style={{ textAlign: 'left' }}
               >
-                {isExpanded ? (
-                  <ChevronDown size={12} style={{ color: t.muted }} />
-                ) : (
-                  <ChevronRight size={12} style={{ color: t.muted }} />
+                {/* Checkbox select-all do grupo */}
+                {grupoCodigos.length > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (grupoAllSelected) deselectMany(grupoCodigos)
+                      else selectMany(grupoCodigos)
+                    }}
+                    className="flex items-center justify-center cursor-pointer"
+                    style={{ background: 'transparent', border: 'none', padding: 0 }}
+                    title={grupoAllSelected ? 'Desmarcar todas deste grupo' : 'Selecionar todas deste grupo'}
+                  >
+                    {grupoAllSelected ? (
+                      <CheckSquare size={13} style={{ color: t.purple }} />
+                    ) : grupoSomeSelected ? (
+                      <CheckSquare size={13} style={{ color: t.purple, opacity: 0.5 }} />
+                    ) : (
+                      <Square size={13} style={{ color: t.muted }} />
+                    )}
+                  </button>
                 )}
-                <span
-                  className="inline-flex px-2 py-0.5 rounded text-[9px] font-mono font-semibold"
-                  style={{ background: `${grupoColor}22`, color: grupoColor, border: `1px solid ${grupoColor}44` }}
+                <button
+                  onClick={() => toggleGroup(grupo)}
+                  className="flex items-center gap-2 flex-1 cursor-pointer"
+                  style={{ background: 'transparent', border: 'none', textAlign: 'left', fontFamily: 'inherit' }}
                 >
-                  {grupo}
-                </span>
-                <span className="text-[11px] font-medium" style={{ color: t.text }}>
-                  {grupoLabel}
-                </span>
-                <span className="text-[9px] font-mono ml-auto" style={{ color: t.muted }}>
-                  {totalNoGrupo} categoria{totalNoGrupo !== 1 ? 's' : ''}
-                </span>
-              </button>
+                  {isExpanded ? (
+                    <ChevronDown size={12} style={{ color: t.muted }} />
+                  ) : (
+                    <ChevronRight size={12} style={{ color: t.muted }} />
+                  )}
+                  <span
+                    className="inline-flex px-2 py-0.5 rounded text-[9px] font-mono font-semibold"
+                    style={{ background: `${grupoColor}22`, color: grupoColor, border: `1px solid ${grupoColor}44` }}
+                  >
+                    {grupo}
+                  </span>
+                  <span className="text-[11px] font-medium" style={{ color: t.text }}>
+                    {grupoLabel}
+                  </span>
+                  <span className="text-[9px] font-mono ml-auto" style={{ color: t.muted }}>
+                    {totalNoGrupo} categoria{totalNoGrupo !== 1 ? 's' : ''}
+                  </span>
+                </button>
+              </div>
 
               {isExpanded && (
                 <div style={{ borderTop: `1px solid ${t.border}` }}>
-                  {Object.entries(nivel2Map).sort().map(([nivel2, cats]) => (
+                  {Object.entries(nivel2Map).sort().map(([nivel2, cats]) => {
+                    const nivel2Codigos = cats.map((c) => c.codigo).filter(canEditCategoria)
+                    const nivel2SelectedCount = nivel2Codigos.filter((c) => selectedCodigos.has(c)).length
+                    const nivel2AllSelected = nivel2Codigos.length > 0 && nivel2SelectedCount === nivel2Codigos.length
+                    const nivel2SomeSelected = nivel2SelectedCount > 0 && nivel2SelectedCount < nivel2Codigos.length
+                    return (
                     <div key={nivel2}>
                       <div
-                        className="px-5 py-2 text-[9px] uppercase tracking-wider font-mono"
+                        className="px-5 py-2 text-[9px] uppercase tracking-wider font-mono flex items-center gap-2"
                         style={{
                           color: t.muted,
                           background: `${t.text}04`,
                           borderBottom: `1px solid ${t.border}`,
                         }}
                       >
-                        {nivel2}
+                        {nivel2Codigos.length > 0 && (
+                          <button
+                            onClick={() => {
+                              if (nivel2AllSelected) deselectMany(nivel2Codigos)
+                              else selectMany(nivel2Codigos)
+                            }}
+                            className="flex items-center justify-center cursor-pointer"
+                            style={{ background: 'transparent', border: 'none', padding: 0 }}
+                            title={nivel2AllSelected ? 'Desmarcar todas' : 'Selecionar todas deste subgrupo'}
+                          >
+                            {nivel2AllSelected ? (
+                              <CheckSquare size={11} style={{ color: t.purple }} />
+                            ) : nivel2SomeSelected ? (
+                              <CheckSquare size={11} style={{ color: t.purple, opacity: 0.5 }} />
+                            ) : (
+                              <Square size={11} style={{ color: t.muted }} />
+                            )}
+                          </button>
+                        )}
+                        <span>{nivel2}</span>
                       </div>
                       <table className="w-full text-[11px]">
                         <tbody>
@@ -415,21 +658,40 @@ export default function AdminCategoriasPage() {
                             const isSaving = savingCodigo === cat.codigo
                             const hasCustom = hasOverride(cat.codigo)
                             const canEdit = !!apiData && !!apiData[cat.codigo]
+                            const isSelected = selectedCodigos.has(cat.codigo)
                             return (
                               <tr
                                 key={cat.codigo}
                                 className="transition-colors"
-                                style={{ borderBottom: `1px solid ${t.border}22` }}
+                                style={{
+                                  borderBottom: `1px solid ${t.border}22`,
+                                  background: isSelected ? `${t.purple}0A` : 'transparent',
+                                }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = t.surfaceHover
+                                  if (!isSelected) e.currentTarget.style.background = t.surfaceHover
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = 'transparent'
+                                  e.currentTarget.style.background = isSelected ? `${t.purple}0A` : 'transparent'
                                 }}
                               >
+                                <td className="pl-5 pr-1 py-2" style={{ width: 24 }}>
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => toggleSelect(cat.codigo)}
+                                      className="flex items-center justify-center cursor-pointer"
+                                      style={{ background: 'transparent', border: 'none', padding: 0 }}
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare size={12} style={{ color: t.purple }} />
+                                      ) : (
+                                        <Square size={12} style={{ color: t.muted }} />
+                                      )}
+                                    </button>
+                                  )}
+                                </td>
                                 <td
-                                  className="px-5 py-2 font-mono text-[10px]"
-                                  style={{ color: t.mutedDim, width: 90 }}
+                                  className="pl-2 pr-3 py-2 font-mono text-[10px]"
+                                  style={{ color: t.mutedDim, width: 80 }}
                                 >
                                   {cat.codigo}
                                   {hasCustom && (
@@ -565,7 +827,8 @@ export default function AdminCategoriasPage() {
                         </tbody>
                       </table>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

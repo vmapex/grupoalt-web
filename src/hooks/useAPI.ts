@@ -248,3 +248,17 @@ export async function syncCategoriasEmpresa(empresaId: number) {
   )
   return res.data
 }
+
+/** Aplica override de grupo DRE em várias categorias de uma só vez.
+ *  Passe `grupoDre=null` para remover o override em todas. */
+export async function bulkUpdateCategoriasGrupoDRE(
+  empresaId: number,
+  codigos: string[],
+  grupoDre: string | null,
+) {
+  const res = await api.post<{ updated: number; grupo_dre: string | null; nao_encontradas: string[] }>(
+    `/empresas/${empresaId}/categorias/bulk-override`,
+    { codigos, grupo_dre: grupoDre },
+  )
+  return res.data
+}
