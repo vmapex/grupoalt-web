@@ -1,11 +1,11 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings } from 'lucide-react'
+import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useCategorias } from '@/hooks/useAPI'
-import { CATEGORIAS, buildCategoriasFromAPI, type CategoriaInfo } from '@/lib/planoContas'
+import { useCategorias, updateCategoriaGrupoDRE } from '@/hooks/useAPI'
+import { CATEGORIAS, buildCategoriasFromAPI, getGrupoDRE, type CategoriaInfo } from '@/lib/planoContas'
 import { GlowLine } from '@/components/ui/GlowLine'
 import api from '@/lib/api'
 
@@ -40,6 +40,56 @@ export default function AdminCategoriasPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [editingCodigo, setEditingCodigo] = useState<string | null>(null)
+  const [savingCodigo, setSavingCodigo] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
+  const editDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (editDropdownRef.current && !editDropdownRef.current.contains(e.target as Node)) {
+        setEditingCodigo(null)
+      }
+    }
+    if (editingCodigo) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [editingCodigo])
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (toast) {
+      const id = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(id)
+    }
+  }, [toast])
+
+  /** Salva o override de grupo DRE para uma categoria */
+  const handleSaveOverride = async (codigo: string, grupoDre: string | null) => {
+    if (!empresaId) return
+    setSavingCodigo(codigo)
+    try {
+      await updateCategoriaGrupoDRE(empresaId, codigo, grupoDre)
+      setToast({
+        msg: grupoDre ? `✓ Categoria ${codigo} agora está em ${grupoDre}` : `✓ Override removido em ${codigo}`,
+        type: 'ok',
+      })
+      setEditingCodigo(null)
+      refetch()
+    } catch (err: any) {
+      setToast({ msg: `✗ Erro: ${err?.response?.data?.detail || err.message}`, type: 'err' })
+    } finally {
+      setSavingCodigo(null)
+    }
+  }
+
+  /** Verifica se uma categoria tem override manual ativo (grupo atual != inferido por prefixo) */
+  const hasOverride = (codigo: string): boolean => {
+    if (!apiData || !apiData[codigo]) return false
+    return apiData[codigo].grupo_dre !== null && apiData[codigo].grupo_dre !== undefined
+  }
 
   /* ── Merge: API (dinâmico) > CATEGORIAS (estático) ─────────── */
   const categorias = useMemo<Record<string, CategoriaInfo>>(() => {
@@ -126,6 +176,22 @@ export default function AdminCategoriasPage() {
 
   return (
     <div className="flex flex-col gap-4 p-5 min-h-full" style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+      {/* Toast */}
+      {toast && (
+        <div
+          className="fixed top-20 right-6 z-50 px-4 py-3 rounded-lg text-[11px] font-medium"
+          style={{
+            background: toast.type === 'ok' ? t.greenDim : t.redDim,
+            color: toast.type === 'ok' ? t.green : t.red,
+            border: `1px solid ${toast.type === 'ok' ? t.green : t.red}44`,
+            boxShadow: t.tooltipShadow,
+            minWidth: 220,
+          }}
+        >
+          {toast.msg}
+        </div>
+      )}
+
       {/* ── Sub-navigation ────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
         <Link
@@ -340,35 +406,158 @@ export default function AdminCategoriasPage() {
                       </div>
                       <table className="w-full text-[11px]">
                         <tbody>
-                          {cats.map((cat) => (
-                            <tr
-                              key={cat.codigo}
-                              className="transition-colors"
-                              style={{ borderBottom: `1px solid ${t.border}22` }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = t.surfaceHover
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent'
-                              }}
-                            >
-                              <td
-                                className="px-5 py-2 font-mono text-[10px]"
-                                style={{ color: t.mutedDim, width: 90 }}
+                          {cats.map((cat) => {
+                            const isEditing = editingCodigo === cat.codigo
+                            const isSaving = savingCodigo === cat.codigo
+                            const hasCustom = hasOverride(cat.codigo)
+                            const canEdit = !!apiData && !!apiData[cat.codigo]
+                            return (
+                              <tr
+                                key={cat.codigo}
+                                className="transition-colors"
+                                style={{ borderBottom: `1px solid ${t.border}22` }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = t.surfaceHover
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'transparent'
+                                }}
                               >
-                                {cat.codigo}
-                              </td>
-                              <td className="px-3 py-2" style={{ color: t.text }}>
-                                {cat.nome}
-                              </td>
-                              <td
-                                className="px-3 py-2 text-right font-mono text-[9px]"
-                                style={{ color: t.muted, width: 60 }}
-                              >
-                                {cat.op === '+' ? 'entrada' : 'saída'}
-                              </td>
-                            </tr>
-                          ))}
+                                <td
+                                  className="px-5 py-2 font-mono text-[10px]"
+                                  style={{ color: t.mutedDim, width: 90 }}
+                                >
+                                  {cat.codigo}
+                                  {hasCustom && (
+                                    <span
+                                      className="ml-1 inline-flex px-1 rounded text-[7px] font-semibold align-middle"
+                                      style={{
+                                        background: `${t.purple}22`,
+                                        color: t.purple,
+                                        border: `1px solid ${t.purple}44`,
+                                      }}
+                                      title="Override manual aplicado para esta empresa"
+                                    >
+                                      CUSTOM
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2" style={{ color: t.text }}>
+                                  {cat.nome}
+                                </td>
+                                <td
+                                  className="px-3 py-2 text-right font-mono text-[9px]"
+                                  style={{ color: t.muted, width: 70 }}
+                                >
+                                  {cat.op === '+' ? 'entrada' : 'saída'}
+                                </td>
+                                <td className="px-3 py-2 text-right" style={{ width: 160, position: 'relative' }}>
+                                  {!canEdit && (
+                                    <span className="text-[8px]" style={{ color: t.mutedDim }} title="Sincronize da Omie para editar">
+                                      não sincronizado
+                                    </span>
+                                  )}
+                                  {canEdit && !isEditing && (
+                                    <button
+                                      onClick={() => setEditingCodigo(cat.codigo)}
+                                      disabled={isSaving}
+                                      className="flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer transition-colors ml-auto"
+                                      style={{
+                                        background: 'transparent',
+                                        border: `1px solid ${t.border}`,
+                                        color: t.muted,
+                                        fontSize: 9,
+                                        fontFamily: 'inherit',
+                                        opacity: isSaving ? 0.5 : 1,
+                                      }}
+                                      title="Alterar grupo DRE desta categoria"
+                                    >
+                                      <Pencil size={9} />
+                                      {isSaving ? 'Salvando...' : 'Editar grupo'}
+                                    </button>
+                                  )}
+                                  {canEdit && isEditing && (
+                                    <div
+                                      ref={editDropdownRef}
+                                      className="absolute right-3 top-8 rounded-lg overflow-hidden z-40"
+                                      style={{
+                                        background: t.surfaceElevated,
+                                        border: `1px solid ${t.borderHover}`,
+                                        boxShadow: t.tooltipShadow,
+                                        minWidth: 220,
+                                      }}
+                                    >
+                                      <div
+                                        className="px-3 py-2 text-[8px] uppercase tracking-wider flex items-center justify-between"
+                                        style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
+                                      >
+                                        <span>Mover para grupo DRE</span>
+                                        <button
+                                          onClick={() => setEditingCodigo(null)}
+                                          className="cursor-pointer"
+                                          style={{ color: t.muted, background: 'none', border: 'none' }}
+                                        >
+                                          <XIcon size={10} />
+                                        </button>
+                                      </div>
+                                      {grupoOrder.map((g) => {
+                                        const isCurrent = cat.grupoDRE === g
+                                        const color = GRUPO_COLORS[g]
+                                        return (
+                                          <button
+                                            key={g}
+                                            onClick={() => handleSaveOverride(cat.codigo, g)}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[10px] cursor-pointer transition-colors"
+                                            style={{
+                                              background: isCurrent ? `${color}14` : 'transparent',
+                                              border: 'none',
+                                              color: isCurrent ? color : t.textSec,
+                                              fontFamily: 'inherit',
+                                            }}
+                                          >
+                                            {isCurrent ? (
+                                              <Check size={11} style={{ color }} />
+                                            ) : (
+                                              <span style={{ width: 11 }} />
+                                            )}
+                                            <span
+                                              className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-mono font-semibold"
+                                              style={{
+                                                background: `${color}22`,
+                                                color,
+                                                border: `1px solid ${color}44`,
+                                              }}
+                                            >
+                                              {g}
+                                            </span>
+                                            <span className="flex-1 truncate">{GRUPO_LABELS[g]}</span>
+                                          </button>
+                                        )
+                                      })}
+                                      {hasCustom && (
+                                        <>
+                                          <div style={{ height: 1, background: t.border }} />
+                                          <button
+                                            onClick={() => handleSaveOverride(cat.codigo, null)}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-[9px] cursor-pointer"
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: t.muted,
+                                              fontFamily: 'inherit',
+                                            }}
+                                          >
+                                            <RefreshCw size={10} />
+                                            <span>Remover override (usar padrão)</span>
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>

@@ -218,10 +218,24 @@ export interface CategoriaAPIItem {
   descricao: string
   nivel1: string
   nivel2: string
+  /** Override manual do grupo DRE para esta empresa. Null = usa inferência por prefixo */
+  grupo_dre: string | null
 }
 
 export function useCategorias(empresaId: number | null) {
   return useApi<Record<string, CategoriaAPIItem>>(
     empresaId ? `/empresas/${empresaId}/categorias` : null,
   )
+}
+
+/** Define ou remove o override de grupo DRE de uma categoria por empresa.
+ *  Passe `grupoDre=null` para remover o override. */
+export async function updateCategoriaGrupoDRE(
+  empresaId: number,
+  codigo: string,
+  grupoDre: string | null,
+) {
+  return api.patch(`/empresas/${empresaId}/categorias/${codigo}`, {
+    grupo_dre: grupoDre,
+  })
 }

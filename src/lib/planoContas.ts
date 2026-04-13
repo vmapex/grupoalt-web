@@ -227,17 +227,26 @@ export function calcularDRE(lancamentos: Array<{ valor: number; categoria: strin
 
 /**
  * Converte resposta da API /categorias para formato CategoriaInfo.
- * Infere grupoDRE e op usando lógica de prefixo existente.
- * Retorna mapa pronto para uso como CATEGORIAS.
+ *
+ * Prioridade do grupoDRE:
+ * 1. `info.grupo_dre` (override manual salvo por empresa) — maior prioridade
+ * 2. `getGrupoDRE(codigo)` — inferência por prefixo (fallback)
+ *
+ * O `op` (+/-) é derivado do grupoDRE:
+ * - Grupos "+": RoB, RNOP
+ * - Grupos "-": TDCF, CV, CF, DNOP, IRPJ, CSLL
  */
 export function buildCategoriasFromAPI(
-  apiData: Record<string, { descricao: string; nivel1: string; nivel2: string }>
+  apiData: Record<string, { descricao: string; nivel1: string; nivel2: string; grupo_dre?: string | null }>
 ): Record<string, CategoriaInfo> {
   const result: Record<string, CategoriaInfo> = {}
+  const gruposPositivos = new Set(['RoB', 'RNOP'])
+
   for (const [codigo, info] of Object.entries(apiData)) {
-    const grupoDRE = getGrupoDRE(codigo)
+    // Override manual tem prioridade sobre inferência por prefixo
+    const grupoDRE = info.grupo_dre || getGrupoDRE(codigo)
     if (!grupoDRE) continue
-    const op: '+' | '-' = codigo.startsWith('1.') ? '+' : '-'
+    const op: '+' | '-' = gruposPositivos.has(grupoDRE) ? '+' : '-'
     result[codigo] = {
       codigo,
       nome: info.descricao,
