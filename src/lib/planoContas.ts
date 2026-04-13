@@ -235,6 +235,12 @@ export function calcularDRE(lancamentos: Array<{ valor: number; categoria: strin
  * O `op` (+/-) é derivado do grupoDRE:
  * - Grupos "+": RoB, RNOP
  * - Grupos "-": TDCF, CV, CF, DNOP, IRPJ, CSLL
+ *
+ * O nivel2 (subgrupo) é resolvido assim:
+ * 1. Se existe uma categoria-pai (ex: "2.05") na própria apiData,
+ *    usa a descricao dela (ex: "( - ) CUSTO FINANCEIRO")
+ * 2. Senão, tenta o info.nivel2 do backend (ex: "2.05")
+ * 3. Fallback: string vazia
  */
 export function buildCategoriasFromAPI(
   apiData: Record<string, { descricao: string; nivel1: string; nivel2: string; grupo_dre?: string | null }>
@@ -242,15 +248,30 @@ export function buildCategoriasFromAPI(
   const result: Record<string, CategoriaInfo> = {}
   const gruposPositivos = new Set(['RoB', 'RNOP'])
 
+  /** Mapa { "2.05": "( - ) CUSTO FINANCEIRO" } construído a partir
+   *  das entradas cujo código tem exatamente 2 segmentos (categoria-pai). */
+  const parentMap: Record<string, string> = {}
   for (const [codigo, info] of Object.entries(apiData)) {
-    // Override manual tem prioridade sobre inferência por prefixo
+    const parts = codigo.split('.')
+    if (parts.length === 2) {
+      parentMap[codigo] = info.descricao
+    }
+  }
+
+  for (const [codigo, info] of Object.entries(apiData)) {
     const grupoDRE = info.grupo_dre || getGrupoDRE(codigo)
     if (!grupoDRE) continue
     const op: '+' | '-' = gruposPositivos.has(grupoDRE) ? '+' : '-'
+
+    // Resolve nivel2 label: prefer parent category's descricao
+    const parts = codigo.split('.')
+    const parentCodigo = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : ''
+    const nivel2Label = parentMap[parentCodigo] || info.nivel2 || parentCodigo || ''
+
     result[codigo] = {
       codigo,
       nome: info.descricao,
-      nivel2: info.nivel2 || '',
+      nivel2: nivel2Label,
       nivel1: info.nivel1 || '',
       grupoDRE,
       op,

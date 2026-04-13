@@ -166,13 +166,13 @@ export default function AdminCategoriasPage() {
 
   const clearSelection = () => setSelectedCodigos(new Set())
 
-  /* ── Merge: API (dinâmico) > CATEGORIAS (estático) ─────────── */
+  /* ── Fonte de dados: API (dinâmico) OU CATEGORIAS (estático) ─
+   * Quando a API retorna dados, usamos SÓ a API — sem merge com o
+   * mapa estático, pra evitar que categorias de outras empresas
+   * (ALT MAX) vazem na lista com "não sincronizado". */
   const categorias = useMemo<Record<string, CategoriaInfo>>(() => {
     if (apiData && Object.keys(apiData).length > 0) {
-      // API tem dados: converte para CategoriaInfo
-      const dynamicMap = buildCategoriasFromAPI(apiData)
-      // Combina com estático como fallback para códigos faltantes
-      return { ...CATEGORIAS, ...dynamicMap }
+      return buildCategoriasFromAPI(apiData)
     }
     return CATEGORIAS
   }, [apiData])
