@@ -199,10 +199,12 @@ export default function AdminCategoriasPage() {
       if (!byGrupo[cat.grupoDRE][cat.nivel2]) byGrupo[cat.grupoDRE][cat.nivel2] = []
       byGrupo[cat.grupoDRE][cat.nivel2].push(cat)
     }
-    // Ordena códigos dentro de cada nivel2
+    // Ordena códigos dentro de cada nivel2 com natural sort (para 2.5 vir antes de 2.11)
     for (const grupo of Object.keys(byGrupo)) {
       for (const nivel2 of Object.keys(byGrupo[grupo])) {
-        byGrupo[grupo][nivel2].sort((a, b) => a.codigo.localeCompare(b.codigo))
+        byGrupo[grupo][nivel2].sort((a, b) =>
+          a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
+        )
       }
     }
     return byGrupo
@@ -615,7 +617,15 @@ export default function AdminCategoriasPage() {
 
               {isExpanded && (
                 <div style={{ borderTop: `1px solid ${t.border}` }}>
-                  {Object.entries(nivel2Map).sort().map(([nivel2, cats]) => {
+                  {Object.entries(nivel2Map)
+                    .sort(([, catsA], [, catsB]) => {
+                      // Ordena subgrupos pelo menor codigo (primeira categoria)
+                      // Cada cats[] ja vem ordenado por codigo do useMemo grouped
+                      const codA = catsA[0]?.codigo || ''
+                      const codB = catsB[0]?.codigo || ''
+                      return codA.localeCompare(codB, undefined, { numeric: true })
+                    })
+                    .map(([nivel2, cats]) => {
                     const nivel2Codigos = cats.map((c) => c.codigo).filter(canEditCategoria)
                     const nivel2SelectedCount = nivel2Codigos.filter((c) => selectedCodigos.has(c)).length
                     const nivel2AllSelected = nivel2Codigos.length > 0 && nivel2SelectedCount === nivel2Codigos.length
