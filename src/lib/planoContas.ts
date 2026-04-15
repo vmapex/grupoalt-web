@@ -190,6 +190,10 @@ export function getCategoriaInfo(categoria: string | null): CategoriaInfo | null
  * Se `categoriaMap` for passado (vindo de useCategoriasMap), usa o grupoDRE
  * dele — que inclui overrides manuais da empresa. Senão, cai no fallback
  * por prefixo via getGrupoDRE.
+ *
+ * Categorias com `grupoDRE === 'NEUTRO'` são EXPLICITAMENTE EXCLUÍDAS do
+ * cálculo (usadas para repasses internos / mútuos entre unidades que devem
+ * aparecer no extrato mas não inflar o DRE).
  */
 export function calcularDRE(
   lancamentos: Array<{ valor: number; categoria: string | null; origem?: string }>,
@@ -206,6 +210,8 @@ export function calcularDRE(
     } else {
       grupo = getGrupoDRE(r.categoria)
     }
+    // Pula NEUTRO (repasses internos e similares) — não computa no DRE
+    if (grupo === 'NEUTRO') return
     if (grupo && grupos[grupo] !== undefined) {
       grupos[grupo] += Math.abs(r.valor || 0)
     }
@@ -290,6 +296,32 @@ export function buildCategoriasFromAPI(
     }
   }
   return result
+}
+
+/**
+ * Lista as categorias marcadas como NEUTRO (excluídas do DRE) com o
+ * total movimentado em cada uma. Útil pra exibir no contexto da IA
+ * e auditoria visual ("X categorias ignoradas, R$ Y movimentado").
+ */
+export function calcularNeutros(
+  lancamentos: Array<{ valor: number; categoria: string | null }>,
+  categoriaMap?: Record<string, CategoriaInfo>,
+): Array<{ codigo: string; nome: string; total: number; count: number }> {
+  if (!categoriaMap) return []
+  const totals: Record<string, { nome: string; total: number; count: number }> = {}
+  for (const r of lancamentos) {
+    if (!r.categoria) continue
+    const info = categoriaMap[r.categoria]
+    if (!info || info.grupoDRE !== 'NEUTRO') continue
+    if (!totals[r.categoria]) {
+      totals[r.categoria] = { nome: info.nome || r.categoria, total: 0, count: 0 }
+    }
+    totals[r.categoria].total += Math.abs(r.valor || 0)
+    totals[r.categoria].count += 1
+  }
+  return Object.entries(totals)
+    .map(([codigo, v]) => ({ codigo, ...v }))
+    .sort((a, b) => b.total - a.total)
 }
 
 /**

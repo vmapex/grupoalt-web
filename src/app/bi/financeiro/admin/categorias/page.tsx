@@ -18,6 +18,7 @@ const GRUPO_COLORS: Record<string, string> = {
   DNOP: '#C084FC',
   IRPJ: '#94A3B8',
   CSLL: '#94A3B8',
+  NEUTRO: '#64748B',
 }
 
 const GRUPO_LABELS: Record<string, string> = {
@@ -29,6 +30,7 @@ const GRUPO_LABELS: Record<string, string> = {
   DNOP: '( - ) Despesas Não Operacionais',
   IRPJ: '( - ) IRPJ',
   CSLL: '( - ) CSLL',
+  NEUTRO: '🚫 Neutro / Excluir do DRE',
 }
 
 export default function AdminCategoriasPage() {
@@ -210,7 +212,7 @@ export default function AdminCategoriasPage() {
     return byGrupo
   }, [filtered])
 
-  const grupoOrder = ['RoB', 'TDCF', 'CV', 'CF', 'RNOP', 'DNOP', 'IRPJ', 'CSLL']
+  const grupoOrder = ['RoB', 'TDCF', 'CV', 'CF', 'RNOP', 'DNOP', 'IRPJ', 'CSLL', 'NEUTRO']
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -465,27 +467,7 @@ export default function AdminCategoriasPage() {
 
       {/* ── Stats por grupo DRE ──────────────────────────────── */}
       <div className="grid grid-cols-4 gap-3">
-        {grupoOrder.slice(0, 4).map((grupo) => (
-          <div
-            key={grupo}
-            className="relative rounded-xl p-3 overflow-hidden"
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          >
-            <GlowLine color={GRUPO_COLORS[grupo]} />
-            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: t.muted }}>
-              {grupo}
-            </div>
-            <div className="text-[20px] font-mono font-medium" style={{ color: GRUPO_COLORS[grupo] }}>
-              {stats.byGrupo[grupo] || 0}
-            </div>
-            <div className="text-[8px] mt-0.5 truncate" style={{ color: t.mutedDim }}>
-              {GRUPO_LABELS[grupo]}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-4 gap-3">
-        {grupoOrder.slice(4).map((grupo) => (
+        {grupoOrder.map((grupo) => (
           <div
             key={grupo}
             className="relative rounded-xl p-3 overflow-hidden"
@@ -725,7 +707,7 @@ export default function AdminCategoriasPage() {
                                   className="px-3 py-2 text-right font-mono text-[9px]"
                                   style={{ color: t.muted, width: 70 }}
                                 >
-                                  {cat.op === '+' ? 'entrada' : 'saída'}
+                                  {cat.grupoDRE === 'NEUTRO' ? 'neutro' : cat.op === '+' ? 'entrada' : 'saída'}
                                 </td>
                                 <td className="px-3 py-2 text-right" style={{ width: 160, position: 'relative' }}>
                                   {!canEdit && (

@@ -20,15 +20,22 @@ function parseDMY(s: string): Date {
 }
 
 /** Resolve o grupo DRE de uma categoria usando o mapa dinâmico (overrides
- *  da empresa) se fornecido, senão cai no mapa estático + prefixo. */
+ *  da empresa) se fornecido, senão cai no mapa estático + prefixo.
+ *
+ *  Categorias com `grupoDRE === 'NEUTRO'` retornam null (são excluídas do
+ *  agrupamento DRE, mesmo comportamento que getGrupoDRE retornar null). */
 function resolveGrupoDRE(
   categoria: string | null | undefined,
   categoriaMap?: Record<string, CategoriaInfo>,
 ): string | null {
   if (!categoria) return null
-  if (categoriaMap && categoriaMap[categoria]) return categoriaMap[categoria].grupoDRE
-  if (CATEGORIAS[categoria]) return CATEGORIAS[categoria].grupoDRE
-  return getGrupoDREPrefix(categoria)
+  let grupo: string | null = null
+  if (categoriaMap && categoriaMap[categoria]) grupo = categoriaMap[categoria].grupoDRE
+  else if (CATEGORIAS[categoria]) grupo = CATEGORIAS[categoria].grupoDRE
+  else grupo = getGrupoDREPrefix(categoria)
+  // NEUTRO é excluído de todos os agregadores de DRE
+  if (grupo === 'NEUTRO') return null
+  return grupo
 }
 
 function groupBy(
@@ -166,6 +173,8 @@ export function buildBreakdownByCategoria(
     const info = (categoriaMap && categoriaMap[cat]) || CATEGORIAS[cat]
     if (!info) continue
     const grupo = info.grupoDRE
+    // NEUTRO é excluído (repasses internos, mútuos, etc)
+    if (grupo === 'NEUTRO') continue
     if (!groups[grupo]) continue
     const label = info.nivel2 || info.nome || cat
     groups[grupo][label] = (groups[grupo][label] || 0) + Math.abs(l.valor)
