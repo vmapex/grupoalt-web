@@ -4,10 +4,10 @@ import { Search, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { ConcilBadge } from '@/components/ui/ConcilBadge'
-import { getCatDesc } from '@/lib/mocks/extratoData'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformExtrato, transformSaldos } from '@/lib/transformers'
 import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
@@ -21,6 +21,7 @@ function isoToDMY(iso: string): string {
 export default function PageExtrato() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const { getNome: getCatDesc } = useCategoriasMap(empresaId)
   const dateFrom = useDateRangeStore((s) => s.from)
   const dateTo = useDateRangeStore((s) => s.to)
   const dt_inicio = isoToDMY(dateFrom)

@@ -4,6 +4,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useExtrato, useCP, useCR, useFluxoCaixa } from '@/hooks/useAPI'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { calcularDRE } from '@/lib/planoContas'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { transformCPCR } from '@/lib/transformers'
@@ -49,13 +50,17 @@ export function AnaliseIAView() {
   const { data: crRaw } = useCR(empresaId, { registros: 500 })
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
+  // Plano de contas dinâmico (overrides da empresa)
+  const { map: categoriaMap } = useCategoriasMap(empresaId)
+
   const lancamentos = extratoResponse?.lancamentos ?? []
   const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
-  // Compute DRE using the proper function
+  // Compute DRE using the proper function with the empresa-specific map
   const dre = useMemo(() => calcularDRE(
-    lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined }))
-  ), [lancamentos])
+    lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
+    categoriaMap,
+  ), [lancamentos, categoriaMap])
 
   // CP/CR data for context
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])

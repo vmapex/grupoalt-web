@@ -10,11 +10,12 @@ import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
-import { CATEGORIAS } from '@/lib/planoContas'
+import { calcularDRE } from '@/lib/planoContas'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
 
@@ -61,6 +62,9 @@ function DashboardExecutivo() {
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
+  // Plano de contas dinâmico (com overrides da empresa) — refetch ao voltar pra aba
+  const { map: categoriaMap } = useCategoriasMap(empresaId)
+
   // Transform API or fallback
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
   const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []), [crRaw])
@@ -69,27 +73,18 @@ function DashboardExecutivo() {
   /* ── Computed values ──────────────────────── */
   const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
-  // Calcular DRE real do extrato usando planoContas
+  // Calcular DRE real do extrato usando planoContas dinâmico
   const dreData = useMemo(() => {
     if (!lancamentos.length) return null
-    const groups: Record<string, number> = {}
-    for (const l of lancamentos) {
-      const cat = CATEGORIAS[l.categoria || '']
-      if (!cat) continue
-      const grupo = cat.grupoDRE
-      const val = Math.abs(l.valor)
-      groups[grupo] = (groups[grupo] || 0) + val
+    const dre = calcularDRE(
+      lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
+      categoriaMap,
+    )
+    return {
+      rob: dre.RoB, tdcf: dre.TDCF, cv: dre.CV, cf: dre.CF,
+      rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
     }
-    const rob = groups['RoB'] || 0
-    const tdcf = groups['TDCF'] || 0
-    const cv = groups['CV'] || 0
-    const cf = groups['CF'] || 0
-    const rnop = groups['RNOP'] || 0
-    const dnop = groups['DNOP'] || 0
-    const ebt1 = rob - tdcf - cv - cf
-    const ebt2 = ebt1 + rnop - dnop
-    return { rob, tdcf, cv, cf, rnop, dnop, ebt1, ebt2 }
-  }, [lancamentos])
+  }, [lancamentos, categoriaMap])
 
   const ebt2 = dreData?.ebt2 ?? 0
 

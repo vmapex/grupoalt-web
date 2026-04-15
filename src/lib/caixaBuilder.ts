@@ -3,7 +3,7 @@
  * Agrupa por trimestre, mês, ou semana conforme o nível
  */
 
-import { CATEGORIAS } from './planoContas'
+import { CATEGORIAS, getGrupoDRE as getGrupoDREPrefix, type CategoriaInfo } from './planoContas'
 import type { CaixaLevelData } from './mocks/caixaData'
 
 interface Lancamento {
@@ -19,14 +19,22 @@ function parseDMY(s: string): Date {
   return new Date(Number(y), Number(m) - 1, Number(d))
 }
 
-function getGrupoDRE(categoria: string | null | undefined): string | null {
+/** Resolve o grupo DRE de uma categoria usando o mapa dinâmico (overrides
+ *  da empresa) se fornecido, senão cai no mapa estático + prefixo. */
+function resolveGrupoDRE(
+  categoria: string | null | undefined,
+  categoriaMap?: Record<string, CategoriaInfo>,
+): string | null {
   if (!categoria) return null
-  return CATEGORIAS[categoria]?.grupoDRE ?? null
+  if (categoriaMap && categoriaMap[categoria]) return categoriaMap[categoria].grupoDRE
+  if (CATEGORIAS[categoria]) return CATEGORIAS[categoria].grupoDRE
+  return getGrupoDREPrefix(categoria)
 }
 
 function groupBy(
   lancamentos: Lancamento[],
   keyFn: (d: Date) => string,
+  categoriaMap?: Record<string, CategoriaInfo>,
 ): Record<string, Record<string, number>> {
   const groups: Record<string, Record<string, number>> = {}
   for (const l of lancamentos) {
@@ -34,7 +42,7 @@ function groupBy(
     const dt = parseDMY(l.data_lancamento)
     if (isNaN(dt.getTime())) continue
     const key = keyFn(dt)
-    const grupo = getGrupoDRE(l.categoria)
+    const grupo = resolveGrupoDRE(l.categoria, categoriaMap)
     if (!grupo) continue
     if (!groups[key]) groups[key] = {}
     groups[key][grupo] = (groups[key][grupo] || 0) + Math.abs(l.valor)
@@ -54,19 +62,25 @@ function toLevel(groups: Record<string, Record<string, number>>, sortedKeys: str
   }
 }
 
-export function buildQuarterly(lancamentos: Lancamento[]): CaixaLevelData {
+export function buildQuarterly(
+  lancamentos: Lancamento[],
+  categoriaMap?: Record<string, CategoriaInfo>,
+): CaixaLevelData {
   const groups = groupBy(lancamentos, (dt) => {
     const q = Math.floor(dt.getMonth() / 3) + 1
     return `Q${q}/${String(dt.getFullYear()).slice(2)}`
-  })
+  }, categoriaMap)
   const keys = Object.keys(groups).sort()
   return toLevel(groups, keys)
 }
 
-export function buildMonthly(lancamentos: Lancamento[]): CaixaLevelData {
+export function buildMonthly(
+  lancamentos: Lancamento[],
+  categoriaMap?: Record<string, CategoriaInfo>,
+): CaixaLevelData {
   const groups = groupBy(lancamentos, (dt) => {
     return `${MONTH_NAMES[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
-  })
+  }, categoriaMap)
   // Sort by date order
   const keys = Object.keys(groups).sort((a, b) => {
     const [mA, yA] = a.split('/')
@@ -78,7 +92,11 @@ export function buildMonthly(lancamentos: Lancamento[]): CaixaLevelData {
   return toLevel(groups, keys)
 }
 
-export function buildWeekly(lancamentos: Lancamento[], month: string): CaixaLevelData {
+export function buildWeekly(
+  lancamentos: Lancamento[],
+  month: string,
+  categoriaMap?: Record<string, CategoriaInfo>,
+): CaixaLevelData {
   // month format: "Dez/25"
   const [mName, y] = month.split('/')
   const mIdx = MONTH_NAMES.indexOf(mName)
@@ -94,7 +112,7 @@ export function buildWeekly(lancamentos: Lancamento[], month: string): CaixaLeve
   const groups = groupBy(filtered, (dt) => {
     const weekNum = Math.ceil(dt.getDate() / 7)
     return `S${weekNum}·${mName}`
-  })
+  }, categoriaMap)
   const keys = [`S1·${mName}`, `S2·${mName}`, `S3·${mName}`, `S4·${mName}`]
   return toLevel(groups, keys)
 }
@@ -134,14 +152,18 @@ export interface CatBreakdowns {
   DNOP: CatBreakdownItem[]
 }
 
-export function buildBreakdownByCategoria(lancamentos: Lancamento[]): CatBreakdowns {
+export function buildBreakdownByCategoria(
+  lancamentos: Lancamento[],
+  categoriaMap?: Record<string, CategoriaInfo>,
+): CatBreakdowns {
   const groups: Record<string, Record<string, number>> = {
     RoB: {}, TDCF: {}, CV: {}, CF: {}, RNOP: {}, DNOP: {},
   }
 
   for (const l of lancamentos) {
     const cat = l.categoria || ''
-    const info = CATEGORIAS[cat]
+    // Prioriza o mapa dinâmico (API + overrides) sobre o estático
+    const info = (categoriaMap && categoriaMap[cat]) || CATEGORIAS[cat]
     if (!info) continue
     const grupo = info.grupoDRE
     if (!groups[grupo]) continue
@@ -167,13 +189,16 @@ export function buildBreakdownByCategoria(lancamentos: Lancamento[]): CatBreakdo
   }
 }
 
-export function buildBreakdownByFavorecido(lancamentos: LancamentoWithFav[]): DREBreakdowns {
+export function buildBreakdownByFavorecido(
+  lancamentos: LancamentoWithFav[],
+  categoriaMap?: Record<string, CategoriaInfo>,
+): DREBreakdowns {
   const groups: Record<string, Record<string, number>> = {
     RoB: {}, TDCF: {}, CV: {}, CF: {}, RNOP: {}, DNOP: {},
   }
 
   for (const l of lancamentos) {
-    const grupo = getGrupoDRE(l.categoria)
+    const grupo = resolveGrupoDRE(l.categoria, categoriaMap)
     if (!grupo || !groups[grupo]) continue
     const fav = (l.favorecido || '').trim() || 'Sem favorecido'
     groups[grupo][fav] = (groups[grupo][fav] || 0) + Math.abs(l.valor)
