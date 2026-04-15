@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
-import { CATEGORIAS } from '@/lib/planoContas'
+import { calcularDRE } from '@/lib/planoContas'
 import { buildQuarterly, buildMonthly, buildWeekly, buildBreakdownByFavorecido, buildBreakdownByCategoria } from '@/lib/caixaBuilder'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
@@ -13,6 +13,7 @@ import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
 import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 
 function isoToDMY(iso: string): string {
@@ -37,21 +38,24 @@ export default function PageCaixa() {
   // API calls for KPI strip with date range
   const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
 
+  // Plano de contas dinâmico (com overrides da empresa)
+  const { map: categoriaMap } = useCategoriasMap(empresaId)
+
   const lancamentos = extratoRaw?.lancamentos ?? []
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
 
   // Build level data from real extrato
   const EMPTY_LEVEL: CaixaLevelData = { labels: [], RB: [], TD: [], CV: [], CF: [], RN: [], DN: [] }
-  const quarterlyData = useMemo(() => lancamentos.length ? buildQuarterly(lancamentos as any) : EMPTY_LEVEL, [lancamentos])
-  const monthlyData = useMemo(() => lancamentos.length ? buildMonthly(lancamentos as any) : EMPTY_LEVEL, [lancamentos])
+  const quarterlyData = useMemo(() => lancamentos.length ? buildQuarterly(lancamentos as any, categoriaMap) : EMPTY_LEVEL, [lancamentos, categoriaMap])
+  const monthlyData = useMemo(() => lancamentos.length ? buildMonthly(lancamentos as any, categoriaMap) : EMPTY_LEVEL, [lancamentos, categoriaMap])
   const weeklyDataMap = useMemo(() => {
     if (!lancamentos.length) return {}
     const map: Record<string, ReturnType<typeof buildWeekly>> = {}
     for (const label of monthlyData.labels) {
-      map[label] = buildWeekly(lancamentos as any, label)
+      map[label] = buildWeekly(lancamentos as any, label, categoriaMap)
     }
     return map
-  }, [lancamentos, monthlyData])
+  }, [lancamentos, monthlyData, categoriaMap])
 
   // KPI and DRE values
   const kpiValues = useMemo(() => {
@@ -64,32 +68,24 @@ export default function PageCaixa() {
 
   const dreData = useMemo(() => {
     if (!lancamentos.length) return null
-    const groups: Record<string, number> = {}
-    for (const l of lancamentos) {
-      const cat = CATEGORIAS[(l as any).categoria || '']
-      if (!cat) continue
-      groups[cat.grupoDRE] = (groups[cat.grupoDRE] || 0) + Math.abs((l as any).valor)
+    const dre = calcularDRE(
+      (lancamentos as any[]).map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
+      categoriaMap,
+    )
+    return {
+      rob: dre.RoB, tdcf: dre.TDCF, cv: dre.CV, cf: dre.CF, mc: dre.MC,
+      rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
     }
-    const rob = groups['RoB'] || 0
-    const tdcf = groups['TDCF'] || 0
-    const cv = groups['CV'] || 0
-    const cf = groups['CF'] || 0
-    const rnop = groups['RNOP'] || 0
-    const dnop = groups['DNOP'] || 0
-    const mc = rob - tdcf - cv
-    const ebt1 = mc - cf
-    const ebt2 = ebt1 + rnop - dnop
-    return { rob, tdcf, cv, cf, mc, rnop, dnop, ebt1, ebt2 }
-  }, [lancamentos])
+  }, [lancamentos, categoriaMap])
 
   // Breakdowns para DetailPanel
   const breakdowns = useMemo(
-    () => lancamentos.length ? buildBreakdownByFavorecido(lancamentos as any) : null,
-    [lancamentos],
+    () => lancamentos.length ? buildBreakdownByFavorecido(lancamentos as any, categoriaMap) : null,
+    [lancamentos, categoriaMap],
   )
   const catBreakdowns = useMemo(
-    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any) : null,
-    [lancamentos],
+    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any, categoriaMap) : null,
+    [lancamentos, categoriaMap],
   )
 
   const getLevelData = useCallback(() => {

@@ -186,14 +186,26 @@ export function getCategoriaInfo(categoria: string | null): CategoriaInfo | null
 /**
  * Calcula o DRE a partir de lançamentos do extrato.
  * Cada lançamento deve ter: { valor: number, categoria: string, origem: string }
+ *
+ * Se `categoriaMap` for passado (vindo de useCategoriasMap), usa o grupoDRE
+ * dele — que inclui overrides manuais da empresa. Senão, cai no fallback
+ * por prefixo via getGrupoDRE.
  */
-export function calcularDRE(lancamentos: Array<{ valor: number; categoria: string | null; origem?: string }>) {
+export function calcularDRE(
+  lancamentos: Array<{ valor: number; categoria: string | null; origem?: string }>,
+  categoriaMap?: Record<string, CategoriaInfo>,
+) {
   const grupos: Record<string, number> = {
     RoB: 0, TDCF: 0, CV: 0, CF: 0, RNOP: 0, DNOP: 0, IRPJ: 0, CSLL: 0,
   }
 
   lancamentos.forEach(r => {
-    const grupo = getGrupoDRE(r.categoria)
+    let grupo: string | null = null
+    if (categoriaMap && r.categoria && categoriaMap[r.categoria]) {
+      grupo = categoriaMap[r.categoria].grupoDRE
+    } else {
+      grupo = getGrupoDRE(r.categoria)
+    }
     if (grupo && grupos[grupo] !== undefined) {
       grupos[grupo] += Math.abs(r.valor || 0)
     }
@@ -283,8 +295,13 @@ export function buildCategoriasFromAPI(
 /**
  * Calcula DRE agrupado por mês.
  * Retorna { 'Out/25': { RoB, TDCF, ... }, 'Nov/25': { ... }, ... }
+ *
+ * Propaga o `categoriaMap` (se fornecido) para calcularDRE.
  */
-export function calcularDREPorMes(lancamentos: Array<{ valor: number; categoria: string | null; data_lancamento: string; origem?: string }>) {
+export function calcularDREPorMes(
+  lancamentos: Array<{ valor: number; categoria: string | null; data_lancamento: string; origem?: string }>,
+  categoriaMap?: Record<string, CategoriaInfo>,
+) {
   const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
   const porMes: Record<string, Array<{ valor: number; categoria: string | null; origem?: string }>> = {}
 
@@ -301,7 +318,7 @@ export function calcularDREPorMes(lancamentos: Array<{ valor: number; categoria:
 
   const resultado: Record<string, ReturnType<typeof calcularDRE>> = {}
   for (const [mes, lancs] of Object.entries(porMes)) {
-    resultado[mes] = calcularDRE(lancs)
+    resultado[mes] = calcularDRE(lancs, categoriaMap)
   }
 
   return resultado

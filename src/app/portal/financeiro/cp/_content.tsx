@@ -12,18 +12,11 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
-import { getCatDesc } from '@/lib/mocks/extratoData'
-import { CATEGORIAS } from '@/lib/planoContas'
 import { useBaixas } from '@/hooks/useAPI'
-
-function getCatNivel2(catCode: string): string {
-  const info = CATEGORIAS[catCode]
-  if (info) return info.nivel2
-  return getCatDesc(catCode)
-}
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { transformCPCR } from '@/lib/transformers'
@@ -86,6 +79,7 @@ function ExpandedPayments({ empresaId, tipo, codigo, fallbackPagamentos }: {
 export default function PageCPCR() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  const { getNome: getCatDesc } = useCategoriasMap(empresaId)
   const dateFrom = useDateRangeStore((s) => s.from)
   const dateTo = useDateRangeStore((s) => s.to)
   const dt_inicio = isoToDMY(dateFrom)
@@ -133,7 +127,7 @@ export default function PageCPCR() {
     () => sortRows(data, sort, (r, f) => {
       if (f === 'fav') return r.fav
       if (f === 'categoria') return getCatDesc(r.cat)
-      if (f === 'grupo') return getCatNivel2(r.cat)
+      if (f === 'grupo') return getCatDesc(r.cat)
       if (f === 'vcto') return parseDMY(r.vcto)
       if (f === 'valor') return r.valor
       if (f === 'valor_pago') return r.valor_pago
@@ -396,7 +390,7 @@ export default function PageCPCR() {
                               {isExpandable && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
                             </td>
                             <td className="px-3 py-2.5 font-medium">{r.fav}</td>
-                            <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatNivel2(r.cat)}</td>
+                            <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatDesc(r.cat)}</td>
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>

@@ -12,18 +12,11 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
-import { getCatDesc } from '@/lib/mocks/extratoData'
-import { CATEGORIAS } from '@/lib/planoContas'
 import { useBaixas } from '@/hooks/useAPI'
-
-function getCatNivel2(catCode: string): string {
-  const info = CATEGORIAS[catCode]
-  if (info) return info.nivel2
-  return getCatDesc(catCode)
-}
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
 
@@ -85,6 +78,8 @@ function ExpandedPayments({ empresaId, tipo, codigo, fallbackPagamentos }: {
 export default function PageCPCR() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
+  // Plano de contas dinâmico (nomes reais da Omie + overrides da empresa)
+  const { getNome: getCatDesc } = useCategoriasMap(empresaId)
   const dateFrom = useDateRangeStore((s) => s.from)
   const dateTo = useDateRangeStore((s) => s.to)
   const dt_inicio = isoToDMY(dateFrom)
