@@ -5,7 +5,7 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useExtrato, useCP, useCR, useFluxoCaixa } from '@/hooks/useAPI'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
-import { calcularDRE } from '@/lib/planoContas'
+import { calcularDRE, calcularNeutros } from '@/lib/planoContas'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { transformCPCR } from '@/lib/transformers'
 import { GlowLine } from '@/components/ui/GlowLine'
@@ -119,6 +119,16 @@ export function AnaliseIAView() {
     }))
   }, [dre])
 
+  // Categorias marcadas como NEUTRO (excluídas do DRE) — para exibir no contexto
+  const neutros = useMemo(
+    () => calcularNeutros(
+      lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria })),
+      categoriaMap,
+    ),
+    [lancamentos, categoriaMap],
+  )
+  const totalNeutro = useMemo(() => neutros.reduce((s, n) => s + n.total, 0), [neutros])
+
   // Build financial context for the AI chat
   const financialContext = useMemo(() => {
     const pct = (v: number) => dre.RoB > 0 ? `${((v / dre.RoB) * 100).toFixed(1)}%` : '0%'
@@ -134,6 +144,13 @@ export function AnaliseIAView() {
       .slice(0, 5)
       .map((c) => `- ${c.fav}: R$ ${fmtBRL(c.valor)} — vence ${c.vcto}`)
       .join('\n')
+
+    const neutrosBlock = neutros.length > 0
+      ? `\n\nCATEGORIAS NEUTRAS (excluídas do DRE — repasses internos / mútuos):
+${neutros.map((n) => `- ${n.nome} (${n.codigo}): R$ ${fmtBRL(n.total)} em ${n.count} lançamento${n.count !== 1 ? 's' : ''}`).join('\n')}
+Total movimentado neutro: R$ ${fmtBRL(totalNeutro)} (efeito zero no resultado).
+Importante: NÃO inclua esses valores em RNOP, DNOP ou no resultado. Eles são transferências internas que se anulam.`
+      : ''
 
     return `Você é o Claude, analista financeiro integrado ao dashboard.
 Responda SEMPRE em português brasileiro, de forma direta e profissional.
@@ -156,10 +173,10 @@ CP ATRASADO TOTAL: R$ ${fmtBRL(cpAtrasado)}
 ${topAtrasados ? `TOP ATRASADOS:\n${topAtrasados}` : ''}
 
 CR EM ABERTO TOTAL: R$ ${fmtBRL(crAberto)}
-${topCR ? `TOP CR:\n${topCR}` : ''}
+${topCR ? `TOP CR:\n${topCR}` : ''}${neutrosBlock}
 
 Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
-  }, [dre, saldoCaixa, cpData, crData, cpAtrasado, crAberto, monthLabel, fluxoAPI])
+  }, [dre, saldoCaixa, cpData, crData, cpAtrasado, crAberto, monthLabel, fluxoAPI, neutros, totalNeutro])
 
   // Contextual AI suggestions based on actual data
   const aiSuggestions = useMemo(() => {
@@ -304,6 +321,28 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
             </tbody>
           </table>
         </div>
+
+        {/* Nota de categorias neutras (excluídas do DRE) */}
+        {neutros.length > 0 && (
+          <div
+            className="rounded-lg p-3"
+            style={{
+              background: `${t.muted}10`,
+              border: `1px solid ${t.muted}30`,
+            }}
+          >
+            <div className="text-[9px] uppercase tracking-widest mb-1.5 font-mono flex items-center gap-1.5" style={{ color: t.muted }}>
+              <span>🚫</span>
+              {neutros.length} categoria{neutros.length !== 1 ? 's' : ''} neutra{neutros.length !== 1 ? 's' : ''} excluída{neutros.length !== 1 ? 's' : ''} do DRE
+            </div>
+            <div className="text-[10px] mb-1" style={{ color: t.textSec }}>
+              R$ {fmtBRL(totalNeutro)} movimentado · efeito zero no resultado
+            </div>
+            <div className="text-[9px]" style={{ color: t.mutedDim }}>
+              {neutros.map((n) => `${n.codigo} ${n.nome}`).join(' · ')}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Right Column: Embedded Chat ── */}
