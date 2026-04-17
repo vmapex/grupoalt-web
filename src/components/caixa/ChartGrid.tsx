@@ -236,23 +236,31 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                       const saldo = saldos[i]
                       return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
                     })}
-                    {/* position="top" em Recharts = "em direção ao extremo do valor"
-                        — para positivos, acima do bar; para negativos, ABAIXO do bar.
-                        Mesma tipografia do BarLabel dos outros charts (fontSize 8,
-                        normal, opacity 0.75). */}
+                    {/* position="top" em Recharts ajusta y para o extremo do valor
+                        (positivo: acima do bar; negativo: abaixo). content custom
+                        renderiza <text> idêntico ao BarLabel dos outros charts. */}
                     <LabelList
                       dataKey="saldo"
                       position="top"
                       offset={8}
-                      formatter={(v: number) => (v > 0 ? fmtK(v) : '')}
-                      style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', fill: t.green, fontWeight: 'normal', opacity: 0.75 }}
-                    />
-                    <LabelList
-                      dataKey="saldo"
-                      position="top"
-                      offset={8}
-                      formatter={(v: number) => (v < 0 ? fmtK(v) : '')}
-                      style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', fill: t.red, fontWeight: 'normal', opacity: 0.75 }}
+                      content={(props: any) => {
+                        const v = props.value as number | undefined
+                        if (!v || v === 0) return null
+                        return (
+                          <text
+                            x={(props.x ?? 0) + (props.width ?? 0) / 2}
+                            y={props.y}
+                            textAnchor="middle"
+                            fill={v > 0 ? t.green : t.red}
+                            fontSize={8}
+                            fontFamily="DM Mono, monospace"
+                            fontWeight="normal"
+                            opacity={0.75}
+                          >
+                            {fmtK(v)}
+                          </text>
+                        )
+                      }}
                     />
                   </Bar>
                 </ComposedChart>
