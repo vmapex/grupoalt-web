@@ -215,51 +215,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                   const saldo = (d.RN[i] || 0) - (d.DN[i] || 0)
                   return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
                 })}
-                {/* Duas LabelList com position top/bottom filtradas por sinal —
-                    deixa o Recharts calcular as coordenadas, evitando que o
-                    label fique dentro/no topo da barra negativa. */}
-                <LabelList
-                  dataKey="saldo"
-                  position="top"
-                  content={(props: any) => {
-                    const v = props.value as number | undefined
-                    if (!v || v <= 0) return null
-                    return (
-                      <text
-                        x={(props.x ?? 0) + (props.width ?? 0) / 2}
-                        y={props.y}
-                        textAnchor="middle"
-                        fill={t.green}
-                        fontSize={8}
-                        fontFamily="DM Mono, monospace"
-                        opacity={0.75}
-                      >
-                        {fmtK(v)}
-                      </text>
-                    )
-                  }}
-                />
-                <LabelList
-                  dataKey="saldo"
-                  position="bottom"
-                  content={(props: any) => {
-                    const v = props.value as number | undefined
-                    if (!v || v >= 0) return null
-                    return (
-                      <text
-                        x={(props.x ?? 0) + (props.width ?? 0) / 2}
-                        y={props.y}
-                        textAnchor="middle"
-                        fill={t.red}
-                        fontSize={8}
-                        fontFamily="DM Mono, monospace"
-                        opacity={0.75}
-                      >
-                        {fmtK(v)}
-                      </text>
-                    )
-                  }}
-                />
+                <LabelList dataKey="saldo" content={(props: any) => <BarLabel {...props} fill={props.value >= 0 ? t.green : t.red} />} />
               </Bar>
             </ComposedChart>
           </ResponsiveContainer>
