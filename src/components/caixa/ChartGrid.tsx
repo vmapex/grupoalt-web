@@ -236,20 +236,23 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                       const saldo = saldos[i]
                       return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
                     })}
-                    {/* position="top" em Recharts ajusta y para o extremo do valor
-                        (positivo: acima do bar; negativo: abaixo). content custom
-                        renderiza <text> idêntico ao BarLabel dos outros charts. */}
+                    {/* content custom ignora position — aplicamos o offset manualmente:
+                        - positivo: props.y - 6 (acima do topo do bar)
+                        - negativo: props.y + height + 10 (abaixo do fundo do bar)
+                        Tipografia idêntica ao BarLabel dos outros charts. */}
                     <LabelList
                       dataKey="saldo"
-                      position="top"
-                      offset={8}
                       content={(props: any) => {
                         const v = props.value as number | undefined
                         if (!v || v === 0) return null
+                        const x = (props.x ?? 0) + (props.width ?? 0) / 2
+                        const y = v > 0
+                          ? (props.y ?? 0) - 6
+                          : (props.y ?? 0) + (props.height ?? 0) + 10
                         return (
                           <text
-                            x={(props.x ?? 0) + (props.width ?? 0) / 2}
-                            y={props.y}
+                            x={x}
+                            y={y}
                             textAnchor="middle"
                             fill={v > 0 ? t.green : t.red}
                             fontSize={8}
