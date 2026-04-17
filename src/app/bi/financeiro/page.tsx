@@ -72,6 +72,9 @@ function DashboardExecutivo() {
   const { data: extratoUltimas } = useExtrato(empresaId)
   const { data: cpRaw } = useCP(empresaId, { registros: 500 })
   const { data: crRaw } = useCR(empresaId, { registros: 500 })
+  // CR filtrado pelo dateRange global (para "Top Clientes no período").
+  // Backend filtra por data_previsao || data_vcto — alinhado com o card.
+  const { data: crRawPeriodo } = useCR(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim })
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, fluxo30dEnd)
 
@@ -81,6 +84,10 @@ function DashboardExecutivo() {
   // Transform API or fallback
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
   const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []), [crRaw])
+  const crDataPeriodo = useMemo(
+    () => (crRawPeriodo?.dados ? transformCPCR(crRawPeriodo.dados, 'CR') : []),
+    [crRawPeriodo],
+  )
   const lancamentos = extratoResponse?.lancamentos ?? []
 
   /* ── Computed values ──────────────────────── */
@@ -208,16 +215,16 @@ function DashboardExecutivo() {
     return buckets.map((b) => ({ ...b, pct: (b.total / maxBucket) * 100 }))
   }, [cpData])
 
-  /* ── Top Clientes (CR) — agregado por favorecido ──── */
+  /* ── Top Clientes (CR) — agregado por favorecido, filtrado pelo período ─ */
   const topClientes = useMemo(() => {
     const byFav = new Map<string, number>()
-    for (const c of crData) byFav.set(c.fav, (byFav.get(c.fav) ?? 0) + c.valor)
+    for (const c of crDataPeriodo) byFav.set(c.fav, (byFav.get(c.fav) ?? 0) + c.valor)
     const sorted = Array.from(byFav.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
     const maxVal = sorted[0]?.[1] ?? 1
     return sorted.map(([nome, valor]) => ({ nome, valor, pct: (valor / maxVal) * 100 }))
-  }, [crData])
+  }, [crDataPeriodo])
 
   /* ── Ultimas movimentacoes (independente do filtro de data) ─ */
   const ultimasMov = useMemo(() => {
