@@ -16,6 +16,7 @@ import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
+import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { parseDMY } from '@/lib/formatters'
 
@@ -41,10 +42,11 @@ export default function PageFluxo() {
   // API calls — extrato sem filtro de datas para saldo atual real
   const dateFrom = useDateRangeStore((s) => s.from)
   const dt_inicio = isoToDMY(dateFrom)
-  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
-  const { data: extratoAtual } = useExtrato(empresaId)  // sem datas = últimos 180d = saldo mais recente
-  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
-  const { data: crRaw } = useCR(empresaId, { registros: 500 })
+  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim, projetoIds)
+  const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds)  // sem datas = últimos 180d
+  const { data: cpRaw } = useCP(empresaId, { registros: 500, projetoIds })
+  const { data: crRaw } = useCR(empresaId, { registros: 500, projetoIds })
 
   // Use API data or fallback — SOMENTE títulos em aberto
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])

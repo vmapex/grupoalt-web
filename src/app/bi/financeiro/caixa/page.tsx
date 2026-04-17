@@ -15,6 +15,7 @@ import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
+import { useUnidadeStore } from '@/store/unidadeStore'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -34,8 +35,10 @@ export default function PageCaixa() {
   const [selMonth, setSelMonth] = useState<string | null>(null)
   const [detailView, setDetailView] = useState<string | null>(null)
 
+  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+
   // API calls for KPI strip with date range
-  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
 
   // Plano de contas dinâmico (com overrides da empresa)
   const { map: categoriaMap } = useCategoriasMap(empresaId)

@@ -18,6 +18,7 @@ export interface ExtratoAPI {
   documento: string | null
   origem: string | null
   banco: string | null
+  projeto_omie_id: string | null
 }
 
 export interface ExtratoResponseAPI {
@@ -73,6 +74,7 @@ export interface LancamentoAPI {
   numero_parcela: string | null
   observacao: string | null
   pagamentos: PagamentoDetalheAPI[]
+  projeto_omie_id: string | null
 }
 
 export interface ResumoKPIsAPI {

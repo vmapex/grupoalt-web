@@ -9,6 +9,7 @@ import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
+import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformExtrato, transformSaldos } from '@/lib/transformers'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
@@ -30,8 +31,16 @@ export default function PageExtrato() {
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
+  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetos = useUnidadeStore((s) => s.projetos)
+  const empresaUsaProjetos = projetos.length > 0
+  const projetoNomeByCodigo = useMemo(
+    () => new Map(projetos.map((p) => [p.codigo, p.nome])),
+    [projetos],
+  )
+
   // API call with date range (returns {saldo_inicial, saldo_atual, lancamentos, saldos_contas})
-  const { data: extratoResponse, loading } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: extratoResponse, loading } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
 
   // Extract data from response or fallback
   const extrato: ExtratoLancamento[] = useMemo(
@@ -78,6 +87,7 @@ export default function PageExtrato() {
       sortRows(filtered, sort, (r, f) => {
         if (f === 'data') return parseDMY(r.data)
         if (f === 'banco') return r.banco
+        if (f === 'unidade') return projetoNomeByCodigo.get(r.projeto_omie_id || '') || ''
         if (f === 'valor') return r.valor
         if (f === 'descricao') return r.favorecido
         if (f === 'categoria') return getCatDesc(r.catCod)
@@ -192,6 +202,9 @@ export default function PageExtrato() {
                 <tr style={{ background: `${t.bg}EE`, position: 'sticky', top: 0, zIndex: 5 }}>
                   <SortHeader label="Data" field="data" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="Banco" field="banco" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                  {empresaUsaProjetos && (
+                    <SortHeader label="Unidade" field="unidade" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                  )}
                   <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                   <SortHeader label="Favorecido" field="descricao" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                   <SortHeader label="NF" field="nf" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
@@ -220,6 +233,11 @@ export default function PageExtrato() {
                       <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>
                         {r.banco}
                       </td>
+                      {empresaUsaProjetos && (
+                        <td className="px-3.5 py-2.5 text-[10px]" style={{ color: t.muted }}>
+                          {projetoNomeByCodigo.get(r.projeto_omie_id || '') || '—'}
+                        </td>
+                      )}
                       <td className="px-3.5 py-2.5 text-right font-mono font-medium" style={{ color: isE ? t.green : t.red }}>
                         {isE ? '+' : '\u2212'} {fmtBRL(r.valor)}
                       </td>
