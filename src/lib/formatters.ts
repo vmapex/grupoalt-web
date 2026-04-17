@@ -56,6 +56,26 @@ export function sortRows<T>(
   })
 }
 
+const MONTHS_PT: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+}
+
+/** Sort "Mmm/YY" labels (pt-BR, e.g. "Jan/26") chronologically. */
+export function sortByMonthYear<T>(items: T[], getLabel?: (item: T) => string): T[] {
+  const extract = (x: T): string => {
+    if (getLabel) return getLabel(x)
+    if (typeof x === 'string') return x
+    if (x && typeof x === 'object' && 'name' in x) return String((x as { name: unknown }).name ?? '')
+    return ''
+  }
+  const key = (x: T) => {
+    const [mon, yr] = extract(x).toLowerCase().split('/')
+    return (parseInt(yr || '0', 10) * 100) + (MONTHS_PT[mon] ?? 0)
+  }
+  return [...items].sort((a, b) => key(a) - key(b))
+}
+
 export interface SortState {
   field: string
   dir: 'asc' | 'desc'

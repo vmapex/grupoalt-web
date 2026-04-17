@@ -13,7 +13,7 @@ import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { useBaixas } from '@/hooks/useAPI'
-import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
+import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
 import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
@@ -116,7 +116,14 @@ export default function PageCPCR() {
 
   const data = useMemo(
     () => rawData.filter((r) => {
-      if (search && !r.fav.toLowerCase().includes(search.toLowerCase()) && !getCatDesc(r.cat).toLowerCase().includes(search.toLowerCase())) return false
+      if (search) {
+        const q = search.toLowerCase()
+        const match =
+          r.fav.toLowerCase().includes(q) ||
+          getCatDesc(r.cat).toLowerCase().includes(q) ||
+          (r.nf || '').toLowerCase().includes(q)
+        if (!match) return false
+      }
       if (statusFilter !== 'TODOS' && r.status !== statusFilter) return false
       return true
     }),
@@ -216,9 +223,9 @@ export default function PageCPCR() {
       if (!months[key]) months[key] = { cp: 0, cr: 0 }
       months[key].cr += r.valor
     }
-    const entries = Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]))
-    if (entries.length === 0) return []
-    return entries.map(([mes, v]) => ({ mes, cp: Math.round(v.cp), cr: Math.round(v.cr) }))
+    const rows = Object.entries(months).map(([mes, v]) => ({ mes, cp: Math.round(v.cp), cr: Math.round(v.cr) }))
+    if (rows.length === 0) return []
+    return sortByMonthYear(rows, (r) => r.mes)
   }, [cpData, crData, cpRaw, crRaw])
 
   return (

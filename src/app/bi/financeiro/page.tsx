@@ -9,7 +9,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL } from '@/lib/formatters'
+import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
 import { calcularDRE } from '@/lib/planoContas'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
@@ -55,12 +55,25 @@ function DashboardExecutivo() {
   const dt_inicio = isoToDMY(dateFrom)
   const dt_fim = isoToDMY(dateTo)
 
+  // Fluxo 30d KPI deve ser sempre today+30d, independente do filtro global.
+  // TODO(Sessão H): backend deveria ignorar data_fim no fluxo-caixa e sempre retornar 30d.
+  const fluxo30dEnd = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    return `${dd}/${mm}/${d.getFullYear()}`
+  }, [])
+
   // API calls with date range
   const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
+  // Extrato sem filtro para "Últimas Movimentações" (deve mostrar as últimas
+  // independentemente do dateRange global)
+  const { data: extratoUltimas } = useExtrato(empresaId)
   const { data: cpRaw } = useCP(empresaId, { registros: 500 })
   const { data: crRaw } = useCR(empresaId, { registros: 500 })
   const { data: concilResumoAPI } = useConcilResumo(empresaId)
-  const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
+  const { data: fluxoAPI } = useFluxoCaixa(empresaId, fluxo30dEnd)
 
   // Plano de contas dinâmico (com overrides da empresa) — refetch ao voltar pra aba
   const { map: categoriaMap } = useCategoriasMap(empresaId)
@@ -124,9 +137,9 @@ function DashboardExecutivo() {
       if (l.valor > 0) months[key].receita += l.valor
       else months[key].custos += Math.abs(l.valor)
     }
-    return Object.entries(months)
-      .sort((a, b) => a[0].localeCompare(b[0]))
+    const rows = Object.entries(months)
       .map(([name, v]) => ({ name, receita: Math.round(v.receita), custos: Math.round(v.custos) }))
+    return sortByMonthYear(rows)
   }, [lancamentos])
 
   /* ── Waterfall mini (from real DRE) ──────── */
@@ -195,42 +208,47 @@ function DashboardExecutivo() {
     return buckets.map((b) => ({ ...b, pct: (b.total / maxBucket) * 100 }))
   }, [cpData])
 
-  /* ── Top Clientes (CR) ─────────────────────── */
+  /* ── Top Clientes (CR) — agregado por favorecido ──── */
   const topClientes = useMemo(() => {
-    const sorted = [...crData].sort((a, b) => b.valor - a.valor).slice(0, 5)
-    const maxVal = sorted[0]?.valor ?? 1
-    return sorted.map((c) => ({ nome: c.fav, valor: c.valor, pct: (c.valor / maxVal) * 100 }))
+    const byFav = new Map<string, number>()
+    for (const c of crData) byFav.set(c.fav, (byFav.get(c.fav) ?? 0) + c.valor)
+    const sorted = Array.from(byFav.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+    const maxVal = sorted[0]?.[1] ?? 1
+    return sorted.map(([nome, valor]) => ({ nome, valor, pct: (valor / maxVal) * 100 }))
   }, [crData])
 
-  /* ── Ultimas movimentacoes ─────────────────── */
+  /* ── Ultimas movimentacoes (independente do filtro de data) ─ */
   const ultimasMov = useMemo(() => {
-    if (lancamentos.length) {
-      const sorted = [...lancamentos].sort((a, b) => {
-        const dA = (a as any).data_lancamento || ''
-        const dB = (b as any).data_lancamento || ''
-        // Parse DD/MM/YYYY → comparable
-        const pA = dA.split('/').reverse().join('')
-        const pB = dB.split('/').reverse().join('')
-        return pB.localeCompare(pA)
-      })
-      return sorted.slice(0, 5).map((l) => ({
-        data_lancamento: (l as any).data_lancamento || '',
-        favorecido: (l as any).favorecido || (l as any).descricao || '',
-        valor: (l as any).valor || 0,
-        banco: (l as any).banco || '',
-      }))
-    }
-    return []
-  }, [lancamentos])
+    const source = extratoUltimas?.lancamentos ?? []
+    if (!source.length) return []
+    const sorted = [...source].sort((a, b) => {
+      const dA = (a as any).data_lancamento || ''
+      const dB = (b as any).data_lancamento || ''
+      // Parse DD/MM/YYYY → comparable
+      const pA = dA.split('/').reverse().join('')
+      const pB = dB.split('/').reverse().join('')
+      return pB.localeCompare(pA)
+    })
+    return sorted.slice(0, 5).map((l) => ({
+      data_lancamento: (l as any).data_lancamento || '',
+      favorecido: (l as any).favorecido || (l as any).descricao || '',
+      valor: (l as any).valor || 0,
+      banco: (l as any).banco || '',
+    }))
+  }, [extratoUltimas])
 
   /* ── Progress ring vars ────────────────────── */
   const ringR = 45
   const ringC = 2 * Math.PI * ringR
 
   /* ── SLA data ──────────────────────────────── */
+  // TODO(Sessão H): substituir dias_sem_conciliar por um campo dias_fora_sla
+  // dedicado no backend; total_divergencias é valor monetário, não dias.
   const slaStatus = useMemo(() => ({
-    dentroSLA: concilResumoAPI ? Math.round(concilResumoAPI.percentual_conciliado) : 0,
-    foraSLA: concilResumoAPI?.total_divergencias ?? 0,
+    dentroSLA: concilResumoAPI ? Math.round(concilResumoAPI.percentual_conciliado) : 0, // %
+    foraSLA: concilResumoAPI?.dias_sem_conciliar ?? 0, // dias (proxy)
     ultimoConcil: '',
     streak: concilResumoAPI?.dias_sem_conciliar ?? 0,
   }), [concilResumoAPI])
@@ -457,7 +475,7 @@ function DashboardExecutivo() {
             className="text-xs font-mono font-semibold mt-1"
             style={{ color: t.green }}
           >
-            {slaStatus.dentroSLA} dias
+            {slaStatus.dentroSLA}%
           </div>
         </div>
       </div>
@@ -560,7 +578,7 @@ function DashboardExecutivo() {
                   Dentro SLA
                 </div>
                 <div className="text-sm font-mono font-semibold" style={{ color: t.green }}>
-                  {slaStatus.dentroSLA} dias
+                  {slaStatus.dentroSLA}%
                 </div>
               </div>
             </div>

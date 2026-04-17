@@ -45,6 +45,15 @@ export default function PageExtrato() {
   const saldoInicial = extratoResponse?.saldo_inicial ?? 0
   const saldoAtual = extratoResponse?.saldo_atual ?? 0
 
+  // Dev warning para ajudar a investigar Extrato #2 (saldo inicial zerado
+  // com lançamentos presentes — fix real depende de backend). Sessão H.
+  if (process.env.NODE_ENV !== 'production' && saldoInicial === 0 && extrato.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn('[Extrato] saldo_inicial = 0 com lançamentos presentes', {
+      dt_inicio, dt_fim, qtd_lancamentos: extrato.length,
+    })
+  }
+
   const filtered = useMemo(
     () =>
       extrato.filter((r) => {
@@ -256,8 +265,8 @@ export default function PageExtrato() {
                   <div className="w-1.5 h-1.5 rounded-full" style={{ background: c.cor }} />
                   {c.nome}
                 </div>
-                <div className="font-mono text-base" style={{ color: c.saldo >= 0 ? t.text : t.red }}>
-                  {fmtBRL(c.saldo)}
+                <div className="font-mono text-base" style={{ color: c.saldo >= 0 ? t.green : t.red }}>
+                  {c.saldo < 0 ? '−' : ''}{fmtBRL(c.saldo)}
                 </div>
                 <div className="h-0.5 rounded-sm mt-2 overflow-hidden" style={{ background: `${t.text}08` }}>
                   <div
