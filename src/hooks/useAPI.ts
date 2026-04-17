@@ -95,10 +95,16 @@ export function useExtrato(
   dtInicio?: string,
   dtFim?: string,
   projetoIds?: string[],
+  incluirProjecao?: boolean,
 ) {
   return useApi<ExtratoResponseAPI>(
     empresaId ? `/empresas/${empresaId}/extrato` : null,
-    { dt_inicio: dtInicio, dt_fim: dtFim, projeto_ids: projetoIds },
+    {
+      dt_inicio: dtInicio,
+      dt_fim: dtFim,
+      projeto_ids: projetoIds,
+      incluir_projecao: incluirProjecao ? 'true' : undefined,
+    },
   )
 }
 
@@ -109,10 +115,16 @@ export function useSaldos(
   dtInicio?: string,
   dtFim?: string,
   projetoIds?: string[],
+  incluirProjecao?: boolean,
 ) {
   return useApi<SaldoAPI[]>(
     empresaId ? `/empresas/${empresaId}/saldos` : null,
-    { dt_inicio: dtInicio, dt_fim: dtFim, projeto_ids: projetoIds },
+    {
+      dt_inicio: dtInicio,
+      dt_fim: dtFim,
+      projeto_ids: projetoIds,
+      incluir_projecao: incluirProjecao ? 'true' : undefined,
+    },
   )
 }
 
@@ -316,6 +328,37 @@ export async function bulkUpdateCategoriasGrupoDRE(
   const res = await api.post<{ updated: number; grupo_dre: string | null; nao_encontradas: string[] }>(
     `/empresas/${empresaId}/categorias/bulk-override`,
     { codigos, grupo_dre: grupoDre },
+  )
+  return res.data
+}
+
+// ── Contas Bancárias (admin) ────────────────────────────────
+
+export interface ContaBancariaAPIItem {
+  id: number           // omie_id
+  descricao: string | null
+  banco: string | null
+  tipo: string | null
+  ativa: boolean       // inverso de inativo
+  incluir_bi: boolean
+  is_projecao: boolean
+}
+
+export function useContasBancarias(empresaId: number | null) {
+  return useApi<ContaBancariaAPIItem[]>(
+    empresaId ? `/empresas/${empresaId}/contas` : null,
+  )
+}
+
+/** Atualiza flags de uma conta bancária. Omita um campo para não alterar. */
+export async function updateContaBancariaFlags(
+  empresaId: number,
+  omieId: number,
+  flags: { incluir_bi?: boolean; is_projecao?: boolean },
+) {
+  const res = await api.patch<ContaBancariaAPIItem>(
+    `/empresas/${empresaId}/contas-bancarias/${omieId}`,
+    flags,
   )
   return res.data
 }

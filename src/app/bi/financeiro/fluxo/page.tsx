@@ -38,13 +38,14 @@ export default function PageFluxo() {
   const dateTo = useDateRangeStore((s) => s.to)
   const dt_fim = isoToDMY(dateTo)
   const [hz, setHz] = useState(30)
+  const [incluirProjecao, setIncluirProjecao] = useState(false)
 
   // API calls — extrato sem filtro de datas para saldo atual real
   const dateFrom = useDateRangeStore((s) => s.from)
   const dt_inicio = isoToDMY(dateFrom)
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim, projetoIds)
-  const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds)  // sem datas = últimos 180d
+  const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds, incluirProjecao)
   const { data: cpRaw } = useCP(empresaId, { registros: 500, projetoIds })
   const { data: crRaw } = useCR(empresaId, { registros: 500, projetoIds })
 
@@ -188,6 +189,25 @@ export default function PageFluxo() {
             {opt.label}
           </button>
         ))}
+        {/* Toggle projeção */}
+        <button
+          onClick={() => setIncluirProjecao((v) => !v)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] cursor-pointer transition-all"
+          style={{
+            border: `1px solid ${incluirProjecao ? `${t.purple}55` : t.border}`,
+            background: incluirProjecao ? `${t.purple}18` : 'transparent',
+            color: incluirProjecao ? t.purple : t.muted,
+            fontWeight: incluirProjecao ? 600 : 400,
+            marginLeft: 12,
+          }}
+          title="Considerar contas marcadas como projeção nos cálculos"
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: incluirProjecao ? t.purple : t.border }}
+          />
+          Considerar projeção
+        </button>
         <div className="ml-auto flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.green }} />
           <span className="text-[10px]" style={{ color: t.muted }}>Hoje: {todayStr}</span>
