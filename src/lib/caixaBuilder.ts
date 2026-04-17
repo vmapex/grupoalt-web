@@ -159,9 +159,17 @@ export interface CatBreakdowns {
   DNOP: CatBreakdownItem[]
 }
 
+/** Granularidade do breakdown:
+ *  - `n1`: linha única consolidada do grupo DRE inteiro
+ *  - `n2` (default): agrupado por subgrupo (info.nivel2 com fallback)
+ *  - `n3`: categoria Omie individual (nome + código)
+ */
+export type BreakdownGranularidade = 'n1' | 'n2' | 'n3'
+
 export function buildBreakdownByCategoria(
   lancamentos: Lancamento[],
   categoriaMap?: Record<string, CategoriaInfo>,
+  granularidade: BreakdownGranularidade = 'n2',
 ): CatBreakdowns {
   const groups: Record<string, Record<string, number>> = {
     RoB: {}, TDCF: {}, CV: {}, CF: {}, RNOP: {}, DNOP: {},
@@ -176,7 +184,19 @@ export function buildBreakdownByCategoria(
     // NEUTRO é excluído (repasses internos, mútuos, etc)
     if (grupo === 'NEUTRO') continue
     if (!groups[grupo]) continue
-    const label = info.nivel2 || info.nome || cat
+
+    let label: string
+    if (granularidade === 'n1') {
+      // Tudo vira uma linha única — a label é o próprio grupo DRE
+      label = grupo
+    } else if (granularidade === 'n3') {
+      // Categoria Omie individual, com código para desambiguar nomes iguais
+      const nome = info.nome || cat || 'Sem categoria'
+      label = cat ? `${cat} — ${nome}` : nome
+    } else {
+      // n2 (default) — subgrupo da categoria
+      label = info.nivel2 || info.nome || cat || 'Outros'
+    }
     groups[grupo][label] = (groups[grupo][label] || 0) + Math.abs(l.valor)
   }
 

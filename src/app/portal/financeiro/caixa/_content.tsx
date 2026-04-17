@@ -84,7 +84,15 @@ export default function PageCaixa() {
     [lancamentos, categoriaMap],
   )
   const catBreakdowns = useMemo(
-    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any, categoriaMap) : null,
+    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any, categoriaMap, 'n2') : null,
+    [lancamentos, categoriaMap],
+  )
+  const catBreakdownsN1 = useMemo(
+    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any, categoriaMap, 'n1') : null,
+    [lancamentos, categoriaMap],
+  )
+  const catBreakdownsN3 = useMemo(
+    () => lancamentos.length ? buildBreakdownByCategoria(lancamentos as any, categoriaMap, 'n3') : null,
     [lancamentos, categoriaMap],
   )
 
@@ -155,7 +163,15 @@ export default function PageCaixa() {
 
       {/* DASHBOARD VIEW */}
       {caixaView === 'dashboard' && detailView && (
-        <DetailPanel defKey={detailView} d={d} breakdowns={breakdowns} catBreakdowns={catBreakdowns} onBack={() => setDetailView(null)} />
+        <DetailPanel
+          defKey={detailView}
+          d={d}
+          breakdowns={breakdowns}
+          catBreakdowns={catBreakdowns}
+          catBreakdownsN1={catBreakdownsN1}
+          catBreakdownsN3={catBreakdownsN3}
+          onBack={() => setDetailView(null)}
+        />
       )}
 
       {caixaView === 'dashboard' && !detailView && (
