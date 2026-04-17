@@ -203,8 +203,9 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               })()}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={108}>
-            <ComposedChart data={d.labels.map((l, i) => ({ name: l, saldo: (d.RN[i] || 0) - (d.DN[i] || 0) }))} barSize={level === 'weekly' ? 20 : 28} margin={{ top: 16, right: 4, left: 4, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={140}>
+            {/* Margin top 16 para label acima, bottom 20 para label abaixo em barras negativas (nunca dentro da barra) */}
+            <ComposedChart data={d.labels.map((l, i) => ({ name: l, saldo: (d.RN[i] || 0) - (d.DN[i] || 0) }))} barSize={level === 'weekly' ? 20 : 28} margin={{ top: 16, right: 4, left: 4, bottom: 20 }}>
               <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={false} />
