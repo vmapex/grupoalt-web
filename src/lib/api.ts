@@ -4,6 +4,10 @@ const api = axios.create({
   baseURL: '/api/proxy/v1',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
+  // FastAPI espera repeat format pra Query(List[str]): ?k=a&k=b (sem []).
+  paramsSerializer: {
+    indexes: null,
+  },
 })
 
 let isRefreshing = false

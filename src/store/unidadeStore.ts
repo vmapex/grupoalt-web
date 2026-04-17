@@ -25,6 +25,12 @@ interface UnidadeState {
   /** Retorna os projetos selecionados (vazio = todos) */
   getSelected: () => Projeto[]
 
+  /**
+   * Retorna os códigos Omie dos projetos selecionados (para passar ao backend).
+   * undefined = nenhum filtro ativo (todas as unidades).
+   */
+  getSelectedCodigos: () => string[] | undefined
+
   /** Helper: checa se um projeto está selecionado */
   isSelected: (projetoId: string) => boolean
 
@@ -75,6 +81,15 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
     const { projetos, selectedIds } = get()
     if (selectedIds.length === 0) return projetos
     return projetos.filter((p) => selectedIds.includes(p.id))
+  },
+
+  getSelectedCodigos: () => {
+    const { projetos, selectedIds } = get()
+    if (selectedIds.length === 0) return undefined
+    return projetos
+      .filter((p) => selectedIds.includes(p.id))
+      .map((p) => p.codigo)
+      .filter(Boolean)
   },
 
   isSelected: (projetoId) => get().selectedIds.includes(projetoId),

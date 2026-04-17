@@ -11,6 +11,7 @@ import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
 import type { ConcilEntry } from '@/lib/mocks/concilData'
 import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformConcilMovimento } from '@/lib/transformers'
 
 // ---------- constants ----------
@@ -152,10 +153,12 @@ export default function PageConciliacao() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState>({ field: 'date', dir: 'desc' })
 
+  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+
   // API calls
-  const { data: concilAPI, loading: loadingConcil } = useConcilMovimentacao(empresaId)
-  const { data: resumoAPI } = useConcilResumo(empresaId)
-  const { data: diaAPI } = useConcilDia(empresaId, selectedDay)
+  const { data: concilAPI, loading: loadingConcil } = useConcilMovimentacao(empresaId, projetoIds)
+  const { data: resumoAPI } = useConcilResumo(empresaId, projetoIds)
+  const { data: diaAPI } = useConcilDia(empresaId, selectedDay, projetoIds)
 
   // Use API data or fallback to mock
   const baseData: Record<string, ConcilEntry> = useMemo(() => {

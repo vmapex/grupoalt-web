@@ -17,6 +17,7 @@ import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hook
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
+import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 
 function isoToDMY(iso: string): string {
@@ -65,18 +66,24 @@ function DashboardExecutivo() {
     return `${dd}/${mm}/${d.getFullYear()}`
   }, [])
 
+  // Filtro de unidade global (códigos Omie dos projetos selecionados)
+  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+
   // API calls with date range
-  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
-  // Extrato sem filtro para "Últimas Movimentações" (deve mostrar as últimas
-  // independentemente do dateRange global)
-  const { data: extratoUltimas } = useExtrato(empresaId)
-  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
-  const { data: crRaw } = useCR(empresaId, { registros: 500 })
-  // CR filtrado pelo dateRange global (para "Top Clientes no período").
-  // Backend filtra por data_previsao || data_vcto — alinhado com o card.
-  const { data: crRawPeriodo } = useCR(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim })
-  const { data: concilResumoAPI } = useConcilResumo(empresaId)
-  const { data: fluxoAPI } = useFluxoCaixa(empresaId, fluxo30dEnd)
+  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
+  // Extrato sem filtro de data para "Últimas Movimentações", mas com filtro de unidade
+  const { data: extratoUltimas } = useExtrato(empresaId, undefined, undefined, projetoIds)
+  const { data: cpRaw } = useCP(empresaId, { registros: 500, projetoIds })
+  const { data: crRaw } = useCR(empresaId, { registros: 500, projetoIds })
+  // CR filtrado pelo dateRange global (para "Top Clientes no período") + unidade.
+  const { data: crRawPeriodo } = useCR(empresaId, {
+    registros: 500,
+    dtInicio: dt_inicio,
+    dtFim: dt_fim,
+    projetoIds,
+  })
+  const { data: concilResumoAPI } = useConcilResumo(empresaId, projetoIds)
+  const { data: fluxoAPI } = useFluxoCaixa(empresaId, fluxo30dEnd, projetoIds)
 
   // Plano de contas dinâmico (com overrides da empresa) — refetch ao voltar pra aba
   const { map: categoriaMap } = useCategoriasMap(empresaId)

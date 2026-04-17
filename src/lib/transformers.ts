@@ -61,6 +61,7 @@ export function transformExtrato(items: ExtratoAPI[], contas: Map<number, string
     conciliado: r.conciliado,
     banco: r.banco || contas.get(r.conta_id ?? 0) || 'N/D',
     nf: r.documento || '',
+    projeto_omie_id: r.projeto_omie_id || '',
   }))
 }
 
