@@ -238,20 +238,21 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                     })}
                     {/* position="top" em Recharts = "em direção ao extremo do valor"
                         — para positivos, acima do bar; para negativos, ABAIXO do bar.
-                        Um LabelList por sinal para controlar a cor independentemente. */}
+                        Mesma tipografia do BarLabel dos outros charts (fontSize 8,
+                        normal, opacity 0.75). */}
                     <LabelList
                       dataKey="saldo"
                       position="top"
                       offset={8}
                       formatter={(v: number) => (v > 0 ? fmtK(v) : '')}
-                      style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fill: t.green, fontWeight: 400, opacity: 0.85 }}
+                      style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', fill: t.green, fontWeight: 'normal', opacity: 0.75 }}
                     />
                     <LabelList
                       dataKey="saldo"
                       position="top"
                       offset={8}
                       formatter={(v: number) => (v < 0 ? fmtK(v) : '')}
-                      style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fill: t.red, fontWeight: 400, opacity: 0.85 }}
+                      style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', fill: t.red, fontWeight: 'normal', opacity: 0.75 }}
                     />
                   </Bar>
                 </ComposedChart>
