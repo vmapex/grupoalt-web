@@ -2,7 +2,7 @@
 
 import { useState, useRef, type ChangeEvent } from 'react'
 import Link from 'next/link'
-import { Settings, Upload, Trash2, Pencil, Plus, X, Tag } from 'lucide-react'
+import { Settings, Upload, Trash2, Pencil, Plus, X, Tag, Landmark } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
 
@@ -228,6 +228,25 @@ export default function PageAdmin() {
         >
           <Tag size={12} />
           Plano de Contas
+        </Link>
+        <Link
+          href="/bi/financeiro/admin/contas-bancarias"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            color: t.muted,
+            background: 'transparent',
+            border: `1px solid ${t.border}`,
+            textDecoration: 'none',
+          }}
+        >
+          <Landmark size={12} />
+          Contas Bancárias
         </Link>
       </div>
 
