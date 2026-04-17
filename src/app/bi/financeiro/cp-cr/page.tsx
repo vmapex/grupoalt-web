@@ -304,7 +304,7 @@ export default function PageCPCR() {
               <div className="flex items-center gap-2.5 px-4 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${t.border}`, background: `${t.bg}88` }}>
                 <div className="relative flex-1">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: t.muted }} />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar favorecido, categoria..."
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar favorecido, NF, categoria..."
                     className="w-full rounded-lg pl-8 pr-2.5 py-2 text-[11px] outline-none"
                     style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text, fontFamily: 'inherit' }} />
                 </div>
