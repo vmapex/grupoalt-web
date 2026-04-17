@@ -228,3 +228,140 @@ export function buildBreakdownByFavorecido(
     DNOP: toSorted(groups.DNOP),
   }
 }
+
+// ─── DRE Mês a Mês (matriz colapsável N1 → N2 → N3) ─────────────────────────
+
+export interface DREMesCategoria {
+  codigo: string
+  nome: string
+  porMes: Record<string, number>
+  consolidado: number
+}
+
+export interface DREMesNivel2 {
+  label: string
+  porMes: Record<string, number>
+  consolidado: number
+  categorias: DREMesCategoria[]
+}
+
+export interface DREMesGrupo {
+  grupo: string
+  porMes: Record<string, number>
+  consolidado: number
+  nivel2: DREMesNivel2[]
+}
+
+export interface DREMesMatrix {
+  meses: string[]
+  grupos: Record<string, DREMesGrupo>
+}
+
+const MESES_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+function mesKey(dtStr: string): string | null {
+  const parts = (dtStr || '').split('/')
+  if (parts.length < 3) return null
+  const mIdx = parseInt(parts[1]) - 1
+  if (mIdx < 0 || mIdx > 11) return null
+  const yr = (parts[2] || '').slice(-2)
+  return `${MESES_ABBR[mIdx]}/${yr}`
+}
+
+function sortMeses(meses: string[]): string[] {
+  const MONTHS: Record<string, number> = {
+    jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+    jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+  }
+  return [...meses].sort((a, b) => {
+    const [ma, ya] = a.toLowerCase().split('/')
+    const [mb, yb] = b.toLowerCase().split('/')
+    return (parseInt(ya || '0') * 100 + (MONTHS[ma] ?? 0))
+         - (parseInt(yb || '0') * 100 + (MONTHS[mb] ?? 0))
+  })
+}
+
+/**
+ * Matriz DRE agrupada por (grupo, nivel2, categoria, mes). Valores sempre
+ * positivos (Math.abs) — o sinal do grupo DRE é contextual na renderização.
+ * NEUTRO é excluído.
+ */
+export function buildDREMatrix(
+  lancamentos: Lancamento[],
+  categoriaMap?: Record<string, CategoriaInfo>,
+): DREMesMatrix {
+  const grupoData: Record<string, {
+    porMes: Record<string, number>
+    nivel2: Record<string, {
+      porMes: Record<string, number>
+      categorias: Record<string, { nome: string; porMes: Record<string, number> }>
+    }>
+  }> = {}
+
+  const allMeses = new Set<string>()
+
+  for (const l of lancamentos) {
+    if (!l.data_lancamento) continue
+    const mes = mesKey(l.data_lancamento)
+    if (!mes) continue
+    allMeses.add(mes)
+
+    const cat = l.categoria || ''
+    const info = (categoriaMap && categoriaMap[cat]) || CATEGORIAS[cat]
+    if (!info) continue
+    const grupo = info.grupoDRE
+    if (!grupo || grupo === 'NEUTRO') continue
+
+    const n2Label = info.nivel2 || info.nome || cat || 'Outros'
+    const valor = Math.abs(l.valor)
+
+    if (!grupoData[grupo]) grupoData[grupo] = { porMes: {}, nivel2: {} }
+    grupoData[grupo].porMes[mes] = (grupoData[grupo].porMes[mes] ?? 0) + valor
+
+    if (!grupoData[grupo].nivel2[n2Label]) {
+      grupoData[grupo].nivel2[n2Label] = { porMes: {}, categorias: {} }
+    }
+    grupoData[grupo].nivel2[n2Label].porMes[mes] =
+      (grupoData[grupo].nivel2[n2Label].porMes[mes] ?? 0) + valor
+
+    if (!grupoData[grupo].nivel2[n2Label].categorias[cat]) {
+      grupoData[grupo].nivel2[n2Label].categorias[cat] = {
+        nome: info.nome || cat || 'Outros',
+        porMes: {},
+      }
+    }
+    grupoData[grupo].nivel2[n2Label].categorias[cat].porMes[mes] =
+      (grupoData[grupo].nivel2[n2Label].categorias[cat].porMes[mes] ?? 0) + valor
+  }
+
+  const meses = sortMeses([...allMeses])
+  const sumMap = (m: Record<string, number>) => Object.values(m).reduce((s, v) => s + v, 0)
+
+  const grupos: Record<string, DREMesGrupo> = {}
+  for (const [grupo, data] of Object.entries(grupoData)) {
+    const nivel2: DREMesNivel2[] = Object.entries(data.nivel2)
+      .map(([label, n2]) => ({
+        label,
+        porMes: n2.porMes,
+        consolidado: sumMap(n2.porMes),
+        categorias: Object.entries(n2.categorias)
+          .map(([codigo, cat]) => ({
+            codigo,
+            nome: cat.nome,
+            porMes: cat.porMes,
+            consolidado: sumMap(cat.porMes),
+          }))
+          .sort((a, b) => b.consolidado - a.consolidado),
+      }))
+      .sort((a, b) => b.consolidado - a.consolidado)
+
+    grupos[grupo] = {
+      grupo,
+      porMes: data.porMes,
+      consolidado: sumMap(data.porMes),
+      nivel2,
+    }
+  }
+
+  return { meses, grupos }
+}

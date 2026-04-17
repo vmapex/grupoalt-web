@@ -1,6 +1,7 @@
 'use client'
 import { useState, useCallback, useMemo } from 'react'
-import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, ChevronRight } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 import { calcularDRE } from '@/lib/planoContas'
@@ -142,6 +143,22 @@ export default function PageCaixa() {
           <div className="grid min-h-[550px]" style={{ gridTemplateColumns: '1fr 252px' }}>
             {/* LEFT: Charts */}
             <div className="p-4 overflow-y-auto" style={{ borderRight: `1px solid ${t.border}` }}>
+              {/* DRE Mês a Mês — link para visão detalhada em nova página */}
+              <div className="flex justify-end mb-2">
+                <Link
+                  href="/bi/financeiro/caixa/dre-mensal"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] transition-all"
+                  style={{
+                    background: t.surface,
+                    border: `1px solid ${t.green}44`,
+                    color: t.green,
+                    textDecoration: 'none',
+                  }}
+                >
+                  DRE Mês a Mês
+                  <ChevronRight size={12} />
+                </Link>
+              </div>
               <DrillBar
                 level={level}
                 selMonth={selMonth}
