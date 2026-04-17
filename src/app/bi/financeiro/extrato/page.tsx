@@ -57,13 +57,15 @@ export default function PageExtrato() {
   const filtered = useMemo(
     () =>
       extrato.filter((r) => {
-        if (
-          search &&
-          !r.favorecido.toLowerCase().includes(search.toLowerCase()) &&
-          !r.descricao.toLowerCase().includes(search.toLowerCase()) &&
-          !getCatDesc(r.catCod).toLowerCase().includes(search.toLowerCase())
-        )
-          return false
+        if (search) {
+          const q = search.toLowerCase()
+          const match =
+            r.favorecido.toLowerCase().includes(q) ||
+            r.descricao.toLowerCase().includes(q) ||
+            getCatDesc(r.catCod).toLowerCase().includes(q) ||
+            (r.nf || '').toLowerCase().includes(q)
+          if (!match) return false
+        }
         if (filtro === 'concil' && !r.conciliado) return false
         if (filtro === 'pend' && r.conciliado) return false
         return true
@@ -142,7 +144,7 @@ export default function PageExtrato() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar descrição, categoria..."
+              placeholder="Buscar descrição, NF, categoria..."
               className="w-full rounded-lg pl-8 pr-2.5 py-2 text-[11px] outline-none"
               style={{
                 background: t.surface,
