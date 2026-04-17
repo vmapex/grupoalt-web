@@ -203,22 +203,60 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               })()}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={140}>
-            {/* Margin top 16 para label acima, bottom 20 para label abaixo em barras negativas (nunca dentro da barra) */}
-            <ComposedChart data={d.labels.map((l, i) => ({ name: l, saldo: (d.RN[i] || 0) - (d.DN[i] || 0) }))} barSize={level === 'weekly' ? 20 : 28} margin={{ top: 16, right: 4, left: 4, bottom: 20 }}>
-              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip content={<CustomTooltip />} cursor={false} />
-              <Bar dataKey="saldo" name="Saldo NOP" radius={[4, 4, 0, 0]}
-                activeBar={{ fill: `${t.purple}35`, stroke: t.purple, strokeWidth: 2, radius: [4, 4, 0, 0] as any }}>
-                {d.labels.map((_, i) => {
-                  const saldo = (d.RN[i] || 0) - (d.DN[i] || 0)
-                  return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
-                })}
-                <LabelList dataKey="saldo" content={(props: any) => <BarLabel {...props} fill={props.value >= 0 ? t.green : t.red} />} />
-              </Bar>
-            </ComposedChart>
-          </ResponsiveContainer>
+          {(() => {
+            // Pre-computar saldos pra derivar domain com padding (evita labels
+            // clipados pelo plot area quando ficam fora das barras).
+            const saldos = d.labels.map((_, i) => (d.RN[i] || 0) - (d.DN[i] || 0))
+            const maxAbs = Math.max(1, ...saldos.map((v) => Math.abs(v)))
+            const hasNegative = saldos.some((v) => v < 0)
+            const hasPositive = saldos.some((v) => v > 0)
+            // 18% de padding acima/abaixo garante ~16-20px de folga para labels
+            const pad = maxAbs * 0.18
+            const yMin = hasNegative ? -(maxAbs + pad) : -pad
+            const yMax = hasPositive ? (maxAbs + pad) : pad
+            return (
+              <ResponsiveContainer width="100%" height={170}>
+                <ComposedChart
+                  data={d.labels.map((l, i) => ({ name: l, saldo: saldos[i] }))}
+                  barSize={level === 'weekly' ? 20 : 28}
+                  margin={{ top: 18, right: 4, left: 4, bottom: 24 }}
+                >
+                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                  {/* YAxis hide mas com domain explícito — dá espaço acima/abaixo para os labels */}
+                  <YAxis hide domain={[yMin, yMax]} />
+                  <Tooltip content={<CustomTooltip />} cursor={false} />
+                  <Bar
+                    dataKey="saldo"
+                    name="Saldo NOP"
+                    radius={[4, 4, 0, 0]}
+                    activeBar={{ fill: `${t.purple}35`, stroke: t.purple, strokeWidth: 2, radius: [4, 4, 0, 0] as any }}
+                    isAnimationActive={false}
+                  >
+                    {d.labels.map((_, i) => {
+                      const saldo = saldos[i]
+                      return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
+                    })}
+                    {/* Positivos: label acima (position top) */}
+                    <LabelList
+                      dataKey="saldo"
+                      position="top"
+                      offset={6}
+                      formatter={(v: number) => (v > 0 ? fmtK(v) : '')}
+                      style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fill: t.green, opacity: 0.85 }}
+                    />
+                    {/* Negativos: label abaixo (position bottom) */}
+                    <LabelList
+                      dataKey="saldo"
+                      position="bottom"
+                      offset={6}
+                      formatter={(v: number) => (v < 0 ? fmtK(v) : '')}
+                      style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fill: t.red, opacity: 0.85 }}
+                    />
+                  </Bar>
+                </ComposedChart>
+              </ResponsiveContainer>
+            )
+          })()}
           <div className="flex justify-end">
             <DetailBtn onClick={() => onDetailView('saldoNop')} color={t.purple} />
           </div>
