@@ -62,10 +62,15 @@ const MONTHS_PT: Record<string, number> = {
 }
 
 /** Sort "Mmm/YY" labels (pt-BR, e.g. "Jan/26") chronologically. */
-export function sortByMonthYear<T extends string | { name: string }>(items: T[]): T[] {
+export function sortByMonthYear<T>(items: T[], getLabel?: (item: T) => string): T[] {
+  const extract = (x: T): string => {
+    if (getLabel) return getLabel(x)
+    if (typeof x === 'string') return x
+    if (x && typeof x === 'object' && 'name' in x) return String((x as { name: unknown }).name ?? '')
+    return ''
+  }
   const key = (x: T) => {
-    const s = (typeof x === 'string' ? x : x.name).toLowerCase()
-    const [mon, yr] = s.split('/')
+    const [mon, yr] = extract(x).toLowerCase().split('/')
     return (parseInt(yr || '0', 10) * 100) + (MONTHS_PT[mon] ?? 0)
   }
   return [...items].sort((a, b) => key(a) - key(b))

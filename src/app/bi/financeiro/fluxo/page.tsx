@@ -135,15 +135,24 @@ export default function PageFluxo() {
   const saldoProjetado = fluxoAPI?.kpis?.saldo_projetado ?? (fluxoDiario.length > 0 ? fluxoDiario[fluxoDiario.length - 1].saldo : saldoAtual)
   const cobertura = fluxoAPI?.kpis?.cobertura ?? (totalSai > 0 ? (saldoAtual + totalEnt) / totalSai : 0)
 
-  const topEntradas = useMemo(
-    () => [...crAberto].sort((a, b) => b.valor - a.valor).slice(0, 4),
-    [crAberto],
-  )
+  // Agregar por favorecido: um fornecedor com várias parcelas abertas deve aparecer uma vez só
+  const topEntradas = useMemo(() => {
+    const byFav = new Map<string, number>()
+    for (const r of crAberto) byFav.set(r.fav, (byFav.get(r.fav) ?? 0) + r.valor)
+    return Array.from(byFav.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([fav, valor]) => ({ fav, valor }))
+  }, [crAberto])
 
-  const topSaidas = useMemo(
-    () => [...cpAberto].sort((a, b) => b.valor - a.valor).slice(0, 4),
-    [cpAberto],
-  )
+  const topSaidas = useMemo(() => {
+    const byFav = new Map<string, number>()
+    for (const r of cpAberto) byFav.set(r.fav, (byFav.get(r.fav) ?? 0) + r.valor)
+    return Array.from(byFav.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([fav, valor]) => ({ fav, valor }))
+  }, [cpAberto])
 
   const todayStr = useMemo(() => {
     const d = new Date()

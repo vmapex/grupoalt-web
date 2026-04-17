@@ -44,7 +44,7 @@ interface CalendarMonthProps {
   label: string
   entries: Record<string, ConcilEntry>
   selectedDay: string | null
-  onDayClick: (key: string) => void
+  onDayClick: (key: string | null) => void
   t: ThemeTokens
 }
 
@@ -120,7 +120,11 @@ function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t
           return (
             <button
               key={idx}
-              onClick={() => entry ? onDayClick(key) : undefined}
+              onClick={() => {
+                if (!entry) return
+                // Clique na data já selecionada remove o filtro
+                onDayClick(selectedDay === key ? null : key)
+              }}
               className="w-full aspect-square rounded text-[9px] font-mono font-medium flex items-center justify-center transition-all"
               style={{
                 background: isSelected ? `${t.blue}35` : bg,
@@ -143,7 +147,8 @@ function CalendarMonth({ year, month, label, entries, selectedDay, onDayClick, t
 export default function PageConciliacao() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
-  const [bankFilter, setBankFilter] = useState<string>('Todos')
+  // Set vazio representa "Todos" (sem filtro). Suporta multi-seleção.
+  const [bankFilter, setBankFilter] = useState<Set<string>>(new Set())
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState>({ field: 'date', dir: 'desc' })
 
@@ -168,15 +173,28 @@ export default function PageConciliacao() {
     return ['Todos', ...sorted]
   }, [baseData])
 
-  // --- filtered entries by bank ---
+  // --- filtered entries by bank (multi-select) ---
   const filteredEntries = useMemo(() => {
-    if (bankFilter === 'Todos') return baseData
+    if (bankFilter.size === 0) return baseData
     const out: Record<string, ConcilEntry> = {}
     for (const [k, v] of Object.entries(baseData)) {
-      if (v.banco === bankFilter) out[k] = v
+      if (v.banco && bankFilter.has(v.banco)) out[k] = v
     }
     return out
   }, [bankFilter, baseData])
+
+  const toggleBank = (b: string) => {
+    setBankFilter((prev) => {
+      if (b === 'Todos') return new Set()
+      const next = new Set(prev)
+      if (next.has(b)) next.delete(b)
+      else next.add(b)
+      return next
+    })
+  }
+
+  const isBankActive = (b: string) =>
+    b === 'Todos' ? bankFilter.size === 0 : bankFilter.has(b)
 
   // --- all entries as sorted array for table ---
   const allEntries = useMemo(() => Object.values(filteredEntries), [filteredEntries])
@@ -194,9 +212,10 @@ export default function PageConciliacao() {
     [allEntries, sort],
   )
 
-  // --- stats (use API resumo when available) ---
+  // --- stats (API resumo quando sem filtro; recalcula local quando há filtro
+  // de banco, pois o endpoint /conciliacao/resumo não aceita banco como query)
   const stats = useMemo(() => {
-    if (resumoAPI) {
+    if (resumoAPI && bankFilter.size === 0) {
       // streak still computed locally
       let streak = 0
       const cur = new Date(TODAY)
@@ -241,7 +260,7 @@ export default function PageConciliacao() {
     const mediaExtrato = total > 0 ? entries.reduce((s, e) => s + Math.abs(e.extrato), 0) / total : 0
 
     return { pctConcil, sumDif, maiorDif, streak, mediaExtrato }
-  }, [allEntries, filteredEntries, resumoAPI])
+  }, [allEntries, filteredEntries, resumoAPI, bankFilter])
 
   // --- SLA analysis for footer ---
   const slaInfo = useMemo(() => {
@@ -342,22 +361,25 @@ export default function PageConciliacao() {
         className="flex items-center gap-3 px-5 py-2.5 shrink-0 flex-wrap"
         style={{ borderBottom: `1px solid ${t.border}`, background: `${t.bg}88` }}
       >
-        {/* Bank buttons */}
+        {/* Bank buttons (multi-select; "Todos" limpa a seleção) */}
         <div className="flex items-center gap-1.5">
-          {bankFilters.map((b) => (
-            <button
-              key={b}
-              onClick={() => setBankFilter(b)}
-              className="px-3 py-1 rounded text-[10px] font-medium transition-all"
-              style={{
-                background: bankFilter === b ? t.blueDim : t.surface,
-                color: bankFilter === b ? t.blue : t.textSec,
-                border: `1px solid ${bankFilter === b ? `${t.blue}44` : t.border}`,
-              }}
-            >
-              {b === 'Banco do Brasil' ? 'BB' : b}
-            </button>
-          ))}
+          {bankFilters.map((b) => {
+            const active = isBankActive(b)
+            return (
+              <button
+                key={b}
+                onClick={() => toggleBank(b)}
+                className="px-3 py-1 rounded text-[10px] font-medium transition-all"
+                style={{
+                  background: active ? t.blueDim : t.surface,
+                  color: active ? t.blue : t.textSec,
+                  border: `1px solid ${active ? `${t.blue}44` : t.border}`,
+                }}
+              >
+                {b === 'Banco do Brasil' ? 'BB' : b}
+              </button>
+            )
+          })}
         </div>
 
         {/* Spacer */}
