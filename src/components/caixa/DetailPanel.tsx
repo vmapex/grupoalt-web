@@ -1,5 +1,5 @@
 'use client'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ComposedChart, Line, LabelList, CartesianGrid,
@@ -18,13 +18,22 @@ interface DetailPanelProps {
   d: CaixaLevelData
   breakdowns?: DREBreakdowns | null
   catBreakdowns?: CatBreakdowns | null
+  /** Breakdown N1 (linha única por grupo DRE) — usado no toggle de TDCF/CV */
+  catBreakdownsN1?: CatBreakdowns | null
+  /** Breakdown N3 (categoria Omie individual) — Saldo NOP sempre usa N3 */
+  catBreakdownsN3?: CatBreakdowns | null
   onBack: () => void
 }
 
+type CompGranularidade = 'n1' | 'n2'
+
 const sum = (arr: number[]) => arr.reduce((s, v) => s + (v || 0), 0)
 
-export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: DetailPanelProps) {
+export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdownsN1, catBreakdownsN3, onBack }: DetailPanelProps) {
   const t = useThemeStore((s) => s.tokens)
+  // Toggle N1/N2 para TDCF e CV. Default N1 (consolidado) conforme plano.
+  const [compGran, setCompGran] = useState<CompGranularidade>('n1')
+  const showToggle = defKey === 'tdcf' || defKey === 'cv'
 
   const def = useMemo((): DetailDef => {
     const defs: Record<string, DetailDef> = {
@@ -47,7 +56,7 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: De
           { l: 'PIS/COFINS', v: fmtK(sum(d.TD) * 0.72), c: t.amber },
           { l: 'ISS/ICMS', v: fmtK(sum(d.TD) * 0.28), c: t.amber },
         ],
-        breakdown: catBreakdowns?.TDCF ?? [],
+        breakdown: (compGran === 'n1' ? catBreakdownsN1 : catBreakdowns)?.TDCF ?? [],
         clientes: breakdowns?.TDCF ?? [],
       },
       cv: {
@@ -58,7 +67,7 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: De
           { l: 'Diesel', v: fmtK(sum(d.CV) * 0.45), c: t.red },
           { l: 'Pedágios', v: fmtK(sum(d.CV) * 0.12), c: t.amber },
         ],
-        breakdown: catBreakdowns?.CV ?? [],
+        breakdown: (compGran === 'n1' ? catBreakdownsN1 : catBreakdowns)?.CV ?? [],
         clientes: breakdowns?.CV ?? [],
       },
       cf: {
@@ -80,13 +89,14 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: De
           { l: 'Despesa NOP', v: fmtK(sum(d.DN)), c: t.red },
           { l: '% sobre RoB', v: ((sum(d.RN) - sum(d.DN)) / sum(d.RB) * 100).toFixed(1) + '%', c: t.text },
         ],
-        breakdown: catBreakdowns?.RNOP ?? [],
-        breakdownDN: catBreakdowns?.DNOP ?? [],
+        // Saldo NOP sempre em N3 (categoria Omie individual) — sem toggle
+        breakdown: (catBreakdownsN3 ?? catBreakdowns)?.RNOP ?? [],
+        breakdownDN: (catBreakdownsN3 ?? catBreakdowns)?.DNOP ?? [],
         clientes: breakdowns?.RNOP ?? [],
       },
     }
     return defs[defKey]
-  }, [defKey, d, t])
+  }, [defKey, d, t, breakdowns, catBreakdowns, catBreakdownsN1, catBreakdownsN3, compGran])
 
   if (!def) return null
 
@@ -237,6 +247,28 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, onBack }: De
       )}
 
       {/* Breakdown */}
+      {/* Toggle N1/N2 (apenas TDCF e CV) */}
+      {showToggle && (
+        <div className="flex items-center gap-2 mt-1 mb-[-8px]">
+          <span className="text-[9px] uppercase tracking-wider" style={{ color: t.muted }}>Granularidade</span>
+          <div className="flex items-center gap-1 rounded-md p-0.5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            {(['n1', 'n2'] as CompGranularidade[]).map((g) => (
+              <button
+                key={g}
+                onClick={() => setCompGran(g)}
+                className="px-2 py-1 text-[10px] rounded font-medium transition-all"
+                style={{
+                  background: compGran === g ? `${def.color}22` : 'transparent',
+                  color: compGran === g ? def.color : t.muted,
+                }}
+              >
+                {g === 'n1' ? 'Consolidado (N1)' : 'Por subgrupo (N2)'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-3" style={{ gridTemplateColumns: isNop ? '1fr 1fr' : '1fr' }}>
         <BreakdownTable title={isNop ? 'Composição — Receita NOP' : `Composição — ${def.title}`} items={def.breakdown} color={isNop ? t.green : def.color} />
         {isNop && def.breakdownDN && (
