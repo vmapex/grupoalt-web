@@ -185,6 +185,7 @@ export default function PageCaixa() {
               <ChartGrid
                 d={d}
                 level={level}
+                dreData={dreData}
                 onDrillIntoMonth={drillIntoMonth}
                 onDetailView={setDetailView}
               />

@@ -2,7 +2,7 @@
 import { memo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Cell, ComposedChart, Line, LabelList,
+  Cell, ComposedChart, LabelList,
 } from 'recharts'
 import { useThemeStore } from '@/store/themeStore'
 import { GlowLine } from '@/components/ui/GlowLine'
@@ -14,22 +14,28 @@ import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 
 type Level = 'quarterly' | 'monthly' | 'weekly'
 
+export interface ChartGridDreData {
+  rob: number; tdcf: number; cv: number; cf: number; mc: number
+  rnop: number; dnop: number; ebt1: number; ebt2: number
+}
+
 interface ChartGridProps {
   d: CaixaLevelData
   level: Level
+  dreData: ChartGridDreData | null
   onDrillIntoMonth: (month: string) => void
   onDetailView: (key: string) => void
 }
 
 const CHART_DEFS = [
-  { key: 'TD', title: 'T.D.C.F.', pctLabel: '14,79% RoB', colorKey: 'amber' as const },
-  { key: 'CV', title: 'Custo Variável', pctLabel: '73,2% RoB', colorKey: 'red' as const },
-  { key: 'CF', title: 'Custo Fixo', pctLabel: '42,9% RoB', colorKey: 'orange' as const },
+  { key: 'TD', title: 'T.D.C.F.', colorKey: 'amber' as const, pctField: 'tdcf' as const },
+  { key: 'CV', title: 'Custo Variável', colorKey: 'red' as const, pctField: 'cv' as const },
+  { key: 'CF', title: 'Custo Fixo', colorKey: 'orange' as const, pctField: 'cf' as const },
 ]
 
 const sum = (arr: number[]) => arr.reduce((s, v) => s + (v || 0), 0)
 
-export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, onDetailView }: ChartGridProps) {
+export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillIntoMonth, onDetailView }: ChartGridProps) {
   const t = useThemeStore((s) => s.tokens)
   const barSize = level === 'weekly' ? 20 : 24
 
@@ -54,7 +60,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           </div>
           <ResponsiveContainer width="100%" height={150}>
             <ComposedChart data={d.labels.map((l, i) => ({ name: l, value: d.RB[i] || 0 }))} barSize={level === 'weekly' ? 24 : 30} margin={{ top: 18, right: 4, left: 4, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: t.mutedDim, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={false} />
               <Bar dataKey="value" name="Receita Bruta" radius={[5, 5, 0, 0]}
@@ -65,9 +71,6 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
                 ))}
                 <LabelList dataKey="value" content={(props: any) => <BarLabel {...props} fill={t.blue} />} />
               </Bar>
-              {level === 'monthly' && (
-                <Line type="monotone" dataKey="value" stroke={`${t.blue}45`} strokeWidth={1.5} strokeDasharray="4 4" dot={{ fill: t.blue, r: 3 }} />
-              )}
             </ComposedChart>
           </ResponsiveContainer>
           <div className="flex justify-between items-center mt-1">
@@ -80,36 +83,50 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           </div>
         </div>
 
-        {/* Conciliação card */}
+        {/* Receita Líquida card (RoB − TDCF) */}
         <div
           className="relative overflow-hidden rounded-xl p-3.5"
           style={{ background: t.surface, border: `1px solid ${t.border}` }}
         >
           <GlowLine color={t.green} />
-          <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.green }}>Conciliação</div>
-          <div className="font-mono text-[28px] leading-none my-1" style={{ color: t.text }}>87%</div>
-          <div className="text-[9px] mb-2.5" style={{ color: t.muted }}>dos lançamentos conciliados</div>
+          <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.green }}>Receita Líquida</div>
+          <div className="font-mono text-[28px] leading-none my-1" style={{ color: t.text }}>
+            {dreData ? fmtK(dreData.rob - dreData.tdcf) : '0'}
+          </div>
+          <div className="text-[9px] mb-2.5" style={{ color: t.muted }}>
+            {dreData && dreData.rob
+              ? `${(((dreData.rob - dreData.tdcf) / dreData.rob) * 100).toFixed(1)}% sobre RoB`
+              : 'RoB − TDCF'}
+          </div>
           <div className="h-[3px] rounded-full overflow-hidden mb-3" style={{ background: `${t.text}0A` }}>
-            <div className="h-full rounded-full transition-[width] duration-1000 ease-[cubic-bezier(.4,0,.2,1)]" style={{ width: '87%', background: t.green }} />
+            <div
+              className="h-full rounded-full transition-[width] duration-1000 ease-[cubic-bezier(.4,0,.2,1)]"
+              style={{
+                width: dreData && dreData.rob ? `${Math.max(0, Math.min(100, ((dreData.rob - dreData.tdcf) / dreData.rob) * 100))}%` : '0%',
+                background: t.green,
+              }}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
-            {[
-              { label: 'Conciliados', val: '342', dot: t.green, c: t.text },
-              { label: 'Pendentes', val: '51', dot: t.amber, c: t.amber },
-            ].map((r, i) => (
-              <div key={i} className="flex justify-between text-[10px]">
-                <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
-                  <div className="w-[5px] h-[5px] rounded-full" style={{ background: r.dot }} />
-                  {r.label}
-                </div>
-                <span className="font-mono text-[10px]" style={{ color: r.c }}>{r.val}</span>
+            <div className="flex justify-between text-[10px]">
+              <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
+                <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.blue }} />
+                Receita Bruta
               </div>
-            ))}
+              <span className="font-mono" style={{ color: t.text }}>{dreData ? fmtK(dreData.rob) : '0'}</span>
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
+                <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.amber }} />
+                TDCF
+              </div>
+              <span className="font-mono" style={{ color: t.amber }}>−{dreData ? fmtK(dreData.tdcf) : '0'}</span>
+            </div>
             <div className="flex justify-between text-[10px] pt-1.5 mt-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
               <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
-                <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.muted }} /> Total
+                <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.green }} /> Líquida
               </div>
-              <span className="font-mono" style={{ color: t.text }}>393</span>
+              <span className="font-mono" style={{ color: t.green }}>{dreData ? fmtK(dreData.rob - dreData.tdcf) : '0'}</span>
             </div>
           </div>
         </div>
@@ -121,6 +138,9 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           const color = t[cd.colorKey]
           const detailKey = { TD: 'tdcf', CV: 'cv', CF: 'cf' }[cd.key]!
           const chartData = d.labels.map((l, i) => ({ name: l, value: (d as any)[cd.key][i] || 0 }))
+          const pctLabel = dreData && dreData.rob
+            ? `${((dreData[cd.pctField] / dreData.rob) * 100).toFixed(1)}% RoB`
+            : '— RoB'
           return (
             <div key={cd.key} className="relative overflow-hidden rounded-xl p-3.5 transition-colors" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <GlowLine color={color} />
@@ -128,12 +148,12 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
                 <div className="text-[9px] uppercase tracking-wider" style={{ color }}>{cd.title}</div>
                 <div className="text-right">
                   <div className="font-mono text-sm" style={{ color }}>{fmtK(sum((d as any)[cd.key]))}</div>
-                  <div className="text-[9px]" style={{ color: t.muted }}>{cd.pctLabel}</div>
+                  <div className="text-[9px]" style={{ color: t.muted }}>{pctLabel}</div>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={108}>
                 <BarChart data={chartData} barSize={barSize} margin={{ top: 16, right: 4, left: 4, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fill: t.mutedDim, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <Tooltip content={<CustomTooltip />} cursor={false} />
                   <Bar dataKey="value" name={cd.title} radius={[4, 4, 0, 0]}
@@ -169,12 +189,15 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
             <div className="text-right">
               {(() => {
                 const cardVal = sum(d.RN) - sum(d.DN)
+                const pctLabel = dreData && dreData.rob
+                  ? `${((cardVal / dreData.rob) * 100).toFixed(1)}% RoB`
+                  : '— RoB'
                 return (
                   <>
                     <div className="font-mono text-sm" style={{ color: cardVal >= 0 ? t.green : t.red }}>
                       {cardVal >= 0 ? '+' : ''}{fmtK(cardVal)}
                     </div>
-                    <div className="text-[9px]" style={{ color: t.muted }}>33,8% RoB</div>
+                    <div className="text-[9px]" style={{ color: t.muted }}>{pctLabel}</div>
                   </>
                 )
               })()}
@@ -182,7 +205,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           </div>
           <ResponsiveContainer width="100%" height={108}>
             <ComposedChart data={d.labels.map((l, i) => ({ name: l, saldo: (d.RN[i] || 0) - (d.DN[i] || 0) }))} barSize={level === 'weekly' ? 20 : 28} margin={{ top: 16, right: 4, left: 4, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: t.mutedDim, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={false} />
               <Bar dataKey="saldo" name="Saldo NOP" radius={[4, 4, 0, 0]}
@@ -209,12 +232,21 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           }}
         >
           <div className="text-[9px] uppercase tracking-wider" style={{ color: `${t.green}BB` }}>Resultado Final</div>
-          <div className="font-mono text-2xl leading-none my-1.5" style={{ color: t.green }}>5.901</div>
-          <div className="text-[9px] mb-3" style={{ color: `${t.green}99` }}>EBT2 — 2,8% sobre RoB</div>
-          {[
-            { n: 'EBT1', v: -65248, c: t.red },
-            { n: '+ RNOP', v: 92702, c: t.green },
-            { n: '− DNOP', v: -21553, c: t.purple },
+          <div
+            className="font-mono text-2xl leading-none my-1.5"
+            style={{ color: dreData && dreData.ebt2 < 0 ? t.red : t.green }}
+          >
+            {dreData ? fmtK(dreData.ebt2) : '0'}
+          </div>
+          <div className="text-[9px] mb-3" style={{ color: `${t.green}99` }}>
+            {dreData && dreData.rob
+              ? `EBT2 — ${((dreData.ebt2 / dreData.rob) * 100).toFixed(1)}% sobre RoB`
+              : 'EBT2'}
+          </div>
+          {dreData && [
+            { n: 'EBT1', v: dreData.ebt1, c: dreData.ebt1 >= 0 ? t.green : t.red },
+            { n: '+ RNOP', v: dreData.rnop, c: t.green },
+            { n: '− DNOP', v: -dreData.dnop, c: t.purple },
           ].map((r, i) => (
             <div key={i} className="flex justify-between text-[10px] py-1" style={{ borderBottom: `1px solid ${t.text}06` }}>
               <span style={{ color: t.muted }}>{r.n}</span>
@@ -223,10 +255,12 @@ export const ChartGrid = memo(function ChartGrid({ d, level, onDrillIntoMonth, o
           ))}
           <div className="flex justify-between text-[10px] pt-1.5 mt-0.5" style={{ borderTop: `1px solid ${t.green}33` }}>
             <span className="font-semibold" style={{ color: t.text }}>= EBT2</span>
-            <span className="font-mono font-bold" style={{ color: t.green }}>+5.901</span>
-          </div>
-          <div className="flex justify-end">
-            <DetailBtn onClick={() => onDetailView('saldoNop')} color={t.purple} />
+            <span
+              className="font-mono font-bold"
+              style={{ color: dreData && dreData.ebt2 < 0 ? t.red : t.green }}
+            >
+              {dreData ? (dreData.ebt2 >= 0 ? '+' : '') + fmtK(dreData.ebt2) : '0'}
+            </span>
           </div>
         </div>
       </div>

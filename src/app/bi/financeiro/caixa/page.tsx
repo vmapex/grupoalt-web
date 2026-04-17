@@ -149,6 +149,7 @@ export default function PageCaixa() {
               <ChartGrid
                 d={d}
                 level={level}
+                dreData={dreData}
                 onDrillIntoMonth={drillIntoMonth}
                 onDetailView={setDetailView}
               />
@@ -175,7 +176,7 @@ export default function PageCaixa() {
               { l: 'Resultado Líquido', v: dreData ? fmtK(dreData.ebt2) : '0', c: dreData && dreData.ebt2 >= 0 ? t.green : t.red, sub: dreData ? `EBT2 = ${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% RoB` : '' },
               { l: 'Margem Contribuição', v: dreData ? fmtK(dreData.mc) : '0', c: t.blue, sub: dreData ? `${((dreData.mc / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
               { l: 'Cobertura CF (EBT1)', v: dreData ? fmtK(dreData.ebt1) : '0', c: dreData && dreData.ebt1 >= 0 ? t.green : t.red, sub: dreData ? `${((dreData.ebt1 / (dreData.rob || 1)) * 100).toFixed(1)}%` : '' },
-              { l: 'Receitas NOP', v: dreData ? fmtK(dreData.rnop - dreData.dnop) : '0', c: dreData && (dreData.rnop - dreData.dnop) >= 0 ? t.green : t.red, sub: 'Saldo não operacional' },
+              { l: 'Saldo NOP', v: dreData ? fmtK(dreData.rnop - dreData.dnop) : '0', c: dreData && (dreData.rnop - dreData.dnop) >= 0 ? t.green : t.red, sub: dreData && dreData.rob ? `${(((dreData.rnop - dreData.dnop) / dreData.rob) * 100).toFixed(1)}% sobre RoB` : 'RNOP − DNOP' },
               { l: 'Taxa TDCF', v: dreData ? `${((dreData.tdcf / (dreData.rob || 1)) * 100).toFixed(1)}%` : '0%', c: t.amber, sub: 'Sobre receita bruta' },
             ].map((f, i) => (
               <div
