@@ -32,7 +32,7 @@ export function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
         {label}
       </div>
       {payload
-        .filter((p) => p.value > 0)
+        .filter((p) => p.value !== 0)
         .map((p, i) => (
           <div key={i} className="flex items-center gap-1.5 text-[11px] mb-0.5">
             <div
