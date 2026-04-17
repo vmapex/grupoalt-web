@@ -236,32 +236,12 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                       const saldo = saldos[i]
                       return <Cell key={i} fill={saldo >= 0 ? `${t.green}20` : `${t.red}20`} stroke={saldo >= 0 ? t.green : t.red} strokeWidth={1.5} />
                     })}
-                    {/* position="top" em Recharts = "em direção ao extremo do valor"
-                        — para positivos, acima do bar; para negativos, ABAIXO do bar.
-                        Um LabelList por sinal para controlar a cor independentemente.
-                        Tipografia via props diretos do LabelList (não via style CSS,
-                        que o Recharts sobrescrevia). */}
+                    {/* Mesmo pattern de TDCF/CV: content={BarLabel}. O BarLabel
+                        já sabe posicionar acima (positivo) ou abaixo (negativo)
+                        via y-5 / y+height+10 com base no sinal do value. */}
                     <LabelList
                       dataKey="saldo"
-                      position="top"
-                      offset={8}
-                      formatter={(v: number) => (v > 0 ? fmtK(v) : '')}
-                      fill={t.green}
-                      fontSize={8}
-                      fontFamily="DM Mono, monospace"
-                      fontWeight={400}
-                      opacity={0.75}
-                    />
-                    <LabelList
-                      dataKey="saldo"
-                      position="top"
-                      offset={8}
-                      formatter={(v: number) => (v < 0 ? fmtK(v) : '')}
-                      fill={t.red}
-                      fontSize={8}
-                      fontFamily="DM Mono, monospace"
-                      fontWeight={400}
-                      opacity={0.75}
+                      content={(props: any) => <BarLabel {...props} fill={props.value >= 0 ? t.green : t.red} />}
                     />
                   </Bar>
                 </ComposedChart>
