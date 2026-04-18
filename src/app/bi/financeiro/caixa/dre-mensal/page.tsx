@@ -238,21 +238,25 @@ export default function DREMensalPage() {
                             const pct = getPctRoB(v, m)
                             return (
                               <td key={m} className="px-3 py-2 text-right font-mono" style={{ color: cor }}>
-                                <div>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}</div>
-                                <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
-                                  {fmtPctSigned(pct, meta.sign)}
+                                <div className="flex items-baseline justify-end gap-1.5">
+                                  <span>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}</span>
+                                  <span className="text-[8px]" style={{ color: t.muted }}>
+                                    {fmtPctSigned(pct, meta.sign)}
+                                  </span>
                                 </div>
                               </td>
                             )
                           })}
                           <td className="px-3.5 py-2 text-right font-mono font-bold"
                             style={{ color: cor, borderLeft: `1px solid ${t.border}` }}>
-                            <div>
-                              {meta.sign === -1 && getGrupoConsolidado(grupo) !== 0 ? '−' : ''}
-                              {fmtK(getGrupoConsolidado(grupo))}
-                            </div>
-                            <div className="text-[8px] mt-0.5 font-normal" style={{ color: t.muted }}>
-                              {fmtPctSigned(getPctRoB(getGrupoConsolidado(grupo), null), meta.sign)}
+                            <div className="flex items-baseline justify-end gap-1.5">
+                              <span>
+                                {meta.sign === -1 && getGrupoConsolidado(grupo) !== 0 ? '−' : ''}
+                                {fmtK(getGrupoConsolidado(grupo))}
+                              </span>
+                              <span className="text-[8px] font-normal" style={{ color: t.muted }}>
+                                {fmtPctSigned(getPctRoB(getGrupoConsolidado(grupo), null), meta.sign)}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -277,18 +281,22 @@ export default function DREMensalPage() {
                                   const v = n2.porMes[m] ?? 0
                                   return (
                                     <td key={m} className="px-3 py-1.5 text-right font-mono text-[10px]" style={{ color: t.textSec }}>
-                                      <div>{fmtK(v)}</div>
-                                      <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
-                                        {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                      <div className="flex items-baseline justify-end gap-1.5">
+                                        <span>{fmtK(v)}</span>
+                                        <span className="text-[8px]" style={{ color: t.muted }}>
+                                          {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                        </span>
                                       </div>
                                     </td>
                                   )
                                 })}
                                 <td className="px-3.5 py-1.5 text-right font-mono text-[10px]"
                                   style={{ color: t.textSec, borderLeft: `1px solid ${t.border}` }}>
-                                  <div>{fmtK(n2.consolidado)}</div>
-                                  <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
-                                    {fmtPctSigned(getPctRoB(n2.consolidado, null), meta.sign)}
+                                  <div className="flex items-baseline justify-end gap-1.5">
+                                    <span>{fmtK(n2.consolidado)}</span>
+                                    <span className="text-[8px]" style={{ color: t.muted }}>
+                                      {fmtPctSigned(getPctRoB(n2.consolidado, null), meta.sign)}
+                                    </span>
                                   </div>
                                 </td>
                               </tr>
@@ -303,18 +311,22 @@ export default function DREMensalPage() {
                                     const v = cat.porMes[m] ?? 0
                                     return (
                                       <td key={m} className="px-3 py-1 text-right font-mono text-[9px]" style={{ color: t.muted }}>
-                                        <div>{fmtK(v)}</div>
-                                        <div className="text-[8px]" style={{ color: t.mutedDim }}>
-                                          {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                        <div className="flex items-baseline justify-end gap-1.5">
+                                          <span>{fmtK(v)}</span>
+                                          <span className="text-[8px]" style={{ color: t.mutedDim }}>
+                                            {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                          </span>
                                         </div>
                                       </td>
                                     )
                                   })}
                                   <td className="px-3.5 py-1 text-right font-mono text-[9px]"
                                     style={{ color: t.muted, borderLeft: `1px solid ${t.border}` }}>
-                                    <div>{fmtK(cat.consolidado)}</div>
-                                    <div className="text-[8px]" style={{ color: t.mutedDim }}>
-                                      {fmtPctSigned(getPctRoB(cat.consolidado, null), meta.sign)}
+                                    <div className="flex items-baseline justify-end gap-1.5">
+                                      <span>{fmtK(cat.consolidado)}</span>
+                                      <span className="text-[8px]" style={{ color: t.mutedDim }}>
+                                        {fmtPctSigned(getPctRoB(cat.consolidado, null), meta.sign)}
+                                      </span>
                                     </div>
                                   </td>
                                 </tr>
