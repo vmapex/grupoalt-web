@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useThemeStore } from '@/store/themeStore'
-import { DRE_ROWS, getDREColor } from '@/lib/mocks/caixaData'
+import { getDREColor } from '@/lib/mocks/caixaData'
 import { fmtK } from '@/lib/formatters'
 
 interface DRERow {
@@ -14,9 +14,25 @@ interface DRESidebarProps {
   rows?: DRERow[]
 }
 
+// Esqueleto zerado: usado quando não há dados (filtro sem resultado ou empresa
+// sem lançamentos). Nunca exibir mocks aqui — mockar valores faz o usuário
+// pensar que o filtro de unidade não está funcionando.
+const EMPTY_ROWS: DRERow[] = [
+  { name: 'RoB', val: 0, pct: 0 },
+  { name: 'T.D.C.F.', val: 0, pct: 0 },
+  { name: 'Rec. Líq.', val: 0, pct: 0 },
+  { name: 'Cust. Var.', val: 0, pct: 0 },
+  { name: 'Marg. Cont.', val: 0, pct: 0 },
+  { name: 'Cust. Fixo', val: 0, pct: 0 },
+  { name: 'EBT1', val: 0, pct: 0 },
+  { name: 'RNOP', val: 0, pct: 0 },
+  { name: 'DNOP', val: 0, pct: 0 },
+  { name: 'EBT2', val: 0, pct: 0 },
+]
+
 export function DRESidebar({ rows }: DRESidebarProps) {
   const t = useThemeStore((s) => s.tokens)
-  const data = rows ?? DRE_ROWS
+  const data = rows ?? EMPTY_ROWS
 
   return (
     <div className="py-4 px-4 overflow-y-auto">
