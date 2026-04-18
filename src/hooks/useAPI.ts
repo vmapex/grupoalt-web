@@ -156,10 +156,15 @@ export function useCP(
   )
 }
 
-export function useCPResumo(empresaId: number | null, dtInicio?: string, dtFim?: string) {
+export function useCPResumo(
+  empresaId: number | null,
+  dtInicio?: string,
+  dtFim?: string,
+  projetoIds?: string[],
+) {
   return useApi<ResumoKPIsAPI>(
     empresaId ? `/empresas/${empresaId}/cp/resumo` : null,
-    { data_inicio: dtInicio, data_fim: dtFim },
+    { data_inicio: dtInicio, data_fim: dtFim, projeto_ids: projetoIds },
   )
 }
 
@@ -191,10 +196,15 @@ export function useCR(
   )
 }
 
-export function useCRResumo(empresaId: number | null, dtInicio?: string, dtFim?: string) {
+export function useCRResumo(
+  empresaId: number | null,
+  dtInicio?: string,
+  dtFim?: string,
+  projetoIds?: string[],
+) {
   return useApi<ResumoKPIsAPI>(
     empresaId ? `/empresas/${empresaId}/cr/resumo` : null,
-    { data_inicio: dtInicio, data_fim: dtFim },
+    { data_inicio: dtInicio, data_fim: dtFim, projeto_ids: projetoIds },
   )
 }
 

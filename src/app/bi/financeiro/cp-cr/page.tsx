@@ -97,8 +97,8 @@ export default function PageCPCR() {
   // CP/CR: busca todos os lançamentos dentro do filtro de datas do dashboard
   const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
   const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
-  const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim)
-  const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim)
+  const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim, projetoIds)
+  const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim, projetoIds)
 
   // Transform API → component shape (sem fallback mock)
   const cpData: ContaPagarReceber[] = useMemo(
