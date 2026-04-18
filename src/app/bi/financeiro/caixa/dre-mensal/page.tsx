@@ -129,6 +129,22 @@ export default function DREMensalPage() {
     return raw
   }
 
+  // % relativo à Receita Bruta (do mesmo mês, ou consolidada quando `mes`
+  // for null). Zero se RoB for 0 (evita divisão por zero na formatação).
+  const getPctRoB = (valor: number, mes: string | null): number => {
+    const rob = mes ? getGrupoValor('RoB', mes) : getGrupoConsolidado('RoB')
+    if (!rob) return 0
+    return (valor / rob) * 100
+  }
+
+  // Formata % com até 1 casa decimal e vírgula ao invés de ponto. O `sign`
+  // da linha DRE prefixa o sinal (TDCF/CV/CF/DNOP já são displayed com `−`).
+  const fmtPctSigned = (pct: number, sign: 1 | -1 | 0): string => {
+    if (!isFinite(pct) || pct === 0) return '0,0%'
+    const prefix = sign === -1 ? '−' : (pct < 0 ? '−' : '')
+    return `${prefix}${Math.abs(pct).toFixed(1).replace('.', ',')}%`
+  }
+
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
@@ -219,17 +235,25 @@ export default function DREMensalPage() {
                           </td>
                           {matrix.meses.map((m) => {
                             const v = getGrupoValor(grupo, m)
-                            const signed = meta.sign === -1 ? -v : v
+                            const pct = getPctRoB(v, m)
                             return (
                               <td key={m} className="px-3 py-2 text-right font-mono" style={{ color: cor }}>
-                                {meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}
+                                <div>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}</div>
+                                <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
+                                  {fmtPctSigned(pct, meta.sign)}
+                                </div>
                               </td>
                             )
                           })}
                           <td className="px-3.5 py-2 text-right font-mono font-bold"
                             style={{ color: cor, borderLeft: `1px solid ${t.border}` }}>
-                            {meta.sign === -1 && getGrupoConsolidado(grupo) !== 0 ? '−' : ''}
-                            {fmtK(getGrupoConsolidado(grupo))}
+                            <div>
+                              {meta.sign === -1 && getGrupoConsolidado(grupo) !== 0 ? '−' : ''}
+                              {fmtK(getGrupoConsolidado(grupo))}
+                            </div>
+                            <div className="text-[8px] mt-0.5 font-normal" style={{ color: t.muted }}>
+                              {fmtPctSigned(getPctRoB(getGrupoConsolidado(grupo), null), meta.sign)}
+                            </div>
                           </td>
                         </tr>
                         {isExpandable && expanded && matrix.grupos[grupo].nivel2.map((n2) => {
@@ -249,14 +273,23 @@ export default function DREMensalPage() {
                                     <span className="text-[10px]">{n2.label}</span>
                                   </div>
                                 </td>
-                                {matrix.meses.map((m) => (
-                                  <td key={m} className="px-3 py-1.5 text-right font-mono text-[10px]" style={{ color: t.textSec }}>
-                                    {fmtK(n2.porMes[m] ?? 0)}
-                                  </td>
-                                ))}
+                                {matrix.meses.map((m) => {
+                                  const v = n2.porMes[m] ?? 0
+                                  return (
+                                    <td key={m} className="px-3 py-1.5 text-right font-mono text-[10px]" style={{ color: t.textSec }}>
+                                      <div>{fmtK(v)}</div>
+                                      <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
+                                        {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                      </div>
+                                    </td>
+                                  )
+                                })}
                                 <td className="px-3.5 py-1.5 text-right font-mono text-[10px]"
                                   style={{ color: t.textSec, borderLeft: `1px solid ${t.border}` }}>
-                                  {fmtK(n2.consolidado)}
+                                  <div>{fmtK(n2.consolidado)}</div>
+                                  <div className="text-[8px] mt-0.5" style={{ color: t.muted }}>
+                                    {fmtPctSigned(getPctRoB(n2.consolidado, null), meta.sign)}
+                                  </div>
                                 </td>
                               </tr>
                               {n2Expanded && n2.categorias.map((cat) => (
@@ -266,14 +299,23 @@ export default function DREMensalPage() {
                                     <span className="text-[9px] font-mono" style={{ color: t.mutedDim }}>{cat.codigo}</span>
                                     <span className="text-[10px] ml-1.5">{cat.nome}</span>
                                   </td>
-                                  {matrix.meses.map((m) => (
-                                    <td key={m} className="px-3 py-1 text-right font-mono text-[9px]" style={{ color: t.muted }}>
-                                      {fmtK(cat.porMes[m] ?? 0)}
-                                    </td>
-                                  ))}
+                                  {matrix.meses.map((m) => {
+                                    const v = cat.porMes[m] ?? 0
+                                    return (
+                                      <td key={m} className="px-3 py-1 text-right font-mono text-[9px]" style={{ color: t.muted }}>
+                                        <div>{fmtK(v)}</div>
+                                        <div className="text-[8px]" style={{ color: t.mutedDim }}>
+                                          {fmtPctSigned(getPctRoB(v, m), meta.sign)}
+                                        </div>
+                                      </td>
+                                    )
+                                  })}
                                   <td className="px-3.5 py-1 text-right font-mono text-[9px]"
                                     style={{ color: t.muted, borderLeft: `1px solid ${t.border}` }}>
-                                    {fmtK(cat.consolidado)}
+                                    <div>{fmtK(cat.consolidado)}</div>
+                                    <div className="text-[8px]" style={{ color: t.mutedDim }}>
+                                      {fmtPctSigned(getPctRoB(cat.consolidado, null), meta.sign)}
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
