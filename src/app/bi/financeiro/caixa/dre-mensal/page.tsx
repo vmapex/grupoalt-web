@@ -129,6 +129,15 @@ export default function DREMensalPage() {
     return raw
   }
 
+  // Cor da célula: para linhas derivadas (RL, MC, EBT1, EBT2), fica em
+  // vermelho quando o valor é negativo — senão o verde fixo esconde que
+  // está no prejuízo. Outras linhas mantêm sempre a cor do grupo.
+  const getCellColor = (grupo: GrupoRow, v: number): string => {
+    const base = getGrupoColor(grupo)
+    if (GRUPO_META[grupo].isDerived && v < 0) return t.red
+    return base
+  }
+
   // % relativo à Receita Bruta (do mesmo mês, ou consolidada quando `mes`
   // for null). Zero se RoB for 0 (evita divisão por zero na formatação).
   const getPctRoB = (valor: number, mes: string | null): number => {
@@ -236,8 +245,9 @@ export default function DREMensalPage() {
                           {matrix.meses.map((m) => {
                             const v = getGrupoValor(grupo, m)
                             const pct = getPctRoB(v, m)
+                            const cellCor = getCellColor(grupo, v)
                             return (
-                              <td key={m} className="px-3 py-2 text-right font-mono" style={{ color: cor }}>
+                              <td key={m} className="px-3 py-2 text-right font-mono" style={{ color: cellCor }}>
                                 <div className="flex items-baseline justify-end gap-1.5">
                                   <span>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}</span>
                                   <span className="text-[8px]" style={{ color: t.muted }}>
@@ -247,18 +257,24 @@ export default function DREMensalPage() {
                               </td>
                             )
                           })}
-                          <td className="px-3.5 py-2 text-right font-mono font-bold"
-                            style={{ color: cor, borderLeft: `1px solid ${t.border}` }}>
-                            <div className="flex items-baseline justify-end gap-1.5">
-                              <span>
-                                {meta.sign === -1 && getGrupoConsolidado(grupo) !== 0 ? '−' : ''}
-                                {fmtK(getGrupoConsolidado(grupo))}
-                              </span>
-                              <span className="text-[8px] font-normal" style={{ color: t.muted }}>
-                                {fmtPctSigned(getPctRoB(getGrupoConsolidado(grupo), null), meta.sign)}
-                              </span>
-                            </div>
-                          </td>
+                          {(() => {
+                            const cons = getGrupoConsolidado(grupo)
+                            const cellCor = getCellColor(grupo, cons)
+                            return (
+                              <td className="px-3.5 py-2 text-right font-mono font-bold"
+                                style={{ color: cellCor, borderLeft: `1px solid ${t.border}` }}>
+                                <div className="flex items-baseline justify-end gap-1.5">
+                                  <span>
+                                    {meta.sign === -1 && cons !== 0 ? '−' : ''}
+                                    {fmtK(cons)}
+                                  </span>
+                                  <span className="text-[8px] font-normal" style={{ color: t.muted }}>
+                                    {fmtPctSigned(getPctRoB(cons, null), meta.sign)}
+                                  </span>
+                                </div>
+                              </td>
+                            )
+                          })()}
                         </tr>
                         {isExpandable && expanded && matrix.grupos[grupo].nivel2.map((n2) => {
                           const n2Key = `${grupo}:${n2.label}`
@@ -353,10 +369,10 @@ export default function DREMensalPage() {
                 {[
                   { l: 'Receita Bruta', v: consolidado.RoB, c: t.blue, sign: 1 },
                   { l: 'T.D.C.F.', v: consolidado.TDCF, c: t.amber, sign: -1 },
-                  { l: 'Receita Líquida', v: consolidado.RoB - consolidado.TDCF, c: t.green, sign: 0 },
+                  { l: 'Receita Líquida', v: consolidado.RoB - consolidado.TDCF, c: (consolidado.RoB - consolidado.TDCF) >= 0 ? t.green : t.red, sign: 0 },
                   { l: 'Custo Variável', v: consolidado.CV, c: t.red, sign: -1 },
                   { l: 'Custo Fixo', v: consolidado.CF, c: t.orange, sign: -1 },
-                  { l: 'Margem Contribuição', v: consolidado.MC, c: t.green, sign: 0 },
+                  { l: 'Margem Contribuição', v: consolidado.MC, c: consolidado.MC >= 0 ? t.green : t.red, sign: 0 },
                   { l: 'EBT1', v: consolidado.EBT1, c: consolidado.EBT1 >= 0 ? t.green : t.red, sign: 0 },
                   { l: 'Saldo NOP', v: consolidado.RNOP - consolidado.DNOP, c: t.purple, sign: 0 },
                   { l: 'EBT2 (Resultado)', v: consolidado.EBT2, c: consolidado.EBT2 >= 0 ? t.green : t.red, sign: 0 },
