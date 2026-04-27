@@ -177,19 +177,17 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'altmax-theme',
       partialize: (s) => ({ mode: s.mode }),
+      // Skip auto-hydration during the first render to avoid mismatches
+      // between SSR (always dark) and client (whatever localStorage had).
+      // We rehydrate manually from a top-level client effect (see ThemeHydrator).
+      skipHydration: true,
       onRehydrateStorage: () => (state) => {
         if (!state) return
         applyDomMode(state.mode)
-        // tokens are derived; rehydrate them from mode for safety
         state.tokens = state.mode === 'dark' ? DARK : LIGHT
       },
     }
   )
 )
-
-// Apply on first import (covers SSR hydration + non-persist paths)
-if (typeof window !== 'undefined') {
-  applyDomMode(useThemeStore.getState().mode)
-}
 
 export { DARK, LIGHT }

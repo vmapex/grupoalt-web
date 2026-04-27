@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ThemeHydrator } from '@/components/ThemeHydrator'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -29,11 +30,17 @@ const themeBootstrap = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
+    // suppressHydrationWarning: the boot script intentionally mutates
+    // <html> classList before React hydrates, which would otherwise
+    // trigger a hydration warning on every page load.
+    <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <ThemeHydrator />
+        {children}
+      </body>
     </html>
   )
 }
