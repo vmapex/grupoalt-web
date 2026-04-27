@@ -85,23 +85,23 @@ export function AnaliseIAView() {
     { label: 'Saldo de Caixa', value: saldoCaixa, color: t.amber, sub: 'Posição atual' },
   ], [dre, saldoCaixa, t, monthLabel])
 
-  // Waterfall bars (10 DRE lines)
+  // Waterfall bars (10 DRE lines) — colors mapped to brand palette
   const waterfallBars = useMemo(() => {
     const items = [
-      { sigla: 'RoB',  value: dre.RoB,  color: `rgba(56,189,248,0.5)` },
-      { sigla: 'TDCF', value: dre.TDCF, color: `rgba(251,191,36,0.5)` },
-      { sigla: 'RL',   value: dre.RL,   color: `rgba(52,211,153,0.4)` },
-      { sigla: 'CV',   value: dre.CV,   color: `rgba(248,113,113,0.5)` },
-      { sigla: 'MC',   value: dre.MC,   color: `rgba(52,211,153,0.6)` },
-      { sigla: 'CF',   value: dre.CF,   color: `rgba(251,191,36,0.4)` },
-      { sigla: 'EBT1', value: dre.EBT1, color: dre.EBT1 >= 0 ? `rgba(52,211,153,0.5)` : `rgba(248,113,113,0.3)` },
-      { sigla: 'RNOP', value: dre.RNOP, color: `rgba(192,132,252,0.4)` },
-      { sigla: 'DNOP', value: dre.DNOP, color: `rgba(248,113,113,0.3)` },
-      { sigla: 'EBT2', value: dre.EBT2, color: dre.EBT2 >= 0 ? `rgba(52,211,153,0.8)` : `rgba(248,113,113,0.5)` },
+      { sigla: 'RoB',  value: dre.RoB,  color: t.blue },
+      { sigla: 'TDCF', value: dre.TDCF, color: t.amber },
+      { sigla: 'RL',   value: dre.RL,   color: t.green },
+      { sigla: 'CV',   value: dre.CV,   color: t.red },
+      { sigla: 'MC',   value: dre.MC,   color: t.green },
+      { sigla: 'CF',   value: dre.CF,   color: t.amber },
+      { sigla: 'EBT1', value: dre.EBT1, color: dre.EBT1 >= 0 ? t.green : t.red },
+      { sigla: 'RNOP', value: dre.RNOP, color: t.purple },
+      { sigla: 'DNOP', value: dre.DNOP, color: t.red },
+      { sigla: 'EBT2', value: dre.EBT2, color: dre.EBT2 >= 0 ? t.gold : t.red },
     ]
     const maxVal = Math.max(...items.map((i) => Math.abs(i.value)), 1)
     return items.map((i) => ({ ...i, pct: (Math.abs(i.value) / maxVal) * 100 }))
-  }, [dre])
+  }, [dre, t])
 
   // DRE table rows
   const tableRows = useMemo(() => {
@@ -253,25 +253,65 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
         </div>
 
         {/* Waterfall DRE */}
-        <div className="relative rounded-xl p-4 overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <GlowLine color={t.blue} />
-          <div className="text-[9px] uppercase tracking-widest mb-3.5 font-mono" style={{ color: t.muted }}>
+        <div
+          className="relative rounded-xl p-4 overflow-hidden"
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        >
+          <GlowLine color={t.gold} />
+          <div className="alt-eyebrow mb-3" style={{ color: t.muted }}>
             DRE — Cascata de resultado ({monthLabel})
           </div>
-          <div className="flex items-end gap-1.5" style={{ height: 100 }}>
-            {waterfallBars.map((bar) => (
-              <div key={bar.sigla} className="flex flex-col items-center flex-1 gap-1" style={{ height: '100%', justifyContent: 'flex-end' }}>
-                <div
-                  className="w-full rounded-t transition-all"
-                  style={{
-                    height: `${Math.max(bar.pct, 3)}%`,
-                    background: bar.color,
-                    minHeight: 3,
-                  }}
-                />
-                <div className="text-[7px] font-mono" style={{ color: t.muted }}>{bar.sigla}</div>
-              </div>
-            ))}
+          <div
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${waterfallBars.length}, minmax(0, 1fr))` }}
+          >
+            {waterfallBars.map((bar) => {
+              const negative = bar.value < 0
+              return (
+                <div key={bar.sigla} className="flex flex-col items-center min-w-0">
+                  {/* Bar plot — fixed track that anchors bars at the bottom */}
+                  <div
+                    className="w-full flex items-end justify-center"
+                    style={{ height: 110 }}
+                    title={`${bar.sigla}: ${fmtBRL(bar.value)}`}
+                  >
+                    <div
+                      className="w-full rounded-t transition-all"
+                      style={{
+                        height: `${Math.max(bar.pct, 4)}%`,
+                        minHeight: 4,
+                        background: `linear-gradient(180deg, ${bar.color}, ${bar.color}99)`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 12px ${bar.color}33`,
+                      }}
+                    />
+                  </div>
+                  {/* Sigla — uppercase mono label */}
+                  <div
+                    className="mt-2 text-[9px] truncate w-full text-center"
+                    style={{
+                      color: t.muted,
+                      fontFamily: 'var(--font-mono)',
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {bar.sigla}
+                  </div>
+                  {/* Value — compact format */}
+                  <div
+                    className="text-[9px] truncate w-full text-center"
+                    style={{
+                      color: negative ? t.red : t.textSec,
+                      fontFamily: 'var(--font-mono)',
+                      marginTop: 2,
+                    }}
+                  >
+                    {negative ? '−' : ''}{fmtK(Math.abs(bar.value))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
