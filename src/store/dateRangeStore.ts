@@ -13,14 +13,19 @@ interface DateRangeState {
   days: () => number
 }
 
-const now = new Date()
-const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+/**
+ * Use a deterministic SSR-safe default. The real "now-based" range is
+ * applied after hydration via the rehydrate effect — this avoids any
+ * SSR vs client date drift that would trigger React error #418/425.
+ */
+const SSR_DEFAULT_FROM = '2025-01-01'
+const SSR_DEFAULT_TO = '2026-12-31'
 
 export const useDateRangeStore = create<DateRangeState>()(
   persist(
     (set, get) => ({
-      from: toISO(sixMonthsAgo),
-      to: toISO(now),
+      from: SSR_DEFAULT_FROM,
+      to: SSR_DEFAULT_TO,
 
       setRange: (from, to) => set({ from, to }),
 
@@ -31,6 +36,18 @@ export const useDateRangeStore = create<DateRangeState>()(
     }),
     {
       name: 'altmax-date-range',
+      // Defer rehydration to client after React hydrates
+      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        // If localStorage didn't have a value, use a now-based default
+        if (!state) return
+        if (state.from === SSR_DEFAULT_FROM && state.to === SSR_DEFAULT_TO) {
+          const now = new Date()
+          const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+          state.from = toISO(sixMonthsAgo)
+          state.to = toISO(now)
+        }
+      },
     }
   )
 )

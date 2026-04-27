@@ -108,6 +108,8 @@ export const useEmpresaStore = create<EmpresaState>()(
     {
       name: 'altmax-empresa',
       partialize: (state) => ({ activeId: state.activeId }),
+      // Defer rehydration until after React hydrates (see ThemeHydrator)
+      skipHydration: true,
     }
   )
 )
