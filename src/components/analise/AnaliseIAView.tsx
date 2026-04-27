@@ -212,11 +212,17 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
   return (
     <div
       className="grid h-full overflow-hidden"
-      style={{ gridTemplateColumns: '1fr 400px', minHeight: 0 }}
+      style={{
+        gridTemplateColumns: '1fr 400px',
+        // CRITICAL: explicit row height = grid container height (not auto)
+        // so the inner column's overflow-y-auto has a real bound to scroll against
+        gridTemplateRows: 'minmax(0, 1fr)',
+        minHeight: 0,
+      }}
     >
       {/* ── Left Column: Charts & Data ── */}
       <div
-        className="flex flex-col gap-3.5 p-5 overflow-y-auto min-h-0"
+        className="flex flex-col gap-3.5 p-5 overflow-y-auto min-h-0 h-full"
         style={{ borderRight: `1px solid ${t.border}` }}
       >
         {/* KPI Strip */}
