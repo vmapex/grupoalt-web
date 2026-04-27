@@ -202,11 +202,11 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
     return suggestions.slice(0, 4)
   }, [dre, cpAtrasado, monthLabel])
 
-  // Badge colors
+  // Badge colors — pull from current theme tokens so light/dark stay consistent
   const badgeStyles: Record<string, { bg: string; color: string; border: string }> = {
-    g: { bg: 'rgba(52,211,153,0.1)', color: t.green, border: 'rgba(52,211,153,0.2)' },
-    a: { bg: 'rgba(251,191,36,0.1)', color: t.amber, border: 'rgba(251,191,36,0.2)' },
-    r: { bg: 'rgba(248,113,113,0.1)', color: t.red, border: 'rgba(248,113,113,0.2)' },
+    g: { bg: t.greenDim, color: t.green, border: `${t.green}40` },
+    a: { bg: t.amberDim, color: t.amber, border: `${t.amber}40` },
+    r: { bg: t.redDim,   color: t.red,   border: `${t.red}40`   },
   }
 
   return (
@@ -334,48 +334,137 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
         </div>
 
         {/* DRE Indicators Table */}
-        <div className="relative rounded-xl overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <GlowLine color={t.green} />
-          <table className="w-full border-collapse text-[10px]">
+        <div
+          className="relative rounded-xl overflow-hidden"
+          style={{
+            background: t.surface,
+            border: `1px solid ${t.border}`,
+          }}
+        >
+          {/* Top hairline accent */}
+          <div
+            className="absolute left-3 right-3 top-0 h-px pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${t.green}, transparent)`,
+              opacity: 0.55,
+            }}
+          />
+          {/* Eyebrow + section header */}
+          <div
+            className="px-4 pt-4 pb-3 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${t.border}` }}
+          >
+            <div className="alt-eyebrow" style={{ color: t.muted }}>
+              Indicadores DRE
+            </div>
+            <div
+              className="text-[10px]"
+              style={{
+                color: t.mutedDim,
+                fontFamily: 'var(--font-mono)',
+                letterSpacing: '0.1em',
+              }}
+            >
+              {monthLabel}
+            </div>
+          </div>
+          <table className="w-full border-collapse">
             <thead>
-              <tr>
-                {['Indicador', 'Valor', '% RoB', 'Status'].map((col) => (
+              <tr style={{ background: t.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.025)' }}>
+                {[
+                  { key: 'ind', label: 'Indicador', align: 'left' as const },
+                  { key: 'val', label: 'Valor', align: 'right' as const },
+                  { key: 'pct', label: '% RoB', align: 'right' as const },
+                  { key: 'status', label: 'Status', align: 'right' as const },
+                ].map((col) => (
                   <th
-                    key={col}
-                    className="text-left text-[8px] uppercase tracking-wider font-mono px-3 py-2"
-                    style={{ color: t.muted, borderBottom: `1px solid ${t.border}`, background: `rgba(0,0,0,0.2)` }}
+                    key={col.key}
+                    className="px-4 py-2.5"
+                    style={{
+                      textAlign: col.align,
+                      color: t.muted,
+                      borderBottom: `1px solid ${t.border}`,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                    }}
                   >
-                    {col}
+                    {col.label}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {tableRows.map((row) => (
-                <tr key={row.sigla}>
-                  <td className="px-3 py-2" style={{ color: t.text, borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
-                    {row.nome}
-                  </td>
-                  <td className="px-3 py-2 font-mono" style={{ color: t.text, borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
-                    {fmtBRL(row.value)}
-                  </td>
-                  <td className="px-3 py-2 font-mono" style={{ color: row.badge.type === 'g' ? t.green : row.badge.type === 'a' ? t.amber : t.red, borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
-                    {row.pctRob}
-                  </td>
-                  <td className="px-3 py-2" style={{ borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
-                    <span
-                      className="inline-flex px-2 py-0.5 rounded-full text-[8px] font-semibold"
+              {tableRows.map((row, i) => {
+                const isLast = i === tableRows.length - 1
+                return (
+                  <tr
+                    key={row.sigla}
+                    className="transition-colors"
+                    onMouseEnter={(e) => { e.currentTarget.style.background = t.surfaceHover }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <td
+                      className="px-4 py-3"
                       style={{
-                        background: badgeStyles[row.badge.type].bg,
-                        color: badgeStyles[row.badge.type].color,
-                        border: `1px solid ${badgeStyles[row.badge.type].border}`,
+                        color: t.text,
+                        borderBottom: isLast ? 'none' : `1px solid ${t.border}`,
+                        fontSize: 13,
+                        fontFamily: 'var(--font-body)',
+                        fontWeight: 500,
                       }}
                     >
-                      {row.badge.label}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                      {row.nome}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-right"
+                      style={{
+                        color: row.value < 0 ? t.red : t.text,
+                        borderBottom: isLast ? 'none' : `1px solid ${t.border}`,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 12,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {row.value < 0 ? '−' : ''}{fmtBRL(Math.abs(row.value))}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-right"
+                      style={{
+                        color: row.badge.type === 'g' ? t.green : row.badge.type === 'a' ? t.amber : t.red,
+                        borderBottom: isLast ? 'none' : `1px solid ${t.border}`,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {row.pctRob}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-right"
+                      style={{ borderBottom: isLast ? 'none' : `1px solid ${t.border}` }}
+                    >
+                      <span
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full"
+                        style={{
+                          background: badgeStyles[row.badge.type].bg,
+                          color: badgeStyles[row.badge.type].color,
+                          border: `1px solid ${badgeStyles[row.badge.type].border}`,
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 9.5,
+                          fontWeight: 600,
+                          letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {row.badge.label}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
