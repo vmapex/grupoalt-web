@@ -210,9 +210,15 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
   }
 
   return (
-    <div className="grid h-full" style={{ gridTemplateColumns: '1fr 400px', minHeight: 0 }}>
+    <div
+      className="grid h-full overflow-hidden"
+      style={{ gridTemplateColumns: '1fr 400px', minHeight: 0 }}
+    >
       {/* ── Left Column: Charts & Data ── */}
-      <div className="flex flex-col gap-3.5 p-5 overflow-y-auto" style={{ borderRight: `1px solid ${t.border}` }}>
+      <div
+        className="flex flex-col gap-3.5 p-5 overflow-y-auto min-h-0"
+        style={{ borderRight: `1px solid ${t.border}` }}
+      >
         {/* KPI Strip */}
         <div className="grid grid-cols-4" style={{ borderBottom: `1px solid ${t.border}`, margin: '-20px -20px 0', padding: '0' }}>
           {kpis.map((kpi, i) => (
