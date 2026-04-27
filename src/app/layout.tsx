@@ -3,16 +3,35 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Portal Grupo ALT',
-  description: 'Portal corporativo do Grupo ALT',
+  description: 'Portal corporativo do Grupo ALT — BI cinematográfico para finanças e operações.',
 }
+
+/**
+ * Inline script applies the persisted theme BEFORE first paint, so
+ * the user never sees a flash of the wrong theme on hard reload.
+ */
+const themeBootstrap = `
+(function () {
+  try {
+    var raw = localStorage.getItem('altmax-theme');
+    var mode = 'dark';
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.state && parsed.state.mode) mode = parsed.state.mode;
+    }
+    var root = document.documentElement;
+    if (mode === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    root.style.colorScheme = mode;
+  } catch (e) { /* ignore */ }
+})();
+`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body>{children}</body>
     </html>

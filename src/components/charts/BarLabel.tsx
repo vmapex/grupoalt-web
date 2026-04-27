@@ -24,7 +24,7 @@ export function BarLabel({ x = 0, y = 0, width = 0, height = 0, value, fill }: B
       textAnchor="middle"
       fill={fill}
       fontSize={8}
-      fontFamily="DM Mono, monospace"
+      fontFamily="JetBrains Mono, monospace"
       fontWeight="normal"
       opacity={0.75}
     >

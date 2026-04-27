@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, BarChart3, FileText, CalendarCheck,
+  Building2, BarChart3, FileText,
   ChevronDown, Search, LayoutDashboard,
   Landmark, TrendingUp, GitCompare, Network, Layers,
-  Settings, X,
+  Settings,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
@@ -67,7 +67,7 @@ const sections: NavSection[] = [
 
 export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
-  const { user, empresas, empresaAtiva, grupos, grupoAtivo, hasPermissao, setEmpresaAtiva, setGrupoAtivo, logout } = useAuthStore()
+  const { user, empresas, empresaAtiva, grupoAtivo, hasPermissao, setEmpresaAtiva } = useAuthStore()
   const t = useThemeStore((s) => s.tokens)
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -92,44 +92,69 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
     ? user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
     : '?'
 
-  const goldGradient = 'linear-gradient(90deg, #CCA000 0%, #E0B82E 25%, #F5E6A3 50%, #E0B82E 75%, #CCA000 100%)'
+  // Subtle, animated gold hairline used at top + bottom of the rail
+  const goldHairline = `linear-gradient(90deg, transparent 0%, ${t.gold} 25%, ${t.goldSoft} 50%, ${t.gold} 75%, transparent 100%)`
 
   const sidebarContent = (
     <aside
-      className={`${mobileOpen ? 'flex' : 'hidden md:flex'} w-[280px] flex-col border-r relative overflow-hidden flex-shrink-0`}
-      style={{ background: t.surfaceElevated, borderColor: t.border }}
+      className={`${mobileOpen ? 'flex' : 'hidden md:flex'} w-[280px] flex-col relative overflow-hidden flex-shrink-0`}
+      style={{
+        background: t.surfaceElevated,
+        borderRight: `1px solid ${t.border}`,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
     >
-      {/* Gold accent top line */}
-      <div className="h-[2px] flex-shrink-0" style={{
-        background: goldGradient,
+      {/* Top gold hairline — design system signature */}
+      <div className="h-[1.5px] flex-shrink-0" style={{
+        background: goldHairline,
         backgroundSize: '200% 100%',
-        animation: 'shimmer 4s ease-in-out infinite',
+        animation: 'shimmer 5s ease-in-out infinite',
+        opacity: 0.7,
       }} />
 
-      {/* Account Header */}
-      <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${t.border}` }}>
+      {/* Account / brand header */}
+      <div
+        className="flex items-center justify-between p-5"
+        style={{ borderBottom: `1px solid ${t.border}` }}
+      >
         <button
-          className="flex gap-2 transition-all text-sm font-medium border rounded-xl py-2.5 px-4 items-center shadow-sm"
+          className="flex gap-2 transition-all text-[13px] font-medium border rounded-xl py-2 px-3 items-center"
           style={{
             background: hoveredGroupBtn ? t.surfaceHover : t.surface,
-            borderColor: t.borderHover,
+            borderColor: hoveredGroupBtn ? t.borderGold : t.border,
             color: t.text,
+            fontFamily: 'var(--font-body)',
           }}
           onMouseEnter={() => setHoveredGroupBtn(true)}
           onMouseLeave={() => setHoveredGroupBtn(false)}
         >
-          <Building2 className="w-4 h-4 text-[#CCA000]" />
-          <span>{grupoAtivo?.nome || 'Grupo ALT'}</span>
-          <ChevronDown className="w-4 h-4" style={{ color: t.muted }} />
+          <Building2 className="w-4 h-4" style={{ color: t.gold }} />
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 400, letterSpacing: '-0.01em' }}>
+            {grupoAtivo?.nome || 'Grupo ALT'}
+          </span>
+          <ChevronDown className="w-3.5 h-3.5" style={{ color: t.muted }} />
         </button>
+
+        {/* User avatar — gold gradient with online dot */}
         <div className="relative">
           <div
-            className="w-10 h-10 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] border-2 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm"
-            style={{ borderColor: t.border, color: '#18181b' }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold"
+            style={{
+              background: `linear-gradient(135deg, ${t.gold}, ${t.goldSoft})`,
+              color: '#1A1718',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.04em',
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px ${t.goldDim}`,
+              border: `1px solid ${t.borderGold}`,
+            }}
           >
             {userInitials}
           </div>
-          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: t.bg }} />
+          <div
+            className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full"
+            style={{ background: t.green, border: `2px solid ${t.bg}` }}
+          />
         </div>
       </div>
 
@@ -140,11 +165,19 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
           <input
             type="text"
             placeholder="Buscar..."
-            className="w-full border rounded-xl px-4 py-2.5 pl-9 text-sm focus:outline-none focus:border-[#CCA000] focus:ring-1 focus:ring-[#CCA000] transition-colors"
+            className="w-full rounded-xl px-4 py-2 pl-9 text-sm focus:outline-none transition-all"
             style={{
               background: t.surface,
-              borderColor: t.borderHover,
+              border: `1px solid ${t.border}`,
               color: t.text,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = t.gold
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${t.goldDim}`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = t.border
+              e.currentTarget.style.boxShadow = 'none'
             }}
           />
         </div>
@@ -158,8 +191,18 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
               onClick={() => toggleSection(section.id)}
               className="w-full px-4 mb-2 mt-5 first:mt-0 cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <span className="uppercase text-xs tracking-wider font-medium flex items-center gap-2" style={{ color: t.muted }}>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${collapsed[section.id] ? '-rotate-90' : ''}`} />
+              <span
+                className="text-[10px] tracking-[0.22em] flex items-center gap-2"
+                style={{
+                  color: t.gold,
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                }}
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform duration-200 ${collapsed[section.id] ? '-rotate-90' : ''}`}
+                />
                 {section.label}
               </span>
             </button>
@@ -172,20 +215,37 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
                     <Link
                       key={child.href}
                       href={child.href}
-                      className="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition-colors mb-0.5"
+                      className="relative flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl transition-all mb-0.5"
                       style={{
-                        background: active ? t.surface : hovered ? t.surfaceHover : 'transparent',
-                        color: active || hovered ? t.text : t.textSec,
-                        fontWeight: active ? 500 : undefined,
-                        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : undefined,
+                        background: active
+                          ? `linear-gradient(135deg, ${t.goldDim}, transparent)`
+                          : hovered ? t.surfaceHover : 'transparent',
+                        color: active ? t.gold : hovered ? t.text : t.textSec,
+                        fontWeight: active ? 600 : 500,
+                        border: `1px solid ${active ? t.borderGold : 'transparent'}`,
                       }}
                       onMouseEnter={() => setHoveredItem(child.href)}
                       onMouseLeave={() => setHoveredItem(null)}
                     >
+                      {/* Active indicator: thin gold bar on the left */}
+                      {active && (
+                        <span
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r"
+                          style={{ background: t.gold, boxShadow: t.goldGlow }}
+                        />
+                      )}
                       {child.icon}
                       <span>{child.label}</span>
                       {child.badge && (
-                        <span className="ml-auto bg-[#CCA000]/20 text-[#E0B82E] text-xs px-2 py-0.5 rounded-full font-medium">
+                        <span
+                          className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-medium"
+                          style={{
+                            background: t.goldDim,
+                            color: t.gold,
+                            border: `1px solid ${t.borderGold}`,
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        >
                           {child.badge}
                         </span>
                       )}
@@ -200,32 +260,56 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
         {/* Empresas section */}
         <div>
           <button className="w-full px-4 mb-2 mt-5 cursor-pointer hover:opacity-80 transition-opacity">
-            <span className="uppercase text-xs tracking-wider font-medium flex items-center gap-2" style={{ color: t.muted }}>
-              <ChevronDown className="w-3.5 h-3.5" />
+            <span
+              className="text-[10px] tracking-[0.22em] flex items-center gap-2"
+              style={{
+                color: t.gold,
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 500,
+                textTransform: 'uppercase',
+              }}
+            >
+              <ChevronDown className="w-3 h-3" />
               Empresas
             </span>
           </button>
           {empresas.map((emp, i) => {
             const empActive = empresaAtiva?.id === emp.id
             const empHovered = hoveredEmpresa === emp.id
+            const dotColors = [t.gold, t.blue, t.green]
             return (
               <button
                 key={emp.id}
                 onClick={() => setEmpresaAtiva(emp)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 mx-2 rounded-xl transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-2 mx-2 rounded-xl transition-all"
                 style={{
-                  background: empActive ? t.surface : empHovered ? t.surfaceHover : 'transparent',
+                  background: empActive ? t.surfaceHover : empHovered ? t.surface : 'transparent',
                   color: empActive || empHovered ? t.text : t.textSec,
+                  border: `1px solid ${empActive ? t.border : 'transparent'}`,
                 }}
                 onMouseEnter={() => setHoveredEmpresa(emp.id)}
                 onMouseLeave={() => setHoveredEmpresa(null)}
               >
-                <span className={`w-2 h-2 rounded-full ${
-                  i === 0 ? 'bg-[#CCA000]' : i === 1 ? 'bg-blue-500' : 'bg-emerald-500'
-                }`} />
-                <span className="text-sm">{emp.nome}</span>
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background: dotColors[i % dotColors.length],
+                    boxShadow: `0 0 8px ${dotColors[i % dotColors.length]}`,
+                  }}
+                />
+                <span className="text-[13px]">{emp.nome}</span>
                 {empActive && (
-                  <span className="ml-auto text-xs" style={{ color: t.muted }}>Principal</span>
+                  <span
+                    className="ml-auto text-[9px]"
+                    style={{
+                      color: t.gold,
+                      fontFamily: 'var(--font-mono)',
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Ativa
+                  </span>
                 )}
               </button>
             )
@@ -238,10 +322,10 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
         {user?.is_admin && (
           <Link
             href="/portal/admin"
-            className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl transition-colors text-sm"
+            className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl transition-all text-sm"
             style={{
               color: isActive('/portal/admin') || hoveredAdmin ? t.text : t.muted,
-              background: isActive('/portal/admin') ? t.surface : hoveredAdmin ? t.surfaceHover : 'transparent',
+              background: isActive('/portal/admin') ? t.surfaceHover : hoveredAdmin ? t.surface : 'transparent',
             }}
             onMouseEnter={() => setHoveredAdmin(true)}
             onMouseLeave={() => setHoveredAdmin(false)}
@@ -252,19 +336,13 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
         )}
       </div>
 
-      {/* Gold bottom line */}
-      <div className="h-[2px] flex-shrink-0" style={{
-        background: goldGradient,
+      {/* Bottom gold hairline */}
+      <div className="h-[1.5px] flex-shrink-0" style={{
+        background: goldHairline,
         backgroundSize: '200% 100%',
-        animation: 'shimmer 4s ease-in-out infinite',
+        animation: 'shimmer 5s ease-in-out infinite',
+        opacity: 0.5,
       }} />
-
-      <style jsx>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-      `}</style>
     </aside>
   )
 
@@ -272,13 +350,11 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
   if (mobileOpen) {
     return (
       <>
-        {/* Backdrop */}
         <div
           className="fixed inset-0 z-40 md:hidden"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
+          style={{ background: 'rgba(5,10,20,0.6)', backdropFilter: 'blur(4px)' }}
           onClick={onClose}
         />
-        {/* Sidebar as fixed overlay on mobile */}
         <div className="fixed inset-y-0 left-0 z-50 md:hidden">
           {sidebarContent}
         </div>
@@ -286,6 +362,5 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
     )
   }
 
-  // Desktop: normal render (hidden on mobile via className inside aside)
   return sidebarContent
 }

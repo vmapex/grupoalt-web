@@ -148,8 +148,8 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
           {isNop ? (
             <ComposedChart data={chartData} barSize={42} margin={{ top: 32, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}06`} />
-              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 12, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 12, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: t.muted, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
               <Tooltip content={<CustomTooltip />} cursor={false} />
               <Bar dataKey="rnop" name="Receita NOP" fill={`${t.green}20`} stroke={t.green} strokeWidth={1.5} radius={[5, 5, 0, 0]}>
                 <LabelList dataKey="rnop" content={(props: any) => <BarLabel {...props} fill={t.green} />} />
@@ -162,8 +162,8 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
           ) : (
             <BarChart data={chartData} barSize={48} margin={{ top: 36, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}06`} />
-              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 12, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 12, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: t.muted, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
               <Tooltip content={<CustomTooltip />} cursor={false} />
               <Bar dataKey="value" name={def.title} fill={`${def.color}20`} stroke={def.color} strokeWidth={1.5} radius={[5, 5, 0, 0]}>
                 <LabelList dataKey="value" content={(props: any) => <BarLabelVar {...props} fill={def.color} data={chartData} dataKey="value" />} />

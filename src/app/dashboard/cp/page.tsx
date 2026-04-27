@@ -22,7 +22,7 @@ export default function CpCrPage() {
   --text:#F1F5F9;--muted:#64748B;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);
+body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);
   background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);
   background-size:48px 48px;}
 
@@ -32,7 +32,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .stab{padding:12px 28px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:flex;align-items:center;gap:8px}
 .stab:hover{color:var(--text)}
 .stab.active{color:var(--text)}
-.badge-cnt{font-size:9px;padding:1px 7px;border-radius:99px;font-family:'DM Mono',monospace}
+.badge-cnt{font-size:9px;padding:1px 7px;border-radius:99px;font-family:'JetBrains Mono',monospace}
 .stab.cp .badge-cnt{background:rgba(248,113,113,0.15);color:var(--red)}
 .stab.cr .badge-cnt{background:rgba(52,211,153,0.15);color:var(--green)}
 
@@ -50,7 +50,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .kpi-glow{position:absolute;bottom:0;left:0;right:0;height:1.5px;opacity:0;transition:opacity 0.3s}
 .kpi:hover .kpi-glow{opacity:1}
 .kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:6px}
-.kpi-num{font-family:'DM Mono',monospace;font-size:20px;font-weight:400}
+.kpi-num{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:400}
 .kpi-num.g{color:var(--green)}.kpi-num.r{color:var(--red)}.kpi-num.w{color:#fff}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:2px}
 
@@ -61,13 +61,13 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .temporal-view{padding:22px 26px}
 .drill-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .drill-left{display:flex;align-items:center;gap:12px}
-.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'DM Mono',monospace}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'JetBrains Mono',monospace}
 .bc-item{color:var(--muted);cursor:pointer;transition:color 0.15s;padding:3px 0}
 .bc-item:hover{color:var(--blue)}
 .bc-item.active{color:var(--text);font-weight:500}
 .bc-sep{color:var(--border);font-size:12px}
 .drill-right{display:flex;align-items:center;gap:8px}
-.level-pill{padding:4px 12px;border-radius:6px;font-size:9px;font-family:'DM Mono',monospace;letter-spacing:0.8px;border:1px solid var(--border);transition:all 0.2s}
+.level-pill{padding:4px 12px;border-radius:6px;font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:0.8px;border:1px solid var(--border);transition:all 0.2s}
 .level-pill.anual   {border-color:rgba(251,191,36,0.4);  color:var(--amber); background:rgba(251,191,36,0.06)}
 .level-pill.mensal  {border-color:rgba(56,189,248,0.4);  color:var(--blue);  background:rgba(56,189,248,0.06)}
 .level-pill.semanal {border-color:rgba(52,211,153,0.4);  color:var(--green); background:rgba(52,211,153,0.06)}
@@ -85,7 +85,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .chart-card.both::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
 .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .chart-head-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
-.chart-total{font-family:'DM Mono',monospace;font-size:17px;color:#fff}
+.chart-total{font-family:'JetBrains Mono',monospace;font-size:17px;color:#fff}
 .chart-hint{font-size:9px;color:rgba(100,116,139,0.5);text-align:center;margin-top:5px}
 .chart-wrap{position:relative}
 
@@ -94,11 +94,11 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .side-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
 .side-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px}
 .selected-info{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
-.sel-period{font-family:'DM Mono',monospace;font-size:13px;color:var(--blue);margin-bottom:8px}
+.sel-period{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--blue);margin-bottom:8px}
 .sel-row{display:flex;justify-content:space-between;font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .sel-row:last-child{border-bottom:none}
 .sel-label{color:var(--muted)}
-.sel-val{font-family:'DM Mono',monospace}
+.sel-val{font-family:'JetBrains Mono',monospace}
 
 /* LEGEND */
 .legend-row{display:flex;gap:14px;margin-bottom:12px}
@@ -110,7 +110,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .ms-row{display:flex;flex-direction:column;gap:2px}
 .ms-label{display:flex;justify-content:space-between;font-size:9px}
 .ms-label span:first-child{color:var(--muted)}
-.ms-label span:last-child{font-family:'DM Mono',monospace;color:var(--text)}
+.ms-label span:last-child{font-family:'JetBrains Mono',monospace;color:var(--text)}
 .ms-bar{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
 .ms-fill{height:100%;border-radius:2px;transition:width 0.7s ease}
 
@@ -204,18 +204,18 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
       <option value="PAGO">Pago</option>
       <option value="RECEBIDO">Recebido</option>
     </select>
-    <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap" id="lancCount">— registros</span>
+    <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap" id="lancCount">— registros</span>
   </div>
   <div style="flex:1;overflow:auto;max-height:calc(100vh - 200px)">
     <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px" id="lancTable">
       <thead style="position:sticky;top:0;z-index:5">
         <tr style="background:#080d1e;border-bottom:1px solid var(--border)">
-          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('favorecido')">Favorecido <span style="opacity:0.3;font-size:8px">↕</span></th>
-          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('categoria')">Categoria <span style="opacity:0.3;font-size:8px">↕</span></th>
-          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('vcto')">Vencimento <span style="opacity:0.3;font-size:8px">↕</span></th>
-          <th style="padding:9px 14px;text-align:right;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace;cursor:pointer" onclick="sortLanc('valor')">Valor <span style="opacity:0.3;font-size:8px">↕</span></th>
-          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace">Status</th>
-          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'DM Mono',monospace">Tipo</th>
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace;cursor:pointer" onclick="sortLanc('favorecido')">Favorecido <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace;cursor:pointer" onclick="sortLanc('categoria')">Categoria <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace;cursor:pointer" onclick="sortLanc('vcto')">Vencimento <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:right;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace;cursor:pointer" onclick="sortLanc('valor')">Valor <span style="opacity:0.3;font-size:8px">↕</span></th>
+          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace">Status</th>
+          <th style="padding:9px 14px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;font-family:'JetBrains Mono',monospace">Tipo</th>
         </tr>
       </thead>
       <tbody id="lancBody"></tbody>
@@ -431,7 +431,7 @@ function renderChart() {
             display: ctx2 => ctx2.dataset.data[ctx2.dataIndex] > 0,
             anchor: 'end', align: 'end', clamp: true,
             color: '#F87171',
-            font: { family:'DM Mono', size:9 },
+            font: { family:'JetBrains Mono', size:9 },
             formatter: (v, ctx2) => {
               const tot = (cpVals[ctx2.dataIndex]||0) + (crVals[ctx2.dataIndex]||0);
               const pct = tot > 0 ? (v/tot*100).toFixed(0) : 0;
@@ -451,7 +451,7 @@ function renderChart() {
             display: ctx2 => ctx2.dataset.data[ctx2.dataIndex] > 0,
             anchor: 'end', align: 'end', clamp: true,
             color: '#34D399',
-            font: { family:'DM Mono', size:9 },
+            font: { family:'JetBrains Mono', size:9 },
             formatter: (v, ctx2) => {
               const tot = (cpVals[ctx2.dataIndex]||0) + (crVals[ctx2.dataIndex]||0);
               const pct = tot > 0 ? (v/tot*100).toFixed(0) : 0;
@@ -474,7 +474,7 @@ function renderChart() {
             display: ctx2 => Math.abs(ctx2.dataset.data[ctx2.dataIndex]) > 0,
             anchor: 'start', align: 'start', clamp: true,
             color: ctx2 => balVals[ctx2.dataIndex] >= 0 ? 'rgba(52,211,153,0.7)' : 'rgba(248,113,113,0.7)',
-            font: { family:'DM Mono', size:9 },
+            font: { family:'JetBrains Mono', size:9 },
             formatter: v => (v>=0?'+':'')+fmtK(v),
           }
         }
@@ -503,12 +503,12 @@ function renderChart() {
       scales: {
         x: {
           grid: { display:false },
-          ticks: { color:'#475569', font:{ size:10, family:'DM Mono' }, maxRotation:0 }
+          ticks: { color:'#475569', font:{ size:10, family:'JetBrains Mono' }, maxRotation:0 }
         },
         y: {
           grid: { color:'rgba(255,255,255,0.03)', drawBorder:false },
           border: { dash:[3,3] },
-          ticks: { color:'#475569', font:{ size:9, family:'DM Mono' }, callback: v => fmtK(v) }
+          ticks: { color:'#475569', font:{ size:9, family:'JetBrains Mono' }, callback: v => fmtK(v) }
         }
       },
       animation: { duration:500, easing:'easeInOutQuart' },
@@ -685,11 +685,11 @@ function renderLanc() {
   document.getElementById('lancBody').innerHTML = filtered.length ? filtered.map(r =>
     '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.12s;cursor:default" onmouseover="this.style.background=\\'rgba(255,255,255,0.025)\\'" onmouseout="this.style.background=\\'\\'">'+
     '<td style="padding:8px 14px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.favorecido + '</td>' +
-    '<td style="padding:8px 14px;font-size:10px;color:var(--muted);font-family:DM Mono,monospace">' + r.categoria + '</td>' +
-    '<td style="padding:8px 14px;font-size:11px;font-family:DM Mono,monospace;color:var(--muted)">' + r.vcto + '</td>' +
-    '<td style="padding:8px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:500;color:' + (isCP ? 'var(--red)' : 'var(--green)') + '">' + fmt(r.valor) + '</td>' +
+    '<td style="padding:8px 14px;font-size:10px;color:var(--muted);font-family:JetBrains Mono,monospace">' + r.categoria + '</td>' +
+    '<td style="padding:8px 14px;font-size:11px;font-family:JetBrains Mono,monospace;color:var(--muted)">' + r.vcto + '</td>' +
+    '<td style="padding:8px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-weight:500;color:' + (isCP ? 'var(--red)' : 'var(--green)') + '">' + fmt(r.valor) + '</td>' +
     '<td style="padding:8px 14px;text-align:center">' + statusBadge(r.status) + '</td>' +
-    '<td style="padding:8px 14px;text-align:center;font-size:9px;font-family:DM Mono,monospace;color:' + (r._tipo==='CP' ? 'var(--red)' : 'var(--green)') + '">' + r._tipo + '</td>' +
+    '<td style="padding:8px 14px;text-align:center;font-size:9px;font-family:JetBrains Mono,monospace;color:' + (r._tipo==='CP' ? 'var(--red)' : 'var(--green)') + '">' + r._tipo + '</td>' +
     '</tr>'
   ).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Nenhum registro encontrado</td></tr>';
 }
@@ -743,8 +743,8 @@ function renderRepr() {
     const shown = items.slice(0, limit || 10);
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
-        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:DM Mono,monospace">' + title + '</div>' +
-        '<div style="font-family:DM Mono,monospace;font-size:13px;color:#fff">' + fmtK(total) + '</div>' +
+        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:JetBrains Mono,monospace">' + title + '</div>' +
+        '<div style="font-family:JetBrains Mono,monospace;font-size:13px;color:#fff">' + fmtK(total) + '</div>' +
       '</div>' +
       shown.map(([name, val], i) => {
         const pct = total > 0 ? (val/total*100).toFixed(1) : 0;
@@ -752,7 +752,7 @@ function renderRepr() {
         return '<div style="margin-bottom:8px">' +
           '<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">' +
             '<span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">' + (i+1) + '. ' + name + '</span>' +
-            '<span style="font-family:DM Mono,monospace;color:var(--text)">' + fmtK(val) + '  <span style="color:' + color + '">' + pct + '%</span></span>' +
+            '<span style="font-family:JetBrains Mono,monospace;color:var(--text)">' + fmtK(val) + '  <span style="color:' + color + '">' + pct + '%</span></span>' +
           '</div>' +
           '<div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">' +
             '<div style="height:100%;width:' + w + '%;background:' + color + ';opacity:0.6;border-radius:2px;transition:width 0.5s"></div>' +

@@ -25,7 +25,7 @@ export function BarLabelVar({ x = 0, y = 0, width = 0, value, fill, index = 0, d
           y={y - 22}
           textAnchor="middle"
           fontSize={10}
-          fontFamily="DM Mono, monospace"
+          fontFamily="JetBrains Mono, monospace"
           fontWeight="normal"
           fill={varPct >= 0 ? '#34D399' : '#F87171'}
         >
@@ -38,7 +38,7 @@ export function BarLabelVar({ x = 0, y = 0, width = 0, value, fill, index = 0, d
         textAnchor="middle"
         fill={fill}
         fontSize={11}
-        fontFamily="DM Mono, monospace"
+        fontFamily="JetBrains Mono, monospace"
         fontWeight="normal"
         opacity={0.85}
       >

@@ -49,8 +49,8 @@ body {
 .kpi { padding: 14px 22px; border-right: 1px solid var(--border); cursor: default; transition: background 0.2s; }
 .kpi:last-child { border-right: none; }
 .kpi:hover { background: rgba(255,255,255,0.01); }
-.kl { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 5px; font-family: 'DM Mono', monospace; }
-.kn { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+.kl { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 5px; font-family: 'JetBrains Mono', monospace; }
+.kn { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; }
 .kn.g { color: var(--green); } .kn.r { color: var(--red); } .kn.b { color: var(--blue); } .kn.a { color: var(--amber); }
 .ks { font-size: 9px; color: var(--muted); margin-top: 2px; }
 
@@ -73,23 +73,23 @@ body {
 .card.green::before { background: linear-gradient(90deg,transparent,var(--green),transparent); }
 .card.red::before { background: linear-gradient(90deg,transparent,var(--red),transparent); }
 .card.amber::before { background: linear-gradient(90deg,transparent,var(--amber),transparent); }
-.card-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; font-family: 'DM Mono', monospace; }
-.card-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; margin-bottom: 3px; }
+.card-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+.card-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; margin-bottom: 3px; }
 .card-sub { font-size: 9px; color: var(--muted); }
 
 /* CHART PLACEHOLDER */
 .chart-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-.chart-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px; font-family: 'DM Mono', monospace; }
+.chart-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
 .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
 .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar { width: 100%; border-radius: 3px 3px 0 0; transition: opacity 0.2s; }
 .bar:hover { opacity: 0.8; }
-.bar-label { font-size: 7px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.bar-label { font-size: 7px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 
 /* TABLE */
 .table-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .table-card table { width: 100%; border-collapse: collapse; font-size: 10px; }
-.table-card th { padding: 8px 12px; text-align: left; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; background: rgba(0,0,0,0.2); }
+.table-card th { padding: 8px 12px; text-align: left; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); }
 .table-card td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
 .table-card tr:last-child td { border-bottom: none; }
 .badge { display: inline-flex; padding: 2px 7px; border-radius: 99px; font-size: 8px; font-weight: 600; border: 1px solid; }
@@ -162,17 +162,17 @@ body {
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Saldo por conta</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Saldo por conta</div>
       <div id="bankCards" style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--muted);font-size:10px">Carregando...</span></div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Estatísticas gerais</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Estatísticas gerais</div>
       <div id="statsPanel" style="display:flex;flex-direction:column;gap:6px"><span style="color:var(--muted);font-size:10px">Carregando...</span></div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Legenda do heatmap</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Legenda do heatmap</div>
       <div style="display:flex;flex-direction:column;gap:6px;font-size:10px">
         <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(52,211,153,0.4);flex-shrink:0"></div><span style="color:var(--muted)">90%+ conciliado</span></div>
         <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:2px;background:rgba(251,191,36,0.3);flex-shrink:0"></div><span style="color:var(--muted)">50-89% conciliado</span></div>
@@ -244,9 +244,9 @@ async function loadConciliacao() {
                     '<span class="badge r">Baixo</span>';
       return '<tr>' +
         '<td>' + m.mes + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--green)">' + concil + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--amber)">' + pend + '</td>' +
-        '<td style="font-family:DM Mono,monospace;color:var(--blue)">' + pct + '%</td>' +
+        '<td style="font-family:JetBrains Mono,monospace;color:var(--green)">' + concil + '</td>' +
+        '<td style="font-family:JetBrains Mono,monospace;color:var(--amber)">' + pend + '</td>' +
+        '<td style="font-family:JetBrains Mono,monospace;color:var(--blue)">' + pct + '%</td>' +
         '<td>' + badge + '</td></tr>';
     });
     document.getElementById('monthTable').innerHTML = tableRows.length ? tableRows.join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Nenhum dado encontrado</td></tr>';
@@ -306,7 +306,7 @@ function buildHeatmap(meses) {
 
     // If month has daily data
     if (m.dias && Array.isArray(m.dias)) {
-      html += '<div style="margin-bottom:4px"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:DM Mono,monospace">' + mes + '</div>';
+      html += '<div style="margin-bottom:4px"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:JetBrains Mono,monospace">' + mes + '</div>';
       html += '<div style="display:flex;gap:2px;flex-wrap:wrap">';
       m.dias.forEach(d => {
         const dc = d.conciliados || d.conciliado || 0;
@@ -322,10 +322,10 @@ function buildHeatmap(meses) {
     } else {
       // Monthly bar
       html += '<div style="display:flex;align-items:center;gap:10px;padding:4px 0">';
-      html += '<div style="font-size:9px;color:var(--muted);font-family:DM Mono,monospace;width:60px">' + mes + '</div>';
+      html += '<div style="font-size:9px;color:var(--muted);font-family:JetBrains Mono,monospace;width:60px">' + mes + '</div>';
       html += '<div style="flex:1;height:20px;background:rgba(255,255,255,0.03);border-radius:4px;overflow:hidden;position:relative;border:1px solid ' + borderColor + '">';
       html += '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width 0.5s ease"></div>';
-      html += '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;font-family:DM Mono,monospace;color:var(--text)">' + pct + '% (' + concil + '/' + total + ')</div>';
+      html += '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;font-family:JetBrains Mono,monospace;color:var(--text)">' + pct + '% (' + concil + '/' + total + ')</div>';
       html += '</div></div>';
     }
   });
@@ -346,7 +346,7 @@ function updateSidePanel(saldos, totalConcil, totalPend) {
       const color = colors[i % colors.length];
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
         '<div style="display:flex;align-items:center;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:' + color + '"></div><span style="font-size:10px;color:var(--muted)">' + nome + '</span></div>' +
-        '<span style="font-family:DM Mono,monospace;font-size:11px;color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(saldo) + '</span></div>';
+        '<span style="font-family:JetBrains Mono,monospace;font-size:11px;color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(saldo) + '</span></div>';
     }).join('');
   } else {
     document.getElementById('bankCards').innerHTML = '<span style="color:var(--muted);font-size:10px">Nenhuma conta encontrada</span>';
@@ -362,7 +362,7 @@ function updateSidePanel(saldos, totalConcil, totalPend) {
     {label:'Taxa de conciliação', val: pctGeral + '%', color:'var(--blue)'},
   ].map(s => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
     '<span style="font-size:10px;color:var(--muted)">' + s.label + '</span>' +
-    '<span style="font-family:DM Mono,monospace;font-size:11px;color:' + s.color + '">' + s.val + '</span></div>').join('');
+    '<span style="font-family:JetBrains Mono,monospace;font-size:11px;color:' + s.color + '">' + s.val + '</span></div>').join('');
 }
 
 loadConciliacao();

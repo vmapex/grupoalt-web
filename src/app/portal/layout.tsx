@@ -5,8 +5,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import Sidebar from '@/components/Sidebar'
-import { HelpCircle, ChevronRight, ChevronDown, Sun, Moon, Menu } from 'lucide-react'
+import { HelpCircle, ChevronRight, ChevronDown, Menu } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
+import { ThemeToggle } from '@/components/nav/ThemeToggle'
 import { NotificationBell } from '@/components/nav/NotificationBell'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
@@ -21,11 +22,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
   const themeMode = useThemeStore((s) => s.mode)
-  const toggleTheme = useThemeStore((s) => s.toggle)
   const t = useThemeStore((s) => s.tokens)
   const [chatOpen, setChatOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [hoverThemeBtn, setHoverThemeBtn] = useState(false)
   const [hoverHelpBtn, setHoverHelpBtn] = useState(false)
   const [hoverUserBtn, setHoverUserBtn] = useState(false)
 
@@ -101,18 +100,58 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ background: t.bg }}>
-        <div className="text-sm" style={{ color: t.muted }}>Carregando portal...</div>
+      <div className="relative flex items-center justify-center h-screen" style={{ background: t.bg }}>
+        <div className="alt-bg-canvas" aria-hidden="true" />
+        <div className="relative z-10 flex items-center gap-3">
+          <div
+            className="w-2 h-2 rounded-full animate-pulse-dot"
+            style={{ background: t.gold, boxShadow: t.goldGlow }}
+          />
+          <span
+            className="text-[11px]"
+            style={{
+              color: t.muted,
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Carregando portal
+          </span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: t.bg, color: t.text, fontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}>
+    <div
+      className="relative flex h-screen overflow-hidden"
+      style={{
+        background: t.bg,
+        color: t.text,
+        fontFamily: "var(--font-body)",
+      }}
+    >
+      <div className="alt-bg-canvas" aria-hidden="true" />
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-14 flex items-center justify-between px-6 backdrop-blur-sm flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}`, background: t.surfaceElevated }}>
+        <header
+          className="h-14 flex items-center justify-between px-6 flex-shrink-0 relative"
+          style={{
+            borderBottom: `1px solid ${t.border}`,
+            background: themeMode === 'dark' ? 'rgba(5,10,20,0.72)' : 'rgba(255,255,255,0.78)',
+            backdropFilter: 'blur(20px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          }}
+        >
+          <div
+            className="absolute left-0 right-0 bottom-0 h-px pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${t.borderGold}, transparent)`,
+              opacity: 0.5,
+            }}
+          />
           {/* Hamburger (mobile) + Breadcrumb */}
           <div className="flex items-center gap-2 text-sm">
             <button
@@ -123,13 +162,28 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span style={{ color: t.muted }}>Portal</span>
+            <span
+              style={{
+                color: t.gold,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Portal
+            </span>
             {breadcrumb.map((part, i) => (
               <span key={i} className="flex items-center gap-2">
-                <ChevronRight className="w-3.5 h-3.5" style={{ color: t.muted }} />
+                <ChevronRight className="w-3 h-3" style={{ color: t.mutedDim }} />
                 <span
-                  className={i === breadcrumb.length - 1 ? 'font-medium' : ''}
-                  style={{ color: i === breadcrumb.length - 1 ? t.text : t.muted }}
+                  style={{
+                    color: i === breadcrumb.length - 1 ? t.text : t.muted,
+                    fontFamily: i === breadcrumb.length - 1 ? 'var(--font-display)' : 'var(--font-body)',
+                    fontWeight: i === breadcrumb.length - 1 ? 400 : 500,
+                    fontSize: 14,
+                    letterSpacing: i === breadcrumb.length - 1 ? '-0.005em' : 0,
+                  }}
                 >
                   {part}
                 </span>
@@ -141,20 +195,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             {/* Notification Bell — full dropdown panel */}
             <NotificationBell />
             {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl transition-all"
-              style={{
-                color: hoverThemeBtn ? t.text : t.muted,
-                background: hoverThemeBtn ? t.surfaceHover : 'transparent',
-              }}
-              onMouseEnter={() => setHoverThemeBtn(true)}
-              onMouseLeave={() => setHoverThemeBtn(false)}
-              aria-label="Alternar tema"
-              title={themeMode === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-            >
-              {themeMode === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
-            </button>
+            <ThemeToggle />
             {/* Help */}
             <button
               className="p-2 rounded-xl transition-all"
@@ -173,16 +214,45 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             {/* User */}
             <button
               className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl transition-all"
-              style={{ background: hoverUserBtn ? t.surfaceHover : 'transparent' }}
+              style={{
+                background: hoverUserBtn ? t.surfaceHover : 'transparent',
+                border: `1px solid ${hoverUserBtn ? t.border : 'transparent'}`,
+              }}
               onMouseEnter={() => setHoverUserBtn(true)}
               onMouseLeave={() => setHoverUserBtn(false)}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-[#CCA000] to-[#E0B82E] rounded-xl flex items-center justify-center text-xs font-bold shadow-sm" style={{ color: '#18181b' }}>
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold"
+                style={{
+                  background: `linear-gradient(135deg, ${t.gold}, ${t.goldSoft})`,
+                  color: '#1A1718',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.04em',
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 10px ${t.goldDim}`,
+                  border: `1px solid ${t.borderGold}`,
+                }}
+              >
                 {userInitials}
               </div>
               <div className="text-left">
-                <div className="text-sm font-medium leading-tight" style={{ color: t.text }}>{user?.nome?.split(' ').slice(0, 2).join(' ')}</div>
-                <div className="text-xs leading-tight" style={{ color: t.muted }}>{user?.is_admin ? 'Administrador' : 'Usuário'}</div>
+                <div
+                  className="text-sm font-medium leading-tight"
+                  style={{ color: t.text, fontFamily: 'var(--font-display)', letterSpacing: '-0.005em' }}
+                >
+                  {user?.nome?.split(' ').slice(0, 2).join(' ')}
+                </div>
+                <div
+                  className="text-[10px] leading-tight"
+                  style={{
+                    color: t.muted,
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    marginTop: 2,
+                  }}
+                >
+                  {user?.is_admin ? 'Administrador' : 'Usuário'}
+                </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5" style={{ color: t.muted }} />
             </button>
@@ -190,7 +260,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6" style={{ background: t.bg }}>
+        <main className="flex-1 overflow-y-auto p-6 relative z-0">
           {children}
         </main>
       </div>

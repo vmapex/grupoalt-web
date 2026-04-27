@@ -35,82 +35,148 @@ export function Navbar() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      // Flush API cache for this empresa
       const id = useEmpresaStore.getState().activeId
       if (id) {
         await api.post(`/empresas/${id}/cache/flush`).catch(() => {})
       }
-      // Reload page
       window.location.reload()
     } catch {
       window.location.reload()
     }
   }, [])
 
-  // Carrega projetos/unidades sempre que a empresa muda
   useEffect(() => {
-    if (activeId) {
-      fetchProjetos(activeId)
-    }
+    if (activeId) fetchProjetos(activeId)
   }, [activeId, fetchProjetos])
+
+  // Glass effect: blurred translucent surface that adapts to mode
+  const navBg = t.isDark
+    ? 'rgba(5, 10, 20, 0.72)'
+    : 'rgba(255, 255, 255, 0.78)'
 
   return (
     <nav
       className="flex items-center justify-between px-3 md:px-5 sticky top-0 z-30 shrink-0"
       style={{
-        height: 52,
+        height: 56,
         borderBottom: `1px solid ${t.border}`,
-        background: t.surfaceElevated,
+        background: navBg,
+        backdropFilter: 'blur(20px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(140%)',
       }}
     >
-      {/* Left: Back to Portal + Logo */}
+      {/* Hairline gold under the navbar — subtle premium signature */}
+      <div
+        className="absolute left-0 right-0 bottom-0 h-px pointer-events-none"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${t.borderGold}, transparent)`,
+          opacity: 0.6,
+        }}
+      />
+
+      {/* Left: Back to Portal + Brand */}
       <div className="flex items-center gap-2 md:gap-3 shrink-0">
         <Link
           href="/portal/grupo"
-          className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] no-underline transition-all"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] no-underline transition-all"
           style={{
             color: t.muted,
             background: t.surface,
             border: `1px solid ${t.border}`,
+            fontFamily: 'var(--font-mono)',
+            letterSpacing: '0.08em',
           }}
           title="Voltar ao Portal"
         >
-          <ArrowLeft size={11} />
-          <span className="hidden sm:inline">Portal</span>
+          <ArrowLeft size={11} strokeWidth={2.2} />
+          <span className="hidden sm:inline">PORTAL</span>
         </Link>
-        <div className="hidden md:flex items-baseline gap-2">
+
+        <div className="hidden md:flex items-center gap-2.5">
           {logo ? (
-            <img src={logo} alt={active?.nome || 'Logo'} style={{ height: 30 }} />
+            <img src={logo} alt={active?.nome || 'Logo'} style={{ height: 28 }} />
           ) : (
-            <div className="flex items-baseline gap-2">
-              <Building2 size={16} style={{ color: active?.cor || '#38BDF8' }} className="self-center" />
-              <span className="font-mono text-[13px] tracking-widest font-bold" style={{ color: t.text }}>
-                {active?.nome || 'GRUPO ALT'}
+            <>
+              {/* Brand mark — square with the "A" gold accent (design system) */}
+              <div
+                className="relative flex items-center justify-center rounded-md"
+                style={{
+                  width: 26,
+                  height: 26,
+                  background: 'linear-gradient(135deg, var(--alt-azul-500), var(--alt-azul-700))',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(4,58,118,0.32)',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 14,
+                    fontWeight: 400,
+                    color: t.gold,
+                    textShadow: '0 0 8px rgba(224,184,46,0.45)',
+                    lineHeight: 1,
+                  }}
+                >
+                  A
+                </span>
+              </div>
+              <span
+                className="text-[13px] tracking-wide"
+                style={{
+                  color: t.text,
+                  fontFamily: 'var(--font-display)',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {active?.nome || 'Grupo ALT'}
               </span>
-            </div>
+            </>
           )}
-          <span className="text-[8px] tracking-[3px] font-mono" style={{ color: t.blue }}>
-            PORTAL BI
+          <span
+            className="text-[8.5px] tracking-[0.32em] font-mono uppercase"
+            style={{ color: t.gold }}
+          >
+            Portal BI
           </span>
         </div>
       </div>
 
-      {/* Center: Tabs — scrollable on mobile */}
+      {/* Center: Tabs — pill group with gold accent on active */}
       <div
-        className="flex gap-0.5 rounded-lg p-0.5 overflow-x-auto mx-2 md:mx-0 shrink min-w-0"
-        style={{ background: `${t.text}06`, scrollbarWidth: 'none' }}
+        className="flex gap-0.5 rounded-full p-0.5 overflow-x-auto mx-2 md:mx-0 shrink min-w-0"
+        style={{
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          scrollbarWidth: 'none',
+        }}
       >
-        {NAV.map(({ href, label, exact }: { href: string; label: string; exact?: boolean }) => {
+        {NAV.map(({ href, label, exact }) => {
           const isActive = exact ? pathname === href : (pathname === href || pathname?.startsWith(href + '/'))
           return (
             <Link
               key={href}
               href={href}
-              className="px-2.5 md:px-3 py-1 rounded-md text-[10px] no-underline transition-all whitespace-nowrap shrink-0"
+              className="relative px-3 md:px-3.5 py-1.5 rounded-full text-[11px] no-underline transition-all whitespace-nowrap shrink-0"
               style={{
-                color: isActive ? t.blue : t.muted,
-                background: isActive ? t.blueDim : 'transparent',
-                fontWeight: isActive ? 600 : 400,
+                color: isActive ? (t.isDark ? '#0A1426' : '#FFFFFF') : t.muted,
+                background: isActive
+                  ? (t.isDark
+                      ? 'linear-gradient(135deg, var(--alt-ouro-300), var(--alt-ouro-500))'
+                      : 'linear-gradient(135deg, var(--alt-azul-400), var(--alt-azul-600))')
+                  : 'transparent',
+                fontWeight: isActive ? 600 : 500,
+                letterSpacing: '0.01em',
+                boxShadow: isActive
+                  ? (t.isDark
+                      ? '0 4px 14px rgba(204,160,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25)'
+                      : '0 4px 14px rgba(4,81,153,0.28), inset 0 1px 0 rgba(255,255,255,0.18)')
+                  : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) e.currentTarget.style.color = t.text
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.color = t.muted
               }}
             >
               {label}
@@ -129,6 +195,14 @@ export function Navbar() {
             background: t.surface,
             border: `1px solid ${t.border}`,
             color: t.muted,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = t.borderGold
+            e.currentTarget.style.color = t.gold
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = t.border
+            e.currentTarget.style.color = t.muted
           }}
           title="Atualizar dados"
           aria-label="Atualizar dados"
@@ -173,8 +247,16 @@ export function Navbar() {
           className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
           style={{
             background: t.surface,
-            border: `1px solid ${t.border}`,
-            color: pathname === '/bi/financeiro/admin' ? t.blue : t.muted,
+            border: `1px solid ${pathname === '/bi/financeiro/admin' ? t.borderGold : t.border}`,
+            color: pathname === '/bi/financeiro/admin' ? t.gold : t.muted,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = t.borderGold
+            e.currentTarget.style.color = t.gold
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = pathname === '/bi/financeiro/admin' ? t.borderGold : t.border
+            e.currentTarget.style.color = pathname === '/bi/financeiro/admin' ? t.gold : t.muted
           }}
           aria-label="Configurações"
         >
@@ -187,7 +269,6 @@ export function Navbar() {
           />
         </Link>
       </div>
-
     </nav>
   )
 }

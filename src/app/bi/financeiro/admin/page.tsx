@@ -55,7 +55,7 @@ function LogoUploadBox({
           letterSpacing: 1,
           color: mutedColor,
           marginBottom: 6,
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "'JetBrains Mono', monospace",
         }}
       >
         {label}
@@ -179,7 +179,7 @@ export default function PageAdmin() {
             fontWeight: 700,
             color: t.text,
             margin: 0,
-            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+            fontFamily: "'DM Sans', system-ui, sans-serif",
           }}
         >
           Configurações
@@ -346,7 +346,7 @@ export default function PageAdmin() {
                         padding: '8px 12px',
                         fontSize: 14,
                         color: t.text,
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'JetBrains Mono', monospace",
                         outline: 'none',
                       }}
                     />
@@ -416,7 +416,7 @@ export default function PageAdmin() {
                         style={{
                           fontSize: 12,
                           color: t.muted,
-                          fontFamily: "'DM Mono', monospace",
+                          fontFamily: "'JetBrains Mono', monospace",
                           marginTop: 2,
                         }}
                       >
