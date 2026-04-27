@@ -254,56 +254,74 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
 
         {/* Waterfall DRE */}
         <div
-          className="relative rounded-xl p-4 overflow-hidden"
+          className="relative rounded-xl p-4"
           style={{ background: t.surface, border: `1px solid ${t.border}` }}
         >
-          <GlowLine color={t.gold} />
-          <div className="alt-eyebrow mb-3" style={{ color: t.muted }}>
+          {/* Hairline accent inside card (avoids overflow-hidden) */}
+          <div
+            className="absolute left-3 right-3 top-0 h-px pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${t.gold}, transparent)`,
+              opacity: 0.55,
+            }}
+          />
+          <div className="alt-eyebrow mb-4" style={{ color: t.muted }}>
             DRE — Cascata de resultado ({monthLabel})
           </div>
+
+          {/* Bars row — fixed height, each bar is a flex item with explicit alignment */}
           <div
-            className="grid gap-1.5"
+            className="flex items-end gap-2"
+            style={{ height: 140 }}
+          >
+            {waterfallBars.map((bar) => (
+              <div
+                key={`bar-${bar.sigla}`}
+                className="flex-1 min-w-0 flex items-end"
+                style={{ height: '100%' }}
+                title={`${bar.sigla}: ${fmtBRL(bar.value)}`}
+              >
+                <div
+                  className="w-full rounded-t transition-[height] duration-500"
+                  style={{
+                    height: `${Math.max(bar.pct, 3.5)}%`,
+                    minHeight: 4,
+                    background: `linear-gradient(180deg, ${bar.color}, ${bar.color}AA)`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.20), 0 0 14px ${bar.color}33`,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Labels row — separate grid so labels never clip the bars */}
+          <div
+            className="grid gap-2 mt-3"
             style={{ gridTemplateColumns: `repeat(${waterfallBars.length}, minmax(0, 1fr))` }}
           >
             {waterfallBars.map((bar) => {
               const negative = bar.value < 0
               return (
-                <div key={bar.sigla} className="flex flex-col items-center min-w-0">
-                  {/* Bar plot — fixed track that anchors bars at the bottom */}
+                <div key={`lbl-${bar.sigla}`} className="min-w-0 text-center">
                   <div
-                    className="w-full flex items-end justify-center"
-                    style={{ height: 110 }}
-                    title={`${bar.sigla}: ${fmtBRL(bar.value)}`}
-                  >
-                    <div
-                      className="w-full rounded-t transition-all"
-                      style={{
-                        height: `${Math.max(bar.pct, 4)}%`,
-                        minHeight: 4,
-                        background: `linear-gradient(180deg, ${bar.color}, ${bar.color}99)`,
-                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 12px ${bar.color}33`,
-                      }}
-                    />
-                  </div>
-                  {/* Sigla — uppercase mono label */}
-                  <div
-                    className="mt-2 text-[9px] truncate w-full text-center"
+                    className="text-[10px] truncate"
                     style={{
                       color: t.muted,
                       fontFamily: 'var(--font-mono)',
-                      letterSpacing: '0.12em',
+                      letterSpacing: '0.10em',
                       textTransform: 'uppercase',
                       fontWeight: 600,
+                      lineHeight: 1.2,
                     }}
                   >
                     {bar.sigla}
                   </div>
-                  {/* Value — compact format */}
                   <div
-                    className="text-[9px] truncate w-full text-center"
+                    className="text-[10px] truncate"
                     style={{
                       color: negative ? t.red : t.textSec,
                       fontFamily: 'var(--font-mono)',
+                      lineHeight: 1.3,
                       marginTop: 2,
                     }}
                   >
