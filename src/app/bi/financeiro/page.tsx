@@ -298,7 +298,7 @@ function DashboardExecutivo() {
             </div>
             <div
               className="text-xl font-mono font-semibold mb-2"
-              style={{ color: kpi.color, fontFamily: "'DM Mono', monospace" }}
+              style={{ color: kpi.color, fontFamily: "'JetBrains Mono', monospace" }}
             >
               {kpi.value}
             </div>
@@ -325,12 +325,12 @@ function DashboardExecutivo() {
                 <CartesianGrid vertical={false} stroke={t.gridLine} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'DM Mono', monospace" }}
+                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'DM Mono', monospace" }}
+                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => fmtK(v)}
@@ -410,13 +410,13 @@ function DashboardExecutivo() {
                 <CartesianGrid vertical={false} stroke={t.gridLine} />
                 <XAxis
                   dataKey="dia"
-                  tick={{ fontSize: 8, fill: t.muted, fontFamily: "'DM Mono', monospace" }}
+                  tick={{ fontSize: 8, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                   interval={4}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'DM Mono', monospace" }}
+                  tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => fmtK(v)}
@@ -477,7 +477,7 @@ function DashboardExecutivo() {
               textAnchor="middle" dy="0.35em"
               fill={t.text}
               fontSize={18}
-              fontFamily="DM Mono"
+              fontFamily="JetBrains Mono"
             >
               {concilPct}%
             </text>
@@ -669,7 +669,7 @@ function DashboardExecutivo() {
                   style={{
                     color: t.muted,
                     borderBottom: `1px solid ${t.border}`,
-                    fontFamily: "'DM Mono', monospace",
+                    fontFamily: "'JetBrains Mono', monospace",
                   }}
                 >
                   {col}

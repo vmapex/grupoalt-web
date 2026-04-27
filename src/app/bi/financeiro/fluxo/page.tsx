@@ -263,8 +263,8 @@ export default function PageFluxo() {
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={fluxoMensal} margin={{ top: 20, right: 20, bottom: 5, left: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={t.gridLine} />
-                      <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono, monospace' }} axisLine={{ stroke: t.border }} tickLine={false} />
-                      <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtK(v)} width={50} />
+                      <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} axisLine={{ stroke: t.border }} tickLine={false} />
+                      <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtK(v)} width={50} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="ent" name="Entradas" fill={`${t.green}AA`} radius={[4, 4, 0, 0]} barSize={28}>
                         <LabelList dataKey="ent" content={(props) => (<BarLabel x={props.x as number} y={props.y as number} width={props.width as number} value={props.value as number} fill={t.green} />)} />
@@ -304,8 +304,8 @@ export default function PageFluxo() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={t.gridLine} />
-                      <XAxis dataKey="dia" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono, monospace' }} axisLine={{ stroke: t.border }} tickLine={false} interval={hz <= 7 ? 0 : hz <= 30 ? 2 : hz <= 60 ? 5 : 9} />
-                      <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtK(v)} width={50} />
+                      <XAxis dataKey="dia" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }} axisLine={{ stroke: t.border }} tickLine={false} interval={hz <= 7 ? 0 : hz <= 30 ? 2 : hz <= 60 ? 5 : 9} />
+                      <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtK(v)} width={50} />
                       <Tooltip content={<CustomTooltip />} />
                       <ReferenceLine y={0} stroke={t.red} strokeDasharray="4 4" strokeOpacity={0.5} />
                       <Area type="monotone" dataKey="saldoPos" name="Saldo +" stroke={t.green} strokeWidth={2} fill="url(#saldoGradGreen)" connectNulls={false} />

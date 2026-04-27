@@ -440,8 +440,8 @@ export default function PageCPCR() {
                 <ResponsiveContainer width="100%" height={200}>
                   <ComposedChart data={temporalData} barSize={28} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}06`} />
-                    <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+                    <XAxis dataKey="mes" tick={{ fill: t.muted, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
                     <Tooltip content={<CustomTooltip />} cursor={false} />
                     <Bar dataKey="cp" name="A Pagar" fill={`${t.red}25`} stroke={t.red} strokeWidth={1.5} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="cr" name="A Receber" fill={`${t.green}25`} stroke={t.green} strokeWidth={1.5} radius={[4, 4, 0, 0]} />

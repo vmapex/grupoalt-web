@@ -21,7 +21,7 @@ export default function ExtratoPage() {
 <style>
 :root{--bg:#05091A;--surface:rgba(255,255,255,0.034);--border:rgba(255,255,255,0.07);--blue:#38BDF8;--green:#34D399;--red:#F87171;--amber:#FBBF24;--orange:#FB923C;--purple:#C084FC;--text:#F1F5F9;--muted:#64748B;--subtle:#0F172A;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px;}
+body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px;}
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border)}
 .kpi{padding:14px 22px;border-right:1px solid var(--border);position:relative;overflow:hidden;cursor:default;transition:background 0.2s}
 .kpi:last-child{border-right:none}
@@ -29,7 +29,7 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .kpi-glow{position:absolute;bottom:0;left:0;right:0;height:1.5px;opacity:0;transition:opacity 0.3s}
 .kpi:hover .kpi-glow{opacity:1}
 .kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:6px}
-.kpi-num{font-family:'DM Mono',monospace;font-size:19px;font-weight:400}
+.kpi-num{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:400}
 .kpi-num.g{color:var(--green)}.kpi-num.r{color:var(--red)}.kpi-num.w{color:#fff}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:2px}
 .body{display:grid;grid-template-columns:1fr 220px;height:calc(100vh - 68px);overflow:hidden}
@@ -41,17 +41,17 @@ body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(-
 .search-wrap input::placeholder{color:var(--muted)}
 .fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:7px 10px;border-radius:8px;font-family:inherit;cursor:pointer}
 .fsel option{background:#0f172a}
-.filter-count{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
+.filter-count{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap}
 .summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 22px;border-bottom:1px solid var(--border)}
 .sum-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px}
 .sum-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .sum-label{font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted)}
-.sum-val{font-family:'DM Mono',monospace;font-size:14px;margin-top:1px}
+.sum-val{font-family:'JetBrains Mono',monospace;font-size:14px;margin-top:1px}
 .table-wrap{flex:1;overflow-y:auto;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:11px;min-width:700px}
 thead{position:sticky;top:0;z-index:5}
 thead tr{background:#080d1e;border-bottom:1px solid var(--border)}
-th{padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;cursor:pointer;user-select:none;font-family:'DM Mono',monospace}
+th{padding:9px 14px;text-align:left;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;cursor:pointer;user-select:none;font-family:'JetBrains Mono',monospace}
 th:hover{color:var(--text)}
 .sort-ico{opacity:0.3;margin-left:3px;font-size:8px}
 tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.12s;cursor:default}
@@ -59,9 +59,9 @@ tbody tr:hover{background:rgba(255,255,255,0.025)}
 tbody tr.entrada-row:hover{background:rgba(52,211,153,0.04)}
 tbody tr.saida-row:hover{background:rgba(248,113,113,0.04)}
 td{padding:8px 14px;color:var(--text);font-size:11px;white-space:nowrap;vertical-align:middle}
-td.mono{font-family:'DM Mono',monospace}
-td.val-g{font-family:'DM Mono',monospace;color:var(--green);text-align:right;font-weight:500}
-td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-weight:500}
+td.mono{font-family:'JetBrains Mono',monospace}
+td.val-g{font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right;font-weight:500}
+td.val-r{font-family:'JetBrains Mono',monospace;color:var(--red);text-align:right;font-weight:500}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;letter-spacing:0.3px;white-space:nowrap}
 .badge.concil{background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.15)}
 .badge.pend{background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.15)}
@@ -70,7 +70,7 @@ td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-
 .panel-title{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:2px}
 .bank-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .bank-name{font-size:10px;color:var(--muted);display:flex;align-items:center;margin-bottom:6px}
-.bank-saldo{font-family:'DM Mono',monospace;font-size:17px;color:#fff}
+.bank-saldo{font-family:'JetBrains Mono',monospace;font-size:17px;color:#fff}
 .bank-saldo.zero{color:var(--muted)}
 .bank-sub{font-size:9px;color:var(--muted);margin-top:2px}
 .bank-mini-bar{height:2px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:8px;overflow:hidden}
@@ -78,7 +78,7 @@ td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-
 .divider{height:1px;background:var(--border)}
 .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:4px 0}
 .stat-label{color:var(--muted)}
-.stat-val{font-family:'DM Mono',monospace;color:var(--text)}
+.stat-val{font-family:'JetBrains Mono',monospace;color:var(--text)}
 .table-footer{padding:10px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);background:rgba(5,9,26,0.6)}
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:12px;gap:10px}
 .spinner{width:16px;height:16px;border:2px solid rgba(56,189,248,0.2);border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite}
@@ -155,7 +155,7 @@ td.val-r{font-family:'DM Mono',monospace;color:var(--red);text-align:right;font-
 
     <div class="table-footer">
       <span id="footerLeft">Mostrando — lançamentos</span>
-      <span style="font-family:'DM Mono',monospace;font-size:10px" id="footerRight"></span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px" id="footerRight"></span>
     </div>
   </div>
 
@@ -433,7 +433,7 @@ function updateSummary() {
     <div>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
         <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px" title="\${cat}">\${cat}</span>
-        <span style="font-family:'DM Mono',monospace;color:var(--text);font-size:9px">\${fmtK(val)}</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);font-size:9px">\${fmtK(val)}</span>
       </div>
       <div style="height:2px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">
         <div style="width:\${Math.round(val/maxVal*100)}%;height:100%;background:var(--blue);opacity:0.6;border-radius:2px"></div>

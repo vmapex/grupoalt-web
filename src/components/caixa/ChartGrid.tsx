@@ -60,7 +60,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
           </div>
           <ResponsiveContainer width="100%" height={150}>
             <ComposedChart data={d.labels.map((l, i) => ({ name: l, value: d.RB[i] || 0 }))} barSize={level === 'weekly' ? 24 : 30} margin={{ top: 18, right: 4, left: 4, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} cursor={false} />
               <Bar dataKey="value" name="Receita Bruta" radius={[5, 5, 0, 0]}
@@ -153,7 +153,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               </div>
               <ResponsiveContainer width="100%" height={108}>
                 <BarChart data={chartData} barSize={barSize} margin={{ top: 16, right: 4, left: 4, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <Tooltip content={<CustomTooltip />} cursor={false} />
                   <Bar dataKey="value" name={cd.title} radius={[4, 4, 0, 0]}
@@ -221,7 +221,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                   barSize={level === 'weekly' ? 20 : 28}
                   margin={{ top: 18, right: 4, left: 4, bottom: 24 }}
                 >
-                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fill: t.muted, fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
                   {/* YAxis hide mas com domain explícito — dá espaço acima/abaixo para os labels */}
                   <YAxis hide domain={[yMin, yMax]} />
                   <Tooltip content={<CustomTooltip />} cursor={false} />

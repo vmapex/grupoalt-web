@@ -21,7 +21,7 @@ export default function CaixaPage() {
 <style>
 :root{--bg:#05091A;--surface:rgba(255,255,255,0.034);--border:rgba(255,255,255,0.07);--blue:#38BDF8;--green:#34D399;--red:#F87171;--amber:#FBBF24;--text:#F1F5F9;--muted:#64748B}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px}
+body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);background-image:linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);background-size:48px 48px}
 input[type="date"]{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 10px;border-radius:7px;font-family:inherit;outline:none;cursor:pointer}
 input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5;cursor:pointer}
 input[type="date"]:focus{border-color:rgba(56,189,248,.4)}
@@ -38,7 +38,7 @@ input[type="date"]:focus{border-color:rgba(56,189,248,.4)}
 .kpi:hover .kpi-glow{opacity:1}
 .kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.20s}
 .kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
-.kpi-num{font-family:'DM Mono',monospace;font-size:18px;font-weight:400}
+.kpi-num{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:400}
 .kpi-num.g{color:var(--green)}.kpi-num.r{color:var(--red)}.kpi-num.w{color:#fff}.kpi-num.b{color:var(--blue)}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:2px}
 .body{display:grid;grid-template-columns:1fr 260px;height:calc(100vh - 118px)}
@@ -50,7 +50,7 @@ input[type="date"]:focus{border-color:rgba(56,189,248,.4)}
 .cc:hover .cc-shine{opacity:1}
 .cc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
 .cc-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
-.cc-kpi{font-family:'DM Mono',monospace;font-size:13px;text-align:right;color:#fff}
+.cc-kpi{font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;color:#fff}
 .chart-wrap{position:relative;height:120px}
 .dre-col{padding:14px 12px;display:flex;flex-direction:column;overflow-y:auto}
 .dre-title-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
@@ -62,7 +62,7 @@ input[type="date"]:focus{border-color:rgba(56,189,248,.4)}
 .di-name{font-size:10px;color:var(--muted)}
 .di:hover .di-name{color:var(--text)}
 .di-r{text-align:right}
-.di-val{font-family:'DM Mono',monospace;font-size:10px;color:#fff}
+.di-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff}
 .di-val.neg{color:var(--red)}
 .di-pct{font-size:9px;color:var(--muted);margin-top:1px}
 .di.subtotal .di-name{color:var(--text);font-weight:600}
@@ -287,14 +287,14 @@ function createBarChart(canvasId, title, labels, data, color) {
           anchor: 'end',
           align: 'top',
           color: '#94A3B8',
-          font: { family: 'DM Mono', size: 8 },
+          font: { family: 'JetBrains Mono', size: 8 },
           formatter: function(v) { return fmtKShort(v); }
         }
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#64748B', font: { family: 'DM Mono', size: 8 } },
+          ticks: { color: '#64748B', font: { family: 'JetBrains Mono', size: 8 } },
           border: { display: false }
         },
         y: {
