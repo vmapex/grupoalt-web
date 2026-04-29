@@ -1,5 +1,13 @@
 # Prompt de Contexto — Grupo ALT Portal Financeiro (v2)
 
+> **HISTÓRICO — superseded por `CLAUDE.md`.**
+> Este arquivo era o prompt de contexto da sessão "v2" e está mantido
+> apenas como referência. O contexto canônico atual vive em `CLAUDE.md`,
+> que tem o histórico completo das sessões posteriores e as últimas
+> decisões de arquitetura. Variáveis sensíveis aqui (`SECRET_KEY=...`,
+> `FERNET_KEY=...`, `ANTHROPIC_API_KEY=sk-ant-...`) são placeholders,
+> nenhum valor real foi versionado.
+
 ## Quem sou eu
 Sou o desenvolvedor do portal financeiro multi-tenant do Grupo ALT, integrado com a API Omie.
 

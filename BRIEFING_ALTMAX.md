@@ -1,5 +1,18 @@
 # ALT MAX — Portal BI · Briefing Completo para Claude Code
 
+> **HISTÓRICO — NÃO USE COMO REFERÊNCIA OPERACIONAL.**
+> Este briefing reflete o estado inicial do projeto. URLs, nomes de repo
+> e rotas estão desatualizados:
+> - URLs canônicas atuais: `https://api.grupoalt.agr.br` (backend) e
+>   `https://portal.grupoalt.agr.br` (frontend). Os domínios
+>   `altmax-api-production.up.railway.app` e
+>   `altmax-f8vi3z5fp-...vercel.app` aqui referenciados são legados.
+> - Nomes de repositório atuais: `vmapex/grupoalt-api` e `vmapex/grupoalt-web`.
+> - Rotas `/dashboard/*` mencionadas estão sendo deprecadas em favor de
+>   `/bi/financeiro/*` (ver `CLAUDE.md` e Step 12 do plano de ação).
+>
+> Para contexto canônico, use `README.md` e `CLAUDE.md`.
+
 ## 1. Visão Geral do Projeto
 
 Portal financeiro web para a empresa **Alt Max**, substituindo relatórios Power BI por um dashboard interativo conectado à **API Omie** (ERP financeiro brasileiro). O sistema é multi-tenant (3 empresas) com autenticação JWT.
