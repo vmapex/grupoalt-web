@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Settings, Upload, Trash2, Pencil, Plus, X, Tag, Landmark } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
+import { useRequireAdmin } from '@/hooks/useRequireAdmin'
+import { AccessDenied } from '@/components/AccessDenied'
 
 /* ------------------------------------------------------------------ */
 /*  LogoUploadBox                                                      */
@@ -147,6 +149,7 @@ interface EditFormData {
 
 export default function PageAdmin() {
   const t = useThemeStore((s) => s.tokens)
+  const adminAccess = useRequireAdmin()
   const empresas = useEmpresaStore((s) => s.empresas)
   const updateEmpresa = useEmpresaStore((s) => s.updateEmpresa)
   const addEmpresa = useEmpresaStore((s) => s.addEmpresa)
@@ -154,6 +157,17 @@ export default function PageAdmin() {
 
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditFormData>({ nome: '', cnpj: '', cor: '' })
+
+  if (adminAccess === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span className="text-[12px]" style={{ color: t.muted }}>Carregando...</span>
+      </div>
+    )
+  }
+  if (adminAccess === 'denied') {
+    return <AccessDenied message="As configuracoes do BI sao restritas a administradores." />
+  }
 
   const startEdit = (emp: Empresa) => {
     setEditId(emp.id)

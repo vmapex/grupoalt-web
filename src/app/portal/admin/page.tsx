@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
+import { useRequireAdmin } from '@/hooks/useRequireAdmin'
+import { AccessDenied } from '@/components/AccessDenied'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean
@@ -28,6 +30,7 @@ const ROLES = [
 const TABS = ['Usuários', 'Empresas', 'Unidades'] as const
 
 export default function AdminPage() {
+  const adminAccess = useRequireAdmin()
   const [tab, setTab] = useState<typeof TABS[number]>('Usuários')
   const [usuarios, setUsuarios] = useState<UserData[]>([])
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([])
@@ -74,7 +77,9 @@ export default function AdminPage() {
     } catch { setUnidades([]) }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (adminAccess === 'allowed') loadData()
+  }, [adminAccess])
   useEffect(() => { if (selectedEmpresa) loadUnidades(selectedEmpresa) }, [selectedEmpresa])
 
   // User actions
@@ -159,6 +164,9 @@ export default function AdminPage() {
     await api.delete(`/gestao/unidades/${id}`)
     if (selectedEmpresa) loadUnidades(selectedEmpresa)
   }
+
+  if (adminAccess === 'loading') return <div className="flex items-center justify-center h-64"><span className="text-zinc-500 text-sm">Carregando...</span></div>
+  if (adminAccess === 'denied') return <AccessDenied message="Esta area e restrita a administradores." />
 
   if (loading) return <div className="flex items-center justify-center h-64"><span className="text-zinc-500 text-sm">Carregando...</span></div>
 

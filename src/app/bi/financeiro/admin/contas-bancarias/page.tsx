@@ -6,11 +6,14 @@ import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useContasBancarias, updateContaBancariaFlags, type ContaBancariaAPIItem } from '@/hooks/useAPI'
 import { GlowLine } from '@/components/ui/GlowLine'
+import { useRequireAdmin } from '@/hooks/useRequireAdmin'
+import { AccessDenied } from '@/components/AccessDenied'
 
 export default function AdminContasBancariasPage() {
   const t = useThemeStore((s) => s.tokens)
+  const adminAccess = useRequireAdmin()
   const empresaId = useEmpresaId()
-  const { data, loading, refetch } = useContasBancarias(empresaId)
+  const { data, loading, refetch } = useContasBancarias(adminAccess === 'allowed' ? empresaId : null)
   const [filter, setFilter] = useState('')
   const [savingId, setSavingId] = useState<number | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
@@ -60,6 +63,17 @@ export default function AdminContasBancariasPage() {
     } finally {
       setSavingId(null)
     }
+  }
+
+  if (adminAccess === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span className="text-[12px]" style={{ color: t.muted }}>Carregando...</span>
+      </div>
+    )
+  }
+  if (adminAccess === 'denied') {
+    return <AccessDenied message="A configuracao de contas bancarias e restrita a administradores." />
   }
 
   return (

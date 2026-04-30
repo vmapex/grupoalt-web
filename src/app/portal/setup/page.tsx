@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
@@ -9,13 +9,30 @@ import {
   Building2, Key, CheckCircle, ArrowRight, ArrowLeft,
   Loader2, AlertTriangle, Wifi, WifiOff,
 } from 'lucide-react'
+import { canAccessSetup } from '@/lib/access'
+import { AccessDenied } from '@/components/AccessDenied'
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'error'
 
 export default function SetupPage() {
   const router = useRouter()
-  const { setAuth } = useAuthStore()
+  const { setAuth, user, empresas, isAuthenticated } = useAuthStore()
   const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
+
+  // Setup so e valido para admins sem nenhuma empresa vinculada.
+  // Usuario comum nao pode entrar; admin com empresa volta pro dashboard.
+  const accessState: 'loading' | 'allowed' | 'denied' | 'completed' = (() => {
+    if (!isAuthenticated || !user) return 'loading'
+    if (canAccessSetup(user, empresas.length)) return 'allowed'
+    if (user.is_admin) return 'completed'
+    return 'denied'
+  })()
+
+  useEffect(() => {
+    if (accessState === 'completed') {
+      router.replace('/portal/grupo')
+    }
+  }, [accessState, router])
 
   // Step state
   const [step, setStep] = useState(1)
@@ -93,6 +110,17 @@ export default function SetupPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (accessState === 'loading' || accessState === 'completed') {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <span className="text-zinc-500 text-sm">Carregando...</span>
+      </div>
+    )
+  }
+  if (accessState === 'denied') {
+    return <AccessDenied message="O setup inicial e restrito a administradores." />
   }
 
   return (
