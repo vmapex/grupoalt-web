@@ -40,8 +40,8 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 05 | [Lint e testes sem bloqueio inicial](./step-05-lint-test-foundation.md) | DONE — merged em `main` |
 | 06 | [Auditoria RBAC backend](./step-06-rbac-backend.md) | DONE — `grupoalt-web` PR #38 + `grupoalt-api` PR #26 (cross-tenant fix) |
 | 07 | [Interceptor de auth e sessao](./step-07-auth-interceptor-sessao.md) | DONE — `grupoalt-web` PR #39 (sem mudanca no backend) |
-| 08 | [Guardas frontend](./step-08-guardas-frontend.md) | EM ANDAMENTO |
-| 09 | [Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md) | TODO |
+| 08 | [Guardas frontend](./step-08-guardas-frontend.md) | DONE — `grupoalt-web` PR #40 |
+| 09 | [Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md) | EM ANDAMENTO — branch `claude/readme-step-9-QRW5Z` (web + api) |
 | 10 | [CSP e headers](./step-10-csp-headers.md) | TODO |
 | 11 | [Empresa ativa](./step-11-empresa-ativa.md) | TODO |
 | 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | TODO |
@@ -51,7 +51,7 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | TODO |
 | 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
 
-> Status atualizado em 2026-04-30. P0 (Steps 01-07) concluido; entrando em P1 com o Step 08.
+> Status atualizado em 2026-04-30. P0 (Steps 01-07) e Step 08 concluidos; Step 09 em andamento.
 
 ## Prioridade Consolidada
 

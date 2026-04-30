@@ -18,6 +18,52 @@ export interface AccessPermissao {
   empresa_id?: number | null
 }
 
+/**
+ * Allowlist de prefixos internos validos para navegacao dinamica
+ * (rotas vindas da API, ex.: notificacoes). Mantenha em sincronia com
+ * a estrutura real do app/router.
+ */
+export const ALLOWED_INTERNAL_ROUTE_PREFIXES = [
+  '/portal',
+  '/bi/financeiro',
+] as const
+
+/**
+ * Step 09: valida se uma rota dinamica recebida da API pode ser usada
+ * com router.push. Aceita SO caminhos internos absolutos comecando com
+ * `/` que casem com a allowlist. Bloqueia esquemas perigosos (javascript:,
+ * data:), protocolos externos (http(s)://) e protocol-relative `//host`.
+ *
+ * Retorna `null` quando a rota e invalida — o caller deve nao navegar
+ * e opcionalmente avisar o usuario.
+ */
+export function safeInternalRoute(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const route = input.trim()
+  if (!route) return null
+  if (!route.startsWith('/')) return null
+  if (route.startsWith('//')) return null
+
+  // Bloqueia esquemas perigosos mesmo que apareçam no meio da string
+  // (e.g. via querystring construido pela API).
+  const lowered = route.toLowerCase()
+  if (
+    lowered.includes('javascript:') ||
+    lowered.includes('data:') ||
+    lowered.includes('http://') ||
+    lowered.includes('https://')
+  ) {
+    return null
+  }
+
+  const allowed = ALLOWED_INTERNAL_ROUTE_PREFIXES.some(
+    (prefix) => route === prefix || route.startsWith(prefix + '/') || route.startsWith(prefix + '?'),
+  )
+  if (!allowed) return null
+
+  return route
+}
+
 /** Quem pode acessar areas administrativas (CRUD usuarios/empresas/credenciais). */
 export function canAccessAdmin(user: AccessUser | null | undefined): boolean {
   return !!user?.is_admin

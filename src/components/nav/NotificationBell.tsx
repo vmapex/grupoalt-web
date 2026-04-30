@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { Bell, AlertCircle, AlertTriangle, Info, ChevronRight } from 'lucide-react'
 import { useNotificacoes, useNotificacoesContagem, marcarTodasLidas } from '@/hooks/useAPI'
+import { safeInternalRoute } from '@/lib/access'
 
 interface Notification {
   id: string
@@ -50,18 +51,27 @@ export function NotificationBell() {
   const { data: notifsAPI, refetch: refetchNotifs } = useNotificacoes(20)
   const { data: contagemAPI, refetch: refetchContagem } = useNotificacoesContagem()
 
-  // Transform API data or fallback
+  // Transform API data or fallback. Step 09: rotas vindas da API sao
+  // sanitizadas via safeInternalRoute — links externos ou fora da allowlist
+  // viram `undefined` e nao geram botao de navegacao.
   const notifications: Notification[] = useMemo(() => {
     if (notifsAPI?.length) {
-      return notifsAPI.map((n) => ({
-        id: String(n.id),
-        type: (TIPO_MAP[n.tipo] || 'info') as Notification['type'],
-        title: n.titulo,
-        description: n.mensagem,
-        action: n.link ? { label: 'Ver detalhes', route: n.link } : undefined,
-        createdAt: n.criado_em ? new Date(n.criado_em) : new Date(),
-        read: n.lida,
-      }))
+      return notifsAPI.map((n) => {
+        const safeRoute = safeInternalRoute(n.link)
+        if (n.link && !safeRoute && process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[NotificationBell] rota ignorada (fora da allowlist):', n.link)
+        }
+        return {
+          id: String(n.id),
+          type: (TIPO_MAP[n.tipo] || 'info') as Notification['type'],
+          title: n.titulo,
+          description: n.mensagem,
+          action: safeRoute ? { label: 'Ver detalhes', route: safeRoute } : undefined,
+          createdAt: n.criado_em ? new Date(n.criado_em) : new Date(),
+          read: n.lida,
+        }
+      })
     }
     return FALLBACK_NOTIFICATIONS
   }, [notifsAPI])
@@ -142,7 +152,10 @@ export function NotificationBell() {
               className="flex items-center gap-0.5 text-[9px] font-medium mt-1 cursor-pointer bg-transparent border-none p-0"
               style={{ color: t.blue }}
               onClick={() => {
-                if (n.action?.route) router.push(n.action.route)
+                // Defesa em profundidade: revalida no clique caso a rota tenha
+                // sido alterada apos o useMemo.
+                const safe = safeInternalRoute(n.action?.route)
+                if (safe) router.push(safe)
                 setOpen(false)
               }}
             >

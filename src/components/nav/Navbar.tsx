@@ -37,17 +37,30 @@ export function Navbar() {
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefresh = useCallback(async () => {
+    if (!isAdmin) return
     setRefreshing(true)
-    try {
-      const id = useEmpresaStore.getState().activeId
-      if (id) {
-        await api.post(`/empresas/${id}/cache/flush`).catch(() => {})
-      }
-      window.location.reload()
-    } catch {
-      window.location.reload()
+    const id = useEmpresaStore.getState().activeId
+    if (!id) {
+      setRefreshing(false)
+      return
     }
-  }, [])
+    try {
+      await api.post(`/empresas/${id}/cache/flush`)
+      window.location.reload()
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        // Backend recusou — UI provavelmente esta desalinhada do RBAC.
+        // eslint-disable-next-line no-console
+        console.warn('[Navbar] cache flush negado pelo backend (403)')
+        setRefreshing(false)
+      } else {
+        // Falha de rede/timeout: ainda assim recarrega para dar uma chance
+        // de leitura fresca; cache continua no Redis.
+        window.location.reload()
+      }
+    }
+  }, [isAdmin])
 
   useEffect(() => {
     if (activeId) fetchProjetos(activeId)
@@ -215,25 +228,25 @@ export function Navbar() {
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
           </button>
         )}
-        {pathname.includes('/extrato') && (
+        {isAdmin && pathname.includes('/extrato') && (
           <ExportPDFButton
             empresaId={activeId}
-            endpoint="/export/empresas/{empresa_id}/extrato/pdf"
+            report="extrato"
             filename="extrato.pdf"
             label="PDF Extrato"
           />
         )}
-        {pathname.includes('/cp-cr') && (
+        {isAdmin && pathname.includes('/cp-cr') && (
           <>
             <ExportPDFButton
               empresaId={activeId}
-              endpoint="/export/empresas/{empresa_id}/cp/pdf"
+              report="cp"
               filename="contas-pagar.pdf"
               label="PDF CP"
             />
             <ExportPDFButton
               empresaId={activeId}
-              endpoint="/export/empresas/{empresa_id}/cr/pdf"
+              report="cr"
               filename="contas-receber.pdf"
               label="PDF CR"
             />
