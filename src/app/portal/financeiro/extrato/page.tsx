@@ -166,9 +166,10 @@ export default function PageExtrato() {
           </span>
           <ExportPDFButton
             empresaId={empresaId}
-            endpoint="/export/empresas/{empresa_id}/extrato/pdf"
+            report="extrato"
             filename={`extrato_${dt_inicio}-${dt_fim}.pdf`}
             params={{ dt_inicio, dt_fim }}
+            permissao={{ modulo: 'indicadores', acao: 'exportar' }}
           />
         </div>
 

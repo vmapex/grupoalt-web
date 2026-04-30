@@ -281,8 +281,9 @@ export default function PageCPCR() {
         </div>
         <ExportPDFButton
           empresaId={empresaId}
-          endpoint={tab === 'CP' ? '/export/empresas/{empresa_id}/cp/pdf' : '/export/empresas/{empresa_id}/cr/pdf'}
+          report={tab === 'CP' ? 'cp' : 'cr'}
           filename={`${tab === 'CP' ? 'contas_pagar' : 'contas_receber'}.pdf`}
+          permissao={{ modulo: 'indicadores', acao: 'exportar' }}
         />
       </div>
 
