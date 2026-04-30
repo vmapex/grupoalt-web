@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
+import { canAccessAdmin } from '@/lib/access'
 
 interface NavChild { label: string; href: string; icon?: React.ReactNode; badge?: string }
 interface NavSection {
@@ -82,11 +83,13 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
+  const isAdmin = canAccessAdmin(user)
+
   const visibleSections = useMemo(() => sections.filter(s => {
-    if (user?.is_admin) return true
+    if (isAdmin) return true
     if (!s.modulo) return true
     return hasPermissao(s.modulo, 'visualizar')
-  }), [user?.is_admin, hasPermissao])
+  }), [isAdmin, hasPermissao])
 
   const userInitials = user?.nome
     ? user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -319,7 +322,7 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
 
       {/* Settings / Admin */}
       <div className="px-2 py-3" style={{ borderTop: `1px solid ${t.border}` }}>
-        {user?.is_admin && (
+        {isAdmin && (
           <Link
             href="/portal/admin"
             className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl transition-all text-sm"

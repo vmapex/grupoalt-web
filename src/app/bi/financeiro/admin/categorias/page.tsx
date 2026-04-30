@@ -7,6 +7,8 @@ import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa, bulkUpdateCategoriasGrupoDRE } from '@/hooks/useAPI'
 import { CATEGORIAS, buildCategoriasFromAPI, type CategoriaInfo } from '@/lib/planoContas'
 import { GlowLine } from '@/components/ui/GlowLine'
+import { useRequireAdmin } from '@/hooks/useRequireAdmin'
+import { AccessDenied } from '@/components/AccessDenied'
 
 /* ── Cores dos grupos DRE ─────────────────────────────────────── */
 const GRUPO_COLORS: Record<string, string> = {
@@ -35,8 +37,9 @@ const GRUPO_LABELS: Record<string, string> = {
 
 export default function AdminCategoriasPage() {
   const t = useThemeStore((s) => s.tokens)
+  const adminAccess = useRequireAdmin()
   const empresaId = useEmpresaId()
-  const { data: apiData, loading, refetch } = useCategorias(empresaId)
+  const { data: apiData, loading, refetch } = useCategorias(adminAccess === 'allowed' ? empresaId : null)
   const [filter, setFilter] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [syncing, setSyncing] = useState(false)
@@ -257,6 +260,17 @@ export default function AdminCategoriasPage() {
     }
     return { total, fromAPI, byGrupo }
   }, [categorias, apiData])
+
+  if (adminAccess === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span className="text-[12px]" style={{ color: t.muted }}>Carregando...</span>
+      </div>
+    )
+  }
+  if (adminAccess === 'denied') {
+    return <AccessDenied message="O plano de contas e restrito a administradores." />
+  }
 
   return (
     <div className="flex flex-col gap-4 p-5 min-h-full" style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>

@@ -31,23 +31,27 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 
 ## Ordem Recomendada
 
-1. [STEP 01 - Baseline tecnico](./step-01-baseline-tecnico.md)
-2. [STEP 02 - Staging e deploy seguro](./step-02-staging-deploy-seguro.md)
-3. [STEP 03 - Ambiente, secrets e documentacao antiga](./step-03-ambiente-secrets-documentacao.md)
-4. [STEP 04 - Dependencias vulneraveis](./step-04-dependencias-vulneraveis.md)
-5. [STEP 05 - Lint e testes sem bloqueio inicial](./step-05-lint-test-foundation.md)
-6. [STEP 06 - Auditoria RBAC backend](./step-06-rbac-backend.md)
-7. [STEP 07 - Interceptor de auth e sessao](./step-07-auth-interceptor-sessao.md)
-8. [STEP 08 - Guardas frontend](./step-08-guardas-frontend.md)
-9. [STEP 09 - Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md)
-10. [STEP 10 - CSP e headers](./step-10-csp-headers.md)
-11. [STEP 11 - Empresa ativa](./step-11-empresa-ativa.md)
-12. [STEP 12 - Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md)
-13. [STEP 13 - Calculos BI/DRE e paginacao](./step-13-calculos-bi-dre-paginacao.md)
-14. [STEP 14 - Testes de dominio e stores](./step-14-testes-dominio-stores.md)
-15. [STEP 15 - CI bloqueante e audit](./step-15-ci-bloqueante-audit.md)
-16. [STEP 16 - Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md)
-17. [STEP 17 - Homologacao final](./step-17-homologacao-final.md)
+| # | Step | Status |
+|---|------|--------|
+| 01 | [Baseline tecnico](./step-01-baseline-tecnico.md) | DONE — merged em `main` |
+| 02 | [Staging e deploy seguro](./step-02-staging-deploy-seguro.md) | DONE — merged em `main` |
+| 03 | [Ambiente, secrets e documentacao antiga](./step-03-ambiente-secrets-documentacao.md) | DONE — merged em `main` |
+| 04 | [Dependencias vulneraveis](./step-04-dependencias-vulneraveis.md) | DONE — merged em `main` |
+| 05 | [Lint e testes sem bloqueio inicial](./step-05-lint-test-foundation.md) | DONE — merged em `main` |
+| 06 | [Auditoria RBAC backend](./step-06-rbac-backend.md) | DONE — `grupoalt-web` PR #38 + `grupoalt-api` PR #26 (cross-tenant fix) |
+| 07 | [Interceptor de auth e sessao](./step-07-auth-interceptor-sessao.md) | DONE — `grupoalt-web` PR #39 (sem mudanca no backend) |
+| 08 | [Guardas frontend](./step-08-guardas-frontend.md) | EM ANDAMENTO |
+| 09 | [Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md) | TODO |
+| 10 | [CSP e headers](./step-10-csp-headers.md) | TODO |
+| 11 | [Empresa ativa](./step-11-empresa-ativa.md) | TODO |
+| 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | TODO |
+| 13 | [Calculos BI/DRE e paginacao](./step-13-calculos-bi-dre-paginacao.md) | TODO |
+| 14 | [Testes de dominio e stores](./step-14-testes-dominio-stores.md) | TODO |
+| 15 | [CI bloqueante e audit](./step-15-ci-bloqueante-audit.md) | TODO |
+| 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | TODO |
+| 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
+
+> Status atualizado em 2026-04-30. P0 (Steps 01-07) concluido; entrando em P1 com o Step 08.
 
 ## Prioridade Consolidada
 

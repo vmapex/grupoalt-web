@@ -6,6 +6,8 @@ import api from '@/lib/api'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, getLogo } from '@/store/empresaStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
+import { useAuthStore } from '@/store/authStore'
+import { canAccessAdmin } from '@/lib/access'
 import { ThemeToggle } from './ThemeToggle'
 import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
@@ -29,6 +31,8 @@ export function Navbar() {
   const active = useEmpresaStore((s) => s.getActive())
   const activeId = useEmpresaStore((s) => s.activeId)
   const fetchProjetos = useUnidadeStore((s) => s.fetchProjetos)
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = canAccessAdmin(user)
   const logo = getLogo(active, t.isDark)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -187,28 +191,30 @@ export function Navbar() {
 
       {/* Right: Controls */}
       <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
-          style={{
-            background: t.surface,
-            border: `1px solid ${t.border}`,
-            color: t.muted,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = t.borderGold
-            e.currentTarget.style.color = t.gold
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = t.border
-            e.currentTarget.style.color = t.muted
-          }}
-          title="Atualizar dados"
-          aria-label="Atualizar dados"
-        >
-          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
+            style={{
+              background: t.surface,
+              border: `1px solid ${t.border}`,
+              color: t.muted,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = t.borderGold
+              e.currentTarget.style.color = t.gold
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = t.border
+              e.currentTarget.style.color = t.muted
+            }}
+            title="Atualizar dados (cache flush)"
+            aria-label="Atualizar dados (cache flush)"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+        )}
         {pathname.includes('/extrato') && (
           <ExportPDFButton
             empresaId={activeId}
@@ -242,32 +248,34 @@ export function Navbar() {
         <div className="hidden sm:block">
           <EmpresaDropdown />
         </div>
-        <Link
-          href="/bi/financeiro/admin"
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
-          style={{
-            background: t.surface,
-            border: `1px solid ${pathname === '/bi/financeiro/admin' ? t.borderGold : t.border}`,
-            color: pathname === '/bi/financeiro/admin' ? t.gold : t.muted,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = t.borderGold
-            e.currentTarget.style.color = t.gold
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = pathname === '/bi/financeiro/admin' ? t.borderGold : t.border
-            e.currentTarget.style.color = pathname === '/bi/financeiro/admin' ? t.gold : t.muted
-          }}
-          aria-label="Configurações"
-        >
-          <Settings
-            size={13}
-            className="transition-transform"
+        {isAdmin && (
+          <Link
+            href="/bi/financeiro/admin"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
             style={{
-              transform: pathname === '/bi/financeiro/admin' ? 'rotate(90deg)' : 'none',
+              background: t.surface,
+              border: `1px solid ${pathname === '/bi/financeiro/admin' ? t.borderGold : t.border}`,
+              color: pathname === '/bi/financeiro/admin' ? t.gold : t.muted,
             }}
-          />
-        </Link>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = t.borderGold
+              e.currentTarget.style.color = t.gold
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = pathname === '/bi/financeiro/admin' ? t.borderGold : t.border
+              e.currentTarget.style.color = pathname === '/bi/financeiro/admin' ? t.gold : t.muted
+            }}
+            aria-label="Configurações"
+          >
+            <Settings
+              size={13}
+              className="transition-transform"
+              style={{
+                transform: pathname === '/bi/financeiro/admin' ? 'rotate(90deg)' : 'none',
+              }}
+            />
+          </Link>
+        )}
       </div>
     </nav>
   )
