@@ -21,11 +21,11 @@
 | `*.vercel.app` | nenhum connect direto saindo do client para Vercel | — | — | **remover** |
 | `cdnjs.cloudflare.com` / `unpkg.com` | iframes `/dashboard/*` (rotas legadas) | `src/app/dashboard/*/page.tsx` | `script-src`, `style-src`, `font-src` | **NÃO listar** (Step 12 vai remover essas rotas) |
 
-## Política aplicada nesta etapa
+## Política aplicada (Fases 1-3)
 
 ```text
 default-src 'self'
-script-src  'self' 'unsafe-inline' 'unsafe-eval'
+script-src  'self' 'unsafe-inline'
 style-src   'self' 'unsafe-inline' https://fonts.googleapis.com
 font-src    'self' https://fonts.gstatic.com
 img-src     'self' data: blob:
@@ -45,19 +45,53 @@ object-src 'none'
 | `base-uri` | (ausente) | `'self'` | bloqueia `<base href>` injetado |
 | `form-action` | (ausente) | `'self'` | bloqueia exfiltração via `<form action>` para terceiros |
 | `object-src` | (default = `default-src 'self'`) | `'none'` | redundância explícita contra `<object>`/`<embed>`/Flash legado |
+| `script-src` (Fase 3) | `'self' 'unsafe-inline' 'unsafe-eval'` | `'self' 'unsafe-inline'` | ver Fase 3 abaixo — `unsafe-eval` removido |
 
-## Plano para Fase 3 — `unsafe-eval`
+## Fase 3 — `unsafe-eval` removido (✅ DONE)
 
-- `unsafe-eval` é necessário pelo runtime do webpack em modo dev e por algumas
-  libs de animação client.
-- Próximo passo (PR separado): rodar `next build` em produção e abrir o portal
-  com `script-src 'self'` (sem `'unsafe-eval'`) num preview Vercel; capturar
-  violações no console e classificar:
-  - se webpack chunk loader → adicionar `wasm-unsafe-eval` em vez de `unsafe-eval`
-    e/ou ajustar config.
-  - se Recharts/animações → mapear e considerar substituição.
-- Critério de aceite: console limpo no dashboard, caixa, fluxo, conciliação,
-  análise IA, login, admin.
+### Auditoria do bundle
+
+`grep` em `.next/static/chunks/*.js` (build de produção) achou **dois** lugares
+que referenciam o construtor `Function`:
+
+1. `webpack-*.js` — runtime do webpack:
+   ```js
+   if (typeof globalThis === "object") return globalThis;
+   try { return this || Function("return this")(); }
+   catch (e) { if (typeof window === "object") return window; }
+   ```
+   - Em browsers evergreen, `globalThis` é objeto → retorna direto, **nunca**
+     entra no `try`.
+   - Mesmo se entrar, a chamada bloqueada por CSP cai no `catch` e devolve
+     `window`.
+
+2. `5497-*.js` — vendor chunk (lodash-style global):
+   ```js
+   var i = n || o || Function("return this")();
+   ```
+   - `n` (`globalThis`) e `o` (`window`/`self`) são truthy em qualquer
+     browser moderno — `||` curto-circuita antes de chamar `Function(...)`.
+
+### Decisão
+
+`unsafe-eval` removido. Os dois call-sites identificados são fallbacks para
+ambientes pré-`globalThis` (IE11 etc.), que o Next 14 não suporta.
+
+### Validação local
+
+- `npm run build` passa (49 páginas estáticas geradas).
+- `npm run typecheck` limpo.
+- `npm run test` 42/42 verde.
+- `grep -E "[^a-zA-Z_\$\.\?]Function\s*\(" .next/static/chunks/*.js` →
+  só os dois fallbacks acima, ambos em código não executado.
+
+### Pós-deploy (a fazer no preview Vercel)
+
+- Login, portal, BI Dashboard, Análise IA, Caixa, Extrato, CP/CR, Fluxo,
+  Conciliação, Orbit, export PDF, troca de tema.
+- DevTools console deve ficar limpo (sem `Refused to evaluate a string as
+  JavaScript because 'unsafe-eval' is not an allowed source`).
+- Se aparecer violação real, rollback é só re-incluir `'unsafe-eval'`.
 
 ## Plano para Fase 4 — `unsafe-inline` em `script-src`
 
