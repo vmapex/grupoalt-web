@@ -93,27 +93,82 @@ ambientes pré-`globalThis` (IE11 etc.), que o Next 14 não suporta.
   JavaScript because 'unsafe-eval' is not an allowed source`).
 - Se aparecer violação real, rollback é só re-incluir `'unsafe-eval'`.
 
-## Plano para Fase 4 — `unsafe-inline` em `script-src`
+## Fase 4 — `unsafe-inline` em `script-src` (⏸ DEFERIDA)
 
-- Há um único script inline conhecido: o `themeBootstrap` em
-  `src/app/layout.tsx`, que aplica o tema antes do primeiro paint.
-- Estratégia preferida: hash CSP (`'sha256-…'`) — o conteúdo é estático e
-  pequeno, então um hash fixo no `next.config.js` resolve sem nonce dinâmico.
-- Alternativa: extrair para `public/theme-bootstrap.js` e referenciar com
-  `<script src="…">` (perde o "antes do primeiro paint" se for `defer`).
-- Critério de aceite: nenhum `unsafe-inline` em `script-src`, sem flash de
-  tema errado em hard reload.
+### Achado
 
-## Validação aplicada nesta entrega
+A auditoria inicial assumiu que `themeBootstrap` em `src/app/layout.tsx`
+era o único `<script>` inline. Auditoria do HTML compilado
+(`.next/server/app/login.html`) revelou outros 5+ scripts inline
+**injetados pelo Next 14 (App Router)** para streaming SSR:
 
-1. `npm run build` — passa sem erros novos.
-2. Inspeção do CSP composto: 10 diretivas, todas explícitas.
-3. Próximas validações em preview (após deploy):
+```html
+<script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script>
+<script>self.__next_f.push([1,"1:HL[\"/_next/static/css/444e128ebad9d710.css\",\"style\"]\n"])</script>
+<!-- + chunks de hidratação variáveis por rota/build -->
+```
+
+Esses scripts têm conteúdo **dinâmico** (rota, hash de CSS, dados de
+hidratação), então hash CSP estático **não cobre** todos.
+
+### Estratégia válida (não aplicada nesta entrega)
+
+Implementar **nonce-based CSP via Next middleware** (`src/middleware.ts`):
+
+1. Middleware gera nonce aleatório por request.
+2. Define header `Content-Security-Policy` com `'nonce-<valor>'` em
+   `script-src` (substituindo `'unsafe-inline'`).
+3. Define header `x-nonce` para o `layout.tsx` ler via `headers()`.
+4. Next 14 aplica o nonce automaticamente em todos os scripts dele
+   (`__next_f`, polyfills, chunks).
+5. `layout.tsx` passa o nonce para o `<script>` do `themeBootstrap`.
+
+Referência: <https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy>
+
+### Decisão
+
+**DEFERIDA.** Migrar para nonce middleware é um refactor arquitetural
+(CSP sai de header estático no `next.config.js` e vira middleware
+dinâmico) e foi explicitamente marcado pela spec do step como "fazer
+em PR separado se necessário".
+
+Estado atual mitiga XSS via:
+- `script-src 'self'` (sem hosts externos permitidos);
+- `unsafe-eval` removido (Fase 3);
+- `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`,
+  `frame-ancestors 'none'`.
+
+`unsafe-inline` continua presente para permitir o streaming do App
+Router. Fica como **débito técnico documentado** para um Step futuro
+(candidato natural: Step 15 — CI bloqueante e audit, ou um
+"Step 10b" dedicado).
+
+## Validação aplicada (Fases 1-3)
+
+1. `npm run build` — passa sem erros novos (49 páginas estáticas).
+2. `npm run typecheck` — limpo.
+3. `npm run test` — 42/42 verde.
+4. Inspeção do CSP composto: 10 diretivas, todas explícitas.
+5. Auditoria do bundle: `Function("return this")` só em fallbacks
+   protegidos por short-circuit `globalThis`/`window`.
+6. Próximas validações em preview (após deploy):
    - `curl -I https://<preview>.vercel.app` mostra os 6 headers + CSP.
    - DevTools sem violações CSP críticas em login, portal, BI, Orbit, export
      PDF, troca de tema.
    - Rotas legadas `/dashboard/*` ficam órfãs até Step 12; não há link interno
      apontando para elas.
+
+## Resumo do Step 10
+
+| Fase | Status | PR |
+|---|---|---|
+| Inventário de origens | ✅ DONE | #42 |
+| Fase 1 — `connect-src` restrito | ✅ DONE | #42 |
+| Fase 2 — `img-src` restrito | ✅ DONE | #42 |
+| Fase 3 — remover `'unsafe-eval'` | ✅ DONE | #43 |
+| Fase 4 — remover `'unsafe-inline'` em `script-src` | ⏸ DEFERIDA | — |
+| Validação manual em preview Vercel | 🟡 a fazer | — |
+| `curl -I` em produção | 🟡 a fazer | — |
 
 ## Rollback
 
