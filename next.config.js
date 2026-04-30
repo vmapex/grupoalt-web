@@ -48,11 +48,14 @@ const nextConfig = {
             //  - connect-src restrito aos hosts realmente usados (chamadas client-side
             //    saem por /api/proxy/* — 'self' — mas API canônica fica explícita).
             //  - img-src sem 'https:' aberto (logos vêm como data: e /public).
-            //  - 'unsafe-inline' fica até o bootstrap de tema em layout.tsx virar nonce/hash.
-            //  - 'unsafe-eval' fica até validar dependências client (Recharts/webpack runtime).
+            //  - 'unsafe-eval' removido (Fase 3): chunks usam Function("return this")
+            //    apenas como fallback após globalThis/window — short-circuit em
+            //    qualquer browser evergreen suportado pelo Next 14.
+            //  - 'unsafe-inline' fica até o bootstrap de tema em layout.tsx virar
+            //    nonce/hash (Fase 4).
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
