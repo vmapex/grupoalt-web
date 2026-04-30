@@ -77,6 +77,70 @@ git grep -n "/grupos/" -- src
 - Evidencias manuais ou testes automatizados para endpoints sensiveis.
 - Falhas de RBAC corrigidas ou abertas com prioridade P0.
 
+## Resultado da Execucao (2026-04-30)
+
+Auditoria executada sobre os endpoints consumidos por este frontend
+(`src/lib/api.ts` + chamadas diretas em `src/app`/`src/components`/`src/hooks`/`src/store`),
+comparados com os routers do `grupoalt-api`. Branch:
+`claude/rbac-backend-audit-YOdsC`.
+
+- Matriz consolidada vive no repo do backend:
+  `grupoalt-api/docs/plano-acao-seguranca/step-06-rbac-backend-MATRIZ.md`.
+- Falhas P0/P1 corrigidas no backend (mesma branch). Veja PR no
+  `vmapex/grupoalt-api`.
+- Frontend nao precisa de mudancas para este step — o objetivo e
+  garantir que o backend ja bloqueia mesmo que alguem chame a API
+  direto (via curl, Postman, console do navegador).
+
+### Endpoints consumidos (resumo)
+
+Levantados em `src/lib/api.ts` + grep em `src/`:
+
+- Auth: `/auth/login`, `/auth/me`, `/auth/refresh`, `/auth/logout`.
+- Admin: `/admin/empresas`, `/admin/empresas/{id}/credenciais`,
+  `/admin/credenciais/testar`, `/admin/setup`.
+- Gestao: `/gestao/usuarios`, `/gestao/usuarios/{id}`,
+  `/gestao/usuarios/{id}/empresas`, `/gestao/usuarios/{id}/permissoes`,
+  `/gestao/empresas`, `/gestao/empresas/{id}/unidades`,
+  `/gestao/unidades/{id}`.
+- BI: `/empresas/{id}/extrato`, `/saldos`, `/cp`, `/cp/resumo`,
+  `/cr`, `/cr/resumo`, `/cp/{cod}/baixas`, `/cr/{cod}/baixas`,
+  `/fluxo-caixa`, `/fluxo-caixa/diario|mensal`,
+  `/conciliacao/{movimentacao|resumo|calendario|dia/{date}}`,
+  `/categorias`, `/categorias/sync`, `/categorias/{cod}`,
+  `/categorias/bulk-override`, `/contas`,
+  `/contas-bancarias/{omie_id}`, `/cache/flush`,
+  `/dashboard`.
+- Export: `/export/empresas/{id}/extrato/pdf`,
+  `/export/empresas/{id}/cp/pdf`, `/export/empresas/{id}/cr/pdf`.
+- Documentos: `/grupos/{gid}/documentos`,
+  `/grupos/{gid}/documentos/{did}/{action}`.
+- Notificacoes: `/notificacoes`, `/notificacoes/contagem`,
+  `/notificacoes/{id}/ler`, `/notificacoes/ler-todas`.
+- Orbit: `/orbit/usage`, `/orbit/chat`.
+
+### Falhas corrigidas no backend
+
+- **P0** IDOR em `POST /v1/orbit/chat` (validacao de `empresa_id` no
+  body antes de carregar contexto financeiro).
+- **P0** `GET /v1/gestao/usuarios` so para admin/gestor com vinculo
+  (antes: branch do gestor inalcancavel; qualquer login recebia lista
+  global).
+- **P0** `GET /v1/gestao/usuarios/{id}` agora limitado a admin, self
+  ou gestor que compartilha empresa.
+- **P0** `GET /v1/gestao/empresas/{id}/unidades` exige `get_empresa_ctx`.
+- **P1** `GET /v1/gestao/empresas` filtra por vinculo do usuario comum.
+- **P1** `GET /v1/sync/status/{id}` exige `get_empresa_ctx`.
+
+### Follow-up (P2 — abrir step 06.B)
+
+`check_permissao` em `app/core/deps.py` e funcao morta — nenhum
+router checa permissoes granulares (`documentos:aprovar`,
+`financeiro:exportar`, `admin:editar`, etc). Hoje a granularidade
+real e vinculo + role (admin/gestor/viewer). Introduzir
+`require_permissao(modulo, acao)` em endpoints sensiveis vira
+proximo step de RBAC.
+
 ## Criterio de Pronto
 
 - Backend garante autorizacao por endpoint.
