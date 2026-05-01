@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { ThemeHydrator } from '@/components/ThemeHydrator'
 import './globals.css'
 
@@ -29,13 +30,20 @@ const themeBootstrap = `
 `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Step 10 — Fase 4: nonce gerado pelo middleware. O Next aplica
+  // automaticamente em seus scripts internos quando o request header
+  // `x-nonce` está presente; aqui propagamos para o nosso script inline
+  // do bootstrap de tema. Usar `headers()` força o RootLayout a ser
+  // dinâmico — trade-off aceito (portal autenticado/admin/BI).
+  const nonce = headers().get('x-nonce') ?? undefined
+
   return (
     // suppressHydrationWarning: the boot script intentionally mutates
     // <html> classList before React hydrates, which would otherwise
     // trigger a hydration warning on every page load.
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body suppressHydrationWarning>
         <ThemeHydrator />

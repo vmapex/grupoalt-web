@@ -42,30 +42,9 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          {
-            key: 'Content-Security-Policy',
-            // Step 10 (CSP/Headers — fase controlada):
-            //  - connect-src restrito aos hosts realmente usados (chamadas client-side
-            //    saem por /api/proxy/* — 'self' — mas API canônica fica explícita).
-            //  - img-src sem 'https:' aberto (logos vêm como data: e /public).
-            //  - 'unsafe-eval' removido (Fase 3): chunks usam Function("return this")
-            //    apenas como fallback após globalThis/window — short-circuit em
-            //    qualquer browser evergreen suportado pelo Next 14.
-            //  - 'unsafe-inline' fica até o bootstrap de tema em layout.tsx virar
-            //    nonce/hash (Fase 4).
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob:",
-              "connect-src 'self' https://api.grupoalt.agr.br https://api-staging.grupoalt.agr.br",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "object-src 'none'",
-            ].join('; '),
-          },
+          // Step 10 — Fase 4: o `Content-Security-Policy` é definido
+          // dinamicamente pelo middleware (`src/middleware.ts`) com nonce
+          // por request. Mantê-lo aqui também causaria CSP duplicado.
         ],
       },
     ]

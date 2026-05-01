@@ -60,13 +60,29 @@ Manter `*.railway.app` somente se staging ainda depender dele.
    - testar preview;
    - se quebrar, identificar biblioteca responsavel.
 
-5. Fase 4 - avaliar `unsafe-inline`:
-   - existe script inline de tema em `src/app/layout.tsx`;
-   - alternativas:
-     - nonce;
-     - hash CSP;
-     - mover script para arquivo externo;
-   - fazer em PR separado se necessario.
+5. Fase 4 - remover `unsafe-inline` em `script-src` (nonce dinamico):
+   - alem do `themeBootstrap` em `src/app/layout.tsx`, o App Router do
+     Next 14 injeta varios `<script>` inline com dados de hidratacao
+     (`self.__next_f.push(...)`) cujo conteudo varia por rota e build;
+   - hash CSP estatico nao cobre esses scripts dinamicos;
+   - estrategia aplicada: nonce por request via `src/middleware.ts`;
+   - middleware:
+     - gera nonce com `crypto.getRandomValues()` (Edge-runtime safe);
+     - monta o `Content-Security-Policy` dinamicamente com
+       `script-src 'self' 'nonce-<valor>'`;
+     - escreve o nonce em `x-nonce` no request header (usado pelo Next
+       para aplicar `nonce={...}` nos scripts internos do App Router);
+     - duplica o `Content-Security-Policy` no request header e no
+       response;
+     - matcher exclui `api`, `_next/static`, `_next/image`, `favicon.ico`
+       e prefetches do App Router;
+   - `next.config.js` deixa de emitir o `Content-Security-Policy`
+     estatico (manter geraria CSP duplicado);
+   - `src/app/layout.tsx` le `headers().get('x-nonce')` e aplica no
+     `<script>` do `themeBootstrap`;
+   - trade-off: usar `headers()` no `RootLayout` torna todas as rotas
+     dinamicas (sem prerender estatico). Aceitavel neste portal
+     autenticado/admin/BI.
 
 6. Testar em preview:
    - login;
