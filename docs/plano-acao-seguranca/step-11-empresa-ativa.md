@@ -101,3 +101,83 @@ Se a sincronizacao gerar comportamento inesperado, reverter para comportamento a
 ```text
 Execute o STEP 11 do plano de acao do grupoalt-web: unificar empresa ativa entre authStore e empresaStore. Primeiro documente a fonte de verdade escolhida, depois ajuste Sidebar, EmpresaDropdown, useEmpresaId e sincronizacao pos-auth. Garanta que activeId persistido seja validado contra empresas permitidas do usuario e que logout/login nao vaze empresa antiga. Rode typecheck, build e teste manual com duas empresas.
 ```
+
+## Resultado da Execucao (2026-05-01)
+
+### Decisao tomada
+
+**Fonte de verdade unica: `empresaStore.activeId`** (opcao recomendada do plano).
+
+`authStore.empresaAtiva` permanece como espelho legado, consumido por componentes
+antigos (Sidebar antigo, ChatPanel, paginas /portal/grupo, /dashboard/*). Ele e
+escrito **apenas** via `empresaStore.setActive` ou `empresaStore.syncFromAuth`,
+que chamam `authStore.setEmpresaAtivaInternal` (mutator privado).
+
+`authStore.setEmpresaAtiva(empresa)` agora delega para `empresaStore.setActive`
+para manter compatibilidade com callers legados sem permitir divergencia.
+
+### Mudancas aplicadas
+
+1. **`src/store/empresaStore.ts`**:
+   - `setActive(id)` valida que o id pertence as empresas do usuario antes de
+     trocar. Ignora silenciosamente (com warn) ids que nao pertencem.
+   - `syncFromAuth()` valida activeId persistido contra empresas reais. Se
+     persistido nao pertence ao usuario, cai para a primeira empresa permitida
+     (sem fallback hardcoded `'1'`).
+   - Sem empresas no usuario: limpa empresas/activeId para evitar vazamento.
+   - Novo metodo `reset()`: limpa estado e chama `localStorage.removeItem('altmax-empresa')`.
+
+2. **`src/store/authStore.ts`**:
+   - `setAuth` nao pre-seleciona mais `empresaAtiva: empresas[0]`. A reconciliacao
+     fica por conta de `syncFromAuth`, que respeita activeId persistido.
+   - `setEmpresaAtiva(e)` (publico) delega para `empresaStore.setActive`.
+   - `setEmpresaAtivaInternal(e)` (uso interno do empresaStore) faz o `set`
+     direto sem propagar.
+   - `logout()` agora chama `empresaStore.reset()` e `unidadeStore.reset()`,
+     garantindo que usuario novo nao herda empresa nem unidades selecionadas.
+
+3. **`src/store/unidadeStore.ts`**:
+   - Novo metodo `reset()` para limpar projetos e selectedIds.
+
+4. **`src/hooks/useEmpresaId.ts`**:
+   - Comentario corrigido para refletir a prioridade real:
+     `empresaStore.activeId` primeiro (canonico), `authStore.empresaAtiva` so
+     como fallback durante boot.
+
+5. **`src/components/Sidebar.tsx`**:
+   - Le `activeId` do empresaStore (em vez de `empresaAtiva` do authStore) para
+     determinar qual empresa esta destacada — agora bate com o que o BI Navbar
+     mostra.
+   - Click chama `useEmpresaStore.setActive` diretamente, sem passar pelo
+     wrapper do authStore.
+
+6. **`src/app/dashboard/{cp,caixa,conciliacao,extrato,fluxo}/page.tsx`** (legado):
+   - Removido `empresaId = empresaAtiva?.id || 1`. Se nao ha empresa, o useEffect
+     retorna sem renderizar a pagina antiga. Como o `dashboard/layout.tsx` ja
+     redireciona para `/portal/financeiro/*`, isso so endurece o caminho na
+     improbabilidade de o redirect demorar.
+
+### Validacao
+
+- `npm run typecheck` — sem erros.
+- `npm run test` — 42/42 passando.
+- `npm run build` — build de producao bem-sucedido.
+- `npm run lint` — apenas warnings preexistentes; nada novo.
+
+### Teste manual
+
+Realizado com login como usuario admin com mais de uma empresa. Sequencia
+testada:
+
+- Selecao no sidebar do portal reflete imediatamente no Navbar do BI.
+- Selecao no EmpresaDropdown do BI reflete no sidebar do portal.
+- Refresh em /bi/financeiro mantem empresa selecionada (persistencia).
+- Logout e login com outro usuario (sem acesso a empresa anterior) — empresa
+  antiga nao aparece, primeira empresa do novo usuario e selecionada
+  automaticamente.
+
+### Rollback
+
+Reverter o commit do step. Backend ja bloqueia cross-empresa via RBAC (Step 06),
+entao mesmo se o frontend voltar a divergir, nao ha exposicao de dados — apenas
+inconsistencia visual entre stores.
