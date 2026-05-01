@@ -42,7 +42,7 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 07 | [Interceptor de auth e sessao](./step-07-auth-interceptor-sessao.md) | DONE — `grupoalt-web` PR #39 (sem mudanca no backend) |
 | 08 | [Guardas frontend](./step-08-guardas-frontend.md) | DONE — `grupoalt-web` PR #40 |
 | 09 | [Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md) | DONE — `grupoalt-web` PR #41 + `grupoalt-api` PR #28 |
-| 10 | [CSP e headers](./step-10-csp-headers.md) | EM ANDAMENTO — branch `claude/step-10-6gzI0` (web). Fases 1-2 aplicadas; matriz em [`step-10-csp-headers-MATRIZ.md`](./step-10-csp-headers-MATRIZ.md). Fases 3-4 (`unsafe-eval`/`unsafe-inline`) ficam para PRs separados. |
+| 10 | [CSP e headers](./step-10-csp-headers.md) | DONE — `grupoalt-web` PR #42 (Fases 1-2: `connect-src`/`img-src`/hardening) + PR #43 (Fase 3: remoção de `'unsafe-eval'`) + PR #45 (Fase 4: nonce dinâmico via middleware, remove `'unsafe-inline'`). Detalhes em [`step-10-csp-headers-MATRIZ.md`](./step-10-csp-headers-MATRIZ.md). |
 | 11 | [Empresa ativa](./step-11-empresa-ativa.md) | TODO |
 | 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | TODO |
 | 13 | [Calculos BI/DRE e paginacao](./step-13-calculos-bi-dre-paginacao.md) | TODO |
@@ -51,7 +51,7 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | TODO |
 | 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
 
-> Status atualizado em 2026-04-30. P0 (Steps 01-07), Step 08 e Step 09 concluidos; Step 10 em andamento (Fases 1-2 aplicadas).
+> Status atualizado em 2026-05-01. Steps 01-10 concluidos. Proximo passo: Step 11 (Empresa ativa).
 
 ## Prioridade Consolidada
 
