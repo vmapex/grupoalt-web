@@ -194,6 +194,15 @@ export function getCategoriaInfo(categoria: string | null): CategoriaInfo | null
  * Categorias com `grupoDRE === 'NEUTRO'` são EXPLICITAMENTE EXCLUÍDAS do
  * cálculo (usadas para repasses internos / mútuos entre unidades que devem
  * aparecer no extrato mas não inflar o DRE).
+ *
+ * REGRA DE SINAL (Step 13 — Parte B):
+ *   Todo lançamento entra no grupo como `Math.abs(valor)`. Isso assume que o
+ *   sinal está implícito no grupo DRE (RoB e RNOP somam, CV/CF/TDCF/DNOP
+ *   subtraem nos subtotais). Limitação conhecida: estornos lançados com sinal
+ *   contrário (ex: -200 em RoB ou +50 em CV) inflam o agregador em vez de
+ *   compensá-lo. Mudar essa regra requer validação prévia com financeiro;
+ *   ver `planoContas.test.ts` ("comportamento atual com Math.abs") e
+ *   `docs/plano-acao-seguranca/step-13-calculos-bi-dre-paginacao.md`.
  */
 export function calcularDRE(
   lancamentos: Array<{ valor: number; categoria: string | null; origem?: string }>,

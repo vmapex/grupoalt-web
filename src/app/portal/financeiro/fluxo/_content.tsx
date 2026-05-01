@@ -13,7 +13,7 @@ import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
-import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
+import { useFluxoCaixa, useCPAll, useCRAll, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformCPCR } from '@/lib/transformers'
@@ -43,8 +43,9 @@ export default function PageFluxo() {
   const dt_inicio = isoToDMY(dateFrom)
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim)
   const { data: extratoAtual } = useExtrato(empresaId)  // sem datas = últimos 180d = saldo mais recente
-  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
-  const { data: crRaw } = useCR(empresaId, { registros: 500 })
+  // Pagina ate esgotar — KPIs/graficos nao podem truncar (Step 13 — Parte C).
+  const { data: cpRaw } = useCPAll(empresaId)
+  const { data: crRaw } = useCRAll(empresaId)
 
   // Use API data or fallback — SOMENTE títulos em aberto
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])

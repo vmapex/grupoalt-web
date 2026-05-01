@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { useThemeStore } from '@/store/themeStore'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useExtrato, useCP, useCR, useFluxoCaixa } from '@/hooks/useAPI'
+import { useExtrato, useCPAll, useCRAll, useFluxoCaixa } from '@/hooks/useAPI'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { calcularDRE, calcularNeutros } from '@/lib/planoContas'
 import { fmtK, fmtBRL } from '@/lib/formatters'
@@ -46,8 +46,9 @@ export function AnaliseIAView() {
 
   // Data hooks (same as dashboard)
   const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim)
-  const { data: cpRaw } = useCP(empresaId, { registros: 500 })
-  const { data: crRaw } = useCR(empresaId, { registros: 500 })
+  // Pagina ate esgotar — contexto enviado pra IA nao pode truncar (Step 13 — Parte C).
+  const { data: cpRaw } = useCPAll(empresaId)
+  const { data: crRaw } = useCRAll(empresaId)
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, dt_fim)
 
   // Plano de contas dinâmico (overrides da empresa)

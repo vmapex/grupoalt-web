@@ -14,7 +14,7 @@ import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { useBaixas } from '@/hooks/useAPI'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
-import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
+import { useCPAll, useCRAll, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -92,8 +92,9 @@ export default function PageCPCR() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   // CP/CR: busca todos os lançamentos dentro do filtro de datas do dashboard
-  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim })
-  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim })
+  // Pagina ate esgotar — tabela mostra TODOS os lancamentos do filtro (Step 13 — Parte C).
+  const { data: cpRaw, loading: loadingCP } = useCPAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim })
+  const { data: crRaw, loading: loadingCR } = useCRAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim })
   const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim)
   const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim)
 

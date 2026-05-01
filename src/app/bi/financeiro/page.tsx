@@ -13,7 +13,7 @@ import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
 import { calcularDRE } from '@/lib/planoContas'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
-import { useExtrato, useCP, useCR, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
+import { useExtrato, useCPAll, useCRAll, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -56,16 +56,6 @@ function DashboardExecutivo() {
   const dt_inicio = isoToDMY(dateFrom)
   const dt_fim = isoToDMY(dateTo)
 
-  // Fluxo 30d KPI deve ser sempre today+30d, independente do filtro global.
-  // TODO(Sessão H): backend deveria ignorar data_fim no fluxo-caixa e sempre retornar 30d.
-  const fluxo30dEnd = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 30)
-    const dd = String(d.getDate()).padStart(2, '0')
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    return `${dd}/${mm}/${d.getFullYear()}`
-  }, [])
-
   // Filtro de unidade global (códigos Omie dos projetos selecionados)
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
 
@@ -73,17 +63,20 @@ function DashboardExecutivo() {
   const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
   // Extrato sem filtro de data para "Últimas Movimentações", mas com filtro de unidade
   const { data: extratoUltimas } = useExtrato(empresaId, undefined, undefined, projetoIds)
-  const { data: cpRaw } = useCP(empresaId, { registros: 500, projetoIds })
-  const { data: crRaw } = useCR(empresaId, { registros: 500, projetoIds })
+  // KPIs/breakdowns precisam de TODOS os lancamentos (Step 13 — Parte C):
+  // useCPAll/useCRAll paginam ate esgotar.
+  const { data: cpRaw } = useCPAll(empresaId, { projetoIds })
+  const { data: crRaw } = useCRAll(empresaId, { projetoIds })
   // CR filtrado pelo dateRange global (para "Top Clientes no período") + unidade.
-  const { data: crRawPeriodo } = useCR(empresaId, {
-    registros: 500,
+  const { data: crRawPeriodo } = useCRAll(empresaId, {
     dtInicio: dt_inicio,
     dtFim: dt_fim,
     projetoIds,
   })
   const { data: concilResumoAPI } = useConcilResumo(empresaId, projetoIds)
-  const { data: fluxoAPI } = useFluxoCaixa(empresaId, fluxo30dEnd, projetoIds)
+  // Fluxo 30d KPI: usa contrato explicito `horizonte_dias=30` (Step 13 — Parte D).
+  // O backend ignora `data_fim` e sempre retorna a janela [hoje, hoje+30].
+  const { data: fluxoAPI } = useFluxoCaixa(empresaId, undefined, projetoIds, 30)
 
   // Plano de contas dinâmico (com overrides da empresa) — refetch ao voltar pra aba
   const { map: categoriaMap } = useCategoriasMap(empresaId)
