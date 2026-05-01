@@ -44,14 +44,14 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 09 | [Notificacoes, exportacoes e rotas dinamicas](./step-09-notificacoes-exportacoes-rotas.md) | DONE — `grupoalt-web` PR #41 + `grupoalt-api` PR #28 |
 | 10 | [CSP e headers](./step-10-csp-headers.md) | DONE — `grupoalt-web` PR #42 (Fases 1-2: `connect-src`/`img-src`/hardening) + PR #43 (Fase 3: remoção de `'unsafe-eval'`) + PR #45 (Fase 4: nonce dinâmico via middleware, remove `'unsafe-inline'`). Detalhes em [`step-10-csp-headers-MATRIZ.md`](./step-10-csp-headers-MATRIZ.md). |
 | 11 | [Empresa ativa](./step-11-empresa-ativa.md) | DONE — `grupoalt-web` (fonte de verdade `empresaStore.activeId`, validação contra empresas do usuário, reset em logout, remoção de fallback `1`) |
-| 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | TODO |
+| 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | DONE — `grupoalt-web` (link `/portal/extrato` corrigido para `/bi/financeiro/extrato`, redirects 308 server-side em `next.config.js` para `/dashboard/*`, pastas legadas em `src/app/dashboard/*` removidas) |
 | 13 | [Calculos BI/DRE e paginacao](./step-13-calculos-bi-dre-paginacao.md) | TODO |
 | 14 | [Testes de dominio e stores](./step-14-testes-dominio-stores.md) | TODO |
 | 15 | [CI bloqueante e audit](./step-15-ci-bloqueante-audit.md) | TODO |
 | 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | TODO |
 | 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
 
-> Status atualizado em 2026-05-01. Steps 01-11 concluidos. Proximo passo: Step 12 (Navegacao e dashboard legado).
+> Status atualizado em 2026-05-01. Steps 01-12 concluidos. Proximo passo: Step 13 (Calculos BI/DRE e paginacao).
 
 ## Prioridade Consolidada
 

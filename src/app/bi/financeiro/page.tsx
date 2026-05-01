@@ -652,7 +652,7 @@ function DashboardExecutivo() {
             Ultimas Movimentacoes
           </div>
           <a
-            href="/portal/extrato"
+            href="/bi/financeiro/extrato"
             className="flex items-center gap-1 text-[10px] no-underline transition-colors"
             style={{ color: t.blue }}
           >

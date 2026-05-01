@@ -17,6 +17,23 @@ const nextConfig = {
       },
     ]
   },
+  async redirects() {
+    // Step 12: rotas /dashboard/* sao legado. Mantemos compatibilidade de URLs
+    // antigas redirecionando para a nova experiencia em /portal/financeiro/*.
+    // Server-side (308) elimina o flash do redirect client-side anterior.
+    return [
+      {
+        source: '/dashboard',
+        destination: '/portal/financeiro/caixa',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/:path*',
+        destination: '/portal/financeiro/:path*',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {
