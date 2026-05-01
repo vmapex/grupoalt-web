@@ -10,6 +10,7 @@ import {
   Settings,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useEmpresaStore } from '@/store/empresaStore'
 import { useThemeStore } from '@/store/themeStore'
 import { canAccessAdmin } from '@/lib/access'
 
@@ -68,7 +69,10 @@ const sections: NavSection[] = [
 
 export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
-  const { user, empresas, empresaAtiva, grupoAtivo, hasPermissao, setEmpresaAtiva } = useAuthStore()
+  const { user, empresas, grupoAtivo, hasPermissao } = useAuthStore()
+  // STEP 11 — empresa ativa vem do empresaStore (fonte de verdade compartilhada com BI).
+  const activeEmpresaId = useEmpresaStore((s) => s.activeId)
+  const setActiveEmpresa = useEmpresaStore((s) => s.setActive)
   const t = useThemeStore((s) => s.tokens)
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -277,13 +281,13 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
             </span>
           </button>
           {empresas.map((emp, i) => {
-            const empActive = empresaAtiva?.id === emp.id
+            const empActive = activeEmpresaId === String(emp.id)
             const empHovered = hoveredEmpresa === emp.id
             const dotColors = [t.gold, t.blue, t.green]
             return (
               <button
                 key={emp.id}
-                onClick={() => setEmpresaAtiva(emp)}
+                onClick={() => setActiveEmpresa(String(emp.id))}
                 className="flex items-center gap-3 w-full px-4 py-2 mx-2 rounded-xl transition-all"
                 style={{
                   background: empActive ? t.surfaceHover : empHovered ? t.surface : 'transparent',

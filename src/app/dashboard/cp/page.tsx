@@ -8,8 +8,9 @@ export default function CpCrPage() {
 
   useEffect(() => {
     if (!ref.current) return
+    if (!empresaAtiva?.id) return
 
-    const empresaId = empresaAtiva?.id || 1
+    const empresaId = empresaAtiva.id
     const apiUrl = window.location.origin + '/api/proxy'
 
     const html = `

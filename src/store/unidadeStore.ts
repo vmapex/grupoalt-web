@@ -36,6 +36,9 @@ interface UnidadeState {
 
   /** Helper: retorna true se TODOS estão selecionados (ou nenhum filtro ativo) */
   isAllSelected: () => boolean
+
+  /** Limpa estado (chamado pelo logout do authStore). */
+  reset: () => void
 }
 
 export const useUnidadeStore = create<UnidadeState>((set, get) => ({
@@ -95,4 +98,6 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
   isSelected: (projetoId) => get().selectedIds.includes(projetoId),
 
   isAllSelected: () => get().selectedIds.length === 0,
+
+  reset: () => set({ projetos: [], selectedIds: [], loading: false }),
 }))

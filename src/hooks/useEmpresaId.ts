@@ -3,9 +3,12 @@
    Hook: useEmpresaId
    Retorna o ID da empresa ativa para chamadas de API.
 
+   STEP 11 — empresaStore.activeId é a fonte de verdade.
+   authStore.empresaAtiva é apenas um espelho legado.
+
    Prioridade:
-   1. authStore.empresaAtiva.id (empresa real do backend)
-   2. empresaStore.activeId (fallback para BI standalone)
+   1. empresaStore.activeId (persistido, validado contra empresas do usuário)
+   2. authStore.empresaAtiva.id (fallback durante boot, antes do syncFromAuth)
    ═══════════════════════════════════════════════════════════════ */
 
 import { useAuthStore } from '@/store/authStore'
@@ -15,7 +18,6 @@ export function useEmpresaId(): number | null {
   const empresaAtiva = useAuthStore((s) => s.empresaAtiva)
   const biActiveId = useEmpresaStore((s) => s.activeId)
 
-  // Priorizar empresaStore.activeId (persisted) sobre authStore.empresaAtiva (default)
   if (biActiveId) {
     const parsed = parseInt(biActiveId, 10)
     if (!isNaN(parsed)) return parsed

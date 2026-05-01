@@ -14,13 +14,35 @@ export interface Empresa {
 
 const CORES = ['#38BDF8', '#34D399', '#FBBF24', '#F87171', '#C084FC', '#FB923C']
 
+/**
+ * STEP 11 — Fonte de verdade da "empresa ativa".
+ *
+ * Decisão (ver docs/plano-acao-seguranca/step-11-empresa-ativa.md):
+ *   `empresaStore.activeId` é a ÚNICA fonte de verdade.
+ *   `authStore.empresaAtiva` é mantida como espelho legado e só pode ser
+ *   alterada via `setActive`/`syncFromAuth` deste store. Componentes não
+ *   devem chamar `authStore.setEmpresaAtiva` diretamente — o método existe
+ *   só por compatibilidade e delega para `setActive` aqui.
+ *
+ * Invariantes:
+ *   1. activeId pertence a `auth.empresas` do usuário logado, ou é "".
+ *   2. Após `/auth/me`, `syncFromAuth` valida activeId persistido e
+ *      reseta para a primeira empresa do usuário se o id não pertence.
+ *   3. Em logout, `reset()` limpa activeId e localStorage `altmax-empresa`.
+ *   4. Nada de fallback hardcoded para empresa `1`.
+ */
+
 interface EmpresaState {
   empresas: Empresa[]
   activeId: string
   _synced: boolean
+  /** Mutator central: troca empresa ativa e propaga para authStore. */
   setActive: (id: string) => void
   getActive: () => Empresa | null
+  /** Reconcilia a partir de authStore após /auth/me. */
   syncFromAuth: () => void
+  /** Limpa estado e persistência (chamado pelo logout do authStore). */
+  reset: () => void
   updateEmpresa: (id: string, data: Partial<Empresa>) => void
   addEmpresa: () => void
   removeEmpresa: (id: string) => void
@@ -34,11 +56,16 @@ export const useEmpresaStore = create<EmpresaState>()(
       _synced: false,
 
       setActive: (id) => {
-        set({ activeId: id })
-        // Also sync to authStore if empresa exists there
+        // Não aceita id vazio nem id que o usuário não tem acesso.
+        if (!id) return
         const auth = useAuthStore.getState()
-        const emp = auth.empresas.find((e) => e.id === Number(id))
-        if (emp) auth.setEmpresaAtiva(emp)
+        const authEmp = auth.empresas.find((e) => String(e.id) === id)
+        if (auth.empresas.length > 0 && !authEmp) {
+          console.warn('[empresaStore] setActive ignorado: empresa', id, 'nao pertence ao usuario')
+          return
+        }
+        set({ activeId: id })
+        if (authEmp) auth.setEmpresaAtivaInternal(authEmp)
       },
 
       getActive: () => {
@@ -46,10 +73,13 @@ export const useEmpresaStore = create<EmpresaState>()(
         return state.empresas.find((e) => e.id === state.activeId) || state.empresas[0] || null
       },
 
-      /** Pull empresas from authStore (populated by /auth/me) */
       syncFromAuth: () => {
         const auth = useAuthStore.getState()
-        if (!auth.empresas.length) return
+        if (!auth.empresas.length) {
+          // Usuário sem empresas: limpa para evitar vazamento entre sessões.
+          set({ empresas: [], activeId: '', _synced: true })
+          return
+        }
 
         const empresas: Empresa[] = auth.empresas.map((e, i) => ({
           id: String(e.id),
@@ -60,18 +90,26 @@ export const useEmpresaStore = create<EmpresaState>()(
           cor: CORES[i % CORES.length],
         }))
 
-        // Respect persisted activeId if it's still a valid empresa
+        // Aceita activeId persistido apenas se pertencer ao usuário atual.
         const persistedId = get().activeId
         const isPersistedValid = persistedId && empresas.some((e) => e.id === persistedId)
         const activeId = isPersistedValid
           ? persistedId
-          : auth.empresaAtiva ? String(auth.empresaAtiva.id) : empresas[0]?.id || '1'
+          : empresas[0]?.id || ''
 
         set({ empresas, activeId, _synced: true })
 
-        // Sync empresaAtiva no authStore para manter consistência
+        // Reflete no authStore (espelho legado) sem reentrar em setActive.
         const authEmp = auth.empresas.find((e) => String(e.id) === activeId)
-        if (authEmp) auth.setEmpresaAtiva(authEmp)
+        if (authEmp) auth.setEmpresaAtivaInternal(authEmp)
+        else auth.setEmpresaAtivaInternal(null)
+      },
+
+      reset: () => {
+        set({ empresas: [], activeId: '', _synced: false })
+        if (typeof window !== 'undefined') {
+          try { window.localStorage.removeItem('altmax-empresa') } catch {}
+        }
       },
 
       updateEmpresa: (id, data) =>
