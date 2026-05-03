@@ -11,19 +11,13 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL } from '@/lib/formatters'
+import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa, useCPAll, useCRAll, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { parseDMY } from '@/lib/formatters'
-
-function isoToDMY(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
 
 const HZ_OPTIONS = [
   { label: '+7d', days: 7 },
@@ -35,17 +29,19 @@ const HZ_OPTIONS = [
 export default function PageFluxo() {
   const t = useThemeStore((s) => s.tokens)
   const empresaId = useEmpresaId()
-  const dateTo = useDateRangeStore((s) => s.to)
-  const dt_fim = isoToDMY(dateTo)
   const [hz, setHz] = useState(30)
   const [incluirProjecao, setIncluirProjecao] = useState(false)
 
   // API calls — extrato sem filtro de datas para saldo atual real
-  const dateFrom = useDateRangeStore((s) => s.from)
-  const dt_inicio = isoToDMY(dateFrom)
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
-  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim, projetoIds)
+  // Saldo atual vem do extrato (sem filtro de data) e e usado como ponto
+  // de partida da projecao no backend. Step 13 — Parte D.
   const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds, incluirProjecao)
+  const saldoAtualExtrato = extratoAtual?.saldo_atual ?? 0
+  // O horizonte e controlado pelos botoes +7d/+30d/+60d/+90d (state `hz`).
+  // Antes a chamada usava `dt_fim` do filtro global, o que zerava a janela
+  // quando o usuario tinha o range setado em data passada/curta.
+  const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, undefined, projetoIds, hz, saldoAtualExtrato)
   // Pagina ate esgotar — KPIs/graficos nao podem truncar (Step 13 — Parte C).
   const { data: cpRaw } = useCPAll(empresaId, { projetoIds })
   const { data: crRaw } = useCRAll(empresaId, { projetoIds })
@@ -72,16 +68,20 @@ export default function PageFluxo() {
     return cpAberto.reduce((s, r) => s + r.valor, 0)
   }, [fluxoAPI, cpAberto])
 
-  // Monthly data — somente títulos em aberto
+  // Monthly data — somente títulos em aberto, dentro do horizonte selecionado
   const fluxoMensal = useMemo(() => {
     if (fluxoAPI?.mensal?.length) {
       return fluxoAPI.mensal.map((m) => ({ mes: m.mes, ent: m.entradas, sai: m.saidas }))
     }
     const months: Record<string, { ent: number; sai: number }> = {}
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    const today = new Date(); today.setHours(0,0,0,0)
+    const limite = new Date(today); limite.setDate(limite.getDate() + hz)
     const fmt = (d: string) => {
       const dt = parseDMY(d)
       if (isNaN(dt.getTime())) return null
+      // Espelha o backend: so titulos com previsao no intervalo [hoje, hoje+hz]
+      if (dt < today || dt > limite) return null
       return `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
     }
     for (const r of crAberto) {
@@ -96,10 +96,12 @@ export default function PageFluxo() {
       if (!months[key]) months[key] = { ent: 0, sai: 0 }
       months[key].sai += r.valor
     }
-    const entries = Object.entries(months).sort()
-    if (entries.length === 0) return [{ mes: '-', ent: 0, sai: 0 }]
-    return entries.map(([mes, v]) => ({ mes, ent: Math.round(v.ent), sai: Math.round(v.sai) }))
-  }, [fluxoAPI, cpAberto, crAberto])
+    const rows = Object.entries(months).map(([mes, v]) => ({
+      mes, ent: Math.round(v.ent), sai: Math.round(v.sai),
+    }))
+    if (rows.length === 0) return [{ mes: '-', ent: 0, sai: 0 }]
+    return sortByMonthYear(rows, (r) => r.mes)
+  }, [fluxoAPI, cpAberto, crAberto, hz])
 
   // Daily projection from API or seed-based fallback
   const fluxoDiario = useMemo(() => {
