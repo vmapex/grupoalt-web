@@ -120,7 +120,14 @@ export function buildWeekly(
     const weekNum = Math.ceil(dt.getDate() / 7)
     return `S${weekNum}·${mName}`
   }, categoriaMap)
-  const keys = [`S1·${mName}`, `S2·${mName}`, `S3·${mName}`, `S4·${mName}`]
+
+  // Numero de semanas dinamico baseado no tamanho do mes:
+  // 28 dias (Fev nao bissexto) → S1-S4; 29-31 dias → S1-S5.
+  // O dia 0 do mes seguinte equivale ao ultimo dia do mes corrente.
+  const daysInMonth = new Date(year, mIdx + 1, 0).getDate()
+  const maxWeek = Math.ceil(daysInMonth / 7)
+  const keys: string[] = []
+  for (let w = 1; w <= maxWeek; w++) keys.push(`S${w}·${mName}`)
   return toLevel(groups, keys)
 }
 

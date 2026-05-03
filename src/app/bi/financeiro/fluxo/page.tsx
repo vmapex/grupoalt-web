@@ -13,7 +13,7 @@ import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
-import { useFluxoCaixa, useCP, useCR, useExtrato } from '@/hooks/useAPI'
+import { useFluxoCaixa, useCPAll, useCRAll, useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
@@ -46,8 +46,9 @@ export default function PageFluxo() {
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
   const { data: fluxoAPI, loading: loadingFluxo } = useFluxoCaixa(empresaId, dt_fim, projetoIds)
   const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds, incluirProjecao)
-  const { data: cpRaw } = useCP(empresaId, { registros: 500, projetoIds })
-  const { data: crRaw } = useCR(empresaId, { registros: 500, projetoIds })
+  // Pagina ate esgotar — KPIs/graficos nao podem truncar (Step 13 — Parte C).
+  const { data: cpRaw } = useCPAll(empresaId, { projetoIds })
+  const { data: crRaw } = useCRAll(empresaId, { projetoIds })
 
   // Use API data or fallback — SOMENTE títulos em aberto
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])

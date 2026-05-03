@@ -14,7 +14,7 @@ import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { useBaixas } from '@/hooks/useAPI'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
-import { useCP, useCR, useCPResumo, useCRResumo } from '@/hooks/useAPI'
+import { useCPAll, useCRAll, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -94,9 +94,10 @@ export default function PageCPCR() {
 
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
 
-  // CP/CR: busca todos os lançamentos dentro do filtro de datas do dashboard
-  const { data: cpRaw, loading: loadingCP } = useCP(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
-  const { data: crRaw, loading: loadingCR } = useCR(empresaId, { registros: 500, dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
+  // CP/CR: busca TODOS os lançamentos dentro do filtro de datas (Step 13 — Parte C).
+  // useCPAll/useCRAll paginam ate esgotar pra evitar truncamento silencioso.
+  const { data: cpRaw, loading: loadingCP } = useCPAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
+  const { data: crRaw, loading: loadingCR } = useCRAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
   const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim, projetoIds)
   const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim, projetoIds)
 
