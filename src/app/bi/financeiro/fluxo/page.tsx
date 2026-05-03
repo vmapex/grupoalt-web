@@ -68,20 +68,17 @@ export default function PageFluxo() {
     return cpAberto.reduce((s, r) => s + r.valor, 0)
   }, [fluxoAPI, cpAberto])
 
-  // Monthly data — somente títulos em aberto, dentro do horizonte selecionado
+  // Monthly data — TODOS os titulos em aberto por mes de vencimento
+  // (inclui atrasados/passados — o subtitulo do chart e
+  // "Titulos em aberto por mes de vencimento", nao "Proximos 30 dias").
+  // Sempre computado localmente: o `fluxoAPI.mensal` vem limitado por
+  // horizonte e nao serve pra essa visao agregada.
   const fluxoMensal = useMemo(() => {
-    if (fluxoAPI?.mensal?.length) {
-      return fluxoAPI.mensal.map((m) => ({ mes: m.mes, ent: m.entradas, sai: m.saidas }))
-    }
     const months: Record<string, { ent: number; sai: number }> = {}
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    const today = new Date(); today.setHours(0,0,0,0)
-    const limite = new Date(today); limite.setDate(limite.getDate() + hz)
     const fmt = (d: string) => {
       const dt = parseDMY(d)
       if (isNaN(dt.getTime())) return null
-      // Espelha o backend: so titulos com previsao no intervalo [hoje, hoje+hz]
-      if (dt < today || dt > limite) return null
       return `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
     }
     for (const r of crAberto) {
@@ -101,7 +98,7 @@ export default function PageFluxo() {
     }))
     if (rows.length === 0) return [{ mes: '-', ent: 0, sai: 0 }]
     return sortByMonthYear(rows, (r) => r.mes)
-  }, [fluxoAPI, cpAberto, crAberto, hz])
+  }, [cpAberto, crAberto])
 
   // Daily projection from API or seed-based fallback
   const fluxoDiario = useMemo(() => {
