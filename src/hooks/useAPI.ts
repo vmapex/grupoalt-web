@@ -386,6 +386,9 @@ export function useBaixas(empresaId: number | null, tipo: 'CP' | 'CR', codigo: n
  *  - `horizonteDias`: janela em dias a partir de hoje. Tem prioridade
  *    sobre `dataFim`. Usado por KPIs como "Fluxo 30d" que devem ignorar
  *    o filtro global e sempre olhar para frente.
+ *  - `saldoAtual`: posicao de caixa de partida para a projecao. Default
+ *    do backend e 0; passe o valor real do extrato pra que o
+ *    `saldo_acumulado` diario reflita o caixa atual do grupo.
  *
  *  Backend valida `1 <= horizonte_dias <= 365`.
  */
@@ -394,12 +397,14 @@ export function useFluxoCaixa(
   dataFim?: string,
   projetoIds?: string[],
   horizonteDias?: number,
+  saldoAtual?: number,
 ) {
   return useApi<FluxoCaixaAPI>(
     empresaId ? `/empresas/${empresaId}/fluxo-caixa` : null,
     {
       data_fim: dataFim,
       horizonte_dias: horizonteDias,
+      saldo_atual: saldoAtual,
       projeto_ids: projetoIds,
     },
   )
