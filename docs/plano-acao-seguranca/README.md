@@ -47,11 +47,11 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 12 | [Navegacao e dashboard legado](./step-12-navegacao-dashboard-legado.md) | DONE — `grupoalt-web` (link `/portal/extrato` corrigido para `/bi/financeiro/extrato`, redirects 308 server-side em `next.config.js` para `/dashboard/*`, pastas legadas em `src/app/dashboard/*` removidas) |
 | 13 | [Calculos BI/DRE e paginacao](./step-13-calculos-bi-dre-paginacao.md) | DONE — `grupoalt-web` (Parte A: `buildWeekly` com semanas dinamicas + 12 testes; Parte B: regra `Math.abs` documentada + 14 testes de DRE; Parte C: `useCPAll`/`useCRAll` paginam ate esgotar — 5 testes; Parte D: contrato explicito `horizonte_dias`) + `grupoalt-api` (`horizonte_dias` em `/fluxo-caixa[/diario|/mensal]`) |
 | 14 | [Testes de dominio e stores](./step-14-testes-dominio-stores.md) | DONE — `grupoalt-web` (Vitest 2.1: 150 testes em 7 arquivos; +77 testes novos cobrindo `planoContas` helpers, `caixaBuilder` mes/trimestre/NEUTRO/datas invalidas, `transformers` CP/CR/extrato/saldos/conciliacao, e `empresaStore` activeId valido/invalido + logout). |
-| 15 | [CI bloqueante e audit](./step-15-ci-bloqueante-audit.md) | TODO |
+| 15 | [CI bloqueante e audit](./step-15-ci-bloqueante-audit.md) | DONE — `grupoalt-web` (CI agora bloqueia em typecheck/lint/test/build/audit:bundle; `npm audit --omit=dev --audit-level=high` em modo alerta com excecoes documentadas em [`audit-exceptions.md`](./audit-exceptions.md); `continue-on-error` removido do lint; suite de testes roda incondicional). |
 | 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | TODO |
 | 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
 
-> Status atualizado em 2026-05-05. Steps 01-14 concluidos. Proximo passo: Step 15 (CI bloqueante e audit).
+> Status atualizado em 2026-05-05. Steps 01-15 concluidos. Proximo passo: Step 16 (Orbit IA, LGPD e observabilidade).
 
 ## Prioridade Consolidada
 

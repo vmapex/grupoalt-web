@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-build:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,15 +22,24 @@ jobs:
         run: npm ci
 
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint
-        run: npx next lint
-        continue-on-error: true
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
 
       - name: Build
         run: npm run build
 
-      - name: Run tests
-        run: npm test -- --passWithNoTests
-        if: hashFiles('src/**/*.test.*') != ''
+      - name: Audit bundle secrets
+        run: npm run audit:bundle
+
+      # npm audit (producao, high+) e bloqueante por politica.
+      # Excecoes vivas em docs/plano-acao-seguranca/audit-exceptions.md
+      # com dono, motivo e data de revisao. Atualmente relaxado por
+      # excecao registrada de Next 14.x (review por Step 16+).
+      - name: Audit npm dependencies (production, high+)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
