@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import type { CategoriaInfo } from './planoContas'
 import {
   buildWeekly,
   buildMonthly,
+  buildQuarterly,
   buildBreakdownByCategoria,
+  buildBreakdownByFavorecido,
 } from './caixaBuilder'
 
 /**
@@ -147,5 +150,181 @@ describe('buildMonthly (regressao)', () => {
     const result = buildMonthly(lancamentos)
     expect(result.labels).toEqual(['Dez/25', 'Jan/26', 'Fev/26'])
     expect(result.RB).toEqual([300, 200, 100])
+  })
+})
+
+/**
+ * Step 14 — Cobertura adicional do agrupamento mensal e trimestral.
+ *
+ * Garante que as datas/categorias edge-case nao quebram silenciosamente.
+ */
+describe('buildMonthly (Step 14 — datas e NEUTRO)', () => {
+  it('soma multiplos lancamentos no mesmo mes/grupo', () => {
+    const result = buildMonthly([
+      { data_lancamento: '01/01/2026', valor: 100, categoria: '1.01.01' },
+      { data_lancamento: '15/01/2026', valor: 200, categoria: '1.01.01' },
+      { data_lancamento: '31/01/2026', valor: 300, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual(['Jan/26'])
+    expect(result.RB).toEqual([600])
+  })
+
+  it('exclui NEUTRO via map dinamico (nao infla RoB)', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'RECEITA', nivel2: 'X', nivel1: 'X', grupoDRE: 'RoB', op: '+' },
+      '1.99.99': { codigo: '1.99.99', nome: 'TRANSF', nivel2: 'X', nivel1: 'X', grupoDRE: 'NEUTRO', op: '+' },
+    }
+    const result = buildMonthly([
+      { data_lancamento: '15/01/2026', valor: 1000, categoria: '1.01.01' },
+      { data_lancamento: '15/01/2026', valor: 5000, categoria: '1.99.99' },
+    ], map)
+    expect(result.labels).toEqual(['Jan/26'])
+    expect(result.RB).toEqual([1000])
+  })
+
+  it('ignora lancamentos sem data', () => {
+    const result = buildMonthly([
+      { data_lancamento: null, valor: 100, categoria: '1.01.01' },
+      { data_lancamento: undefined, valor: 200, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual([])
+  })
+
+  it('ignora lancamentos com data mal-formada', () => {
+    const result = buildMonthly([
+      { data_lancamento: 'XX/YY/ZZZZ', valor: 100, categoria: '1.01.01' },
+      { data_lancamento: '', valor: 200, categoria: '1.01.01' },
+    ])
+    // Nao deve gerar labels com NaN
+    expect(result.labels.every((l) => !l.includes('NaN') && !l.includes('undefined'))).toBe(true)
+    // E nao soma o valor da data invalida
+    const totalRB = result.RB.reduce((s, v) => s + v, 0)
+    expect(totalRB).toBe(0)
+  })
+
+  it('mantem ordem cronologica entre anos diferentes', () => {
+    const result = buildMonthly([
+      { data_lancamento: '15/01/2027', valor: 100, categoria: '1.01.01' },
+      { data_lancamento: '15/12/2025', valor: 200, categoria: '1.01.01' },
+      { data_lancamento: '15/06/2026', valor: 300, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual(['Dez/25', 'Jun/26', 'Jan/27'])
+    expect(result.RB).toEqual([200, 300, 100])
+  })
+})
+
+describe('buildQuarterly (Step 14)', () => {
+  it('agrupa janeiro/fevereiro/marco em Q1', () => {
+    const result = buildQuarterly([
+      { data_lancamento: '15/01/2026', valor: 100, categoria: '1.01.01' },
+      { data_lancamento: '15/02/2026', valor: 200, categoria: '1.01.01' },
+      { data_lancamento: '15/03/2026', valor: 300, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual(['Q1/26'])
+    expect(result.RB).toEqual([600])
+  })
+
+  it('separa Q1, Q2, Q3 e Q4 corretamente', () => {
+    const result = buildQuarterly([
+      { data_lancamento: '15/02/2026', valor: 100, categoria: '1.01.01' }, // Q1
+      { data_lancamento: '15/05/2026', valor: 200, categoria: '1.01.01' }, // Q2
+      { data_lancamento: '15/08/2026', valor: 300, categoria: '1.01.01' }, // Q3
+      { data_lancamento: '15/11/2026', valor: 400, categoria: '1.01.01' }, // Q4
+    ])
+    expect(result.labels).toEqual(['Q1/26', 'Q2/26', 'Q3/26', 'Q4/26'])
+    expect(result.RB).toEqual([100, 200, 300, 400])
+  })
+
+  it('exclui NEUTRO no nivel trimestral', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.99.99': { codigo: '1.99.99', nome: 'X', nivel2: '', nivel1: '', grupoDRE: 'NEUTRO', op: '+' },
+    }
+    const result = buildQuarterly([
+      { data_lancamento: '15/01/2026', valor: 5000, categoria: '1.99.99' },
+    ], map)
+    expect(result.labels).toEqual([]) // unico lancamento foi NEUTRO → nada agrupado
+  })
+
+  it('ignora data invalida sem quebrar', () => {
+    const result = buildQuarterly([
+      { data_lancamento: 'invalida', valor: 100, categoria: '1.01.01' },
+      { data_lancamento: '15/06/2026', valor: 200, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual(['Q2/26'])
+    expect(result.RB).toEqual([200])
+  })
+})
+
+describe('buildBreakdownByCategoria (Step 14 — exclusao NEUTRO)', () => {
+  it('NEUTRO nao aparece em nenhum grupo do breakdown', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'RECEITA MI', nivel2: 'RECEITAS', nivel1: 'RB', grupoDRE: 'RoB', op: '+' },
+      '1.99.99': { codigo: '1.99.99', nome: 'TRANSF INT', nivel2: 'NEUTRO', nivel1: 'X', grupoDRE: 'NEUTRO', op: '+' },
+    }
+    const result = buildBreakdownByCategoria([
+      { categoria: '1.01.01', valor: 1000 },
+      { categoria: '1.99.99', valor: 9999 },
+    ], map)
+    const todos = [
+      ...result.RoB, ...result.TDCF, ...result.CV,
+      ...result.CF, ...result.RNOP, ...result.DNOP,
+    ]
+    expect(todos.some((it) => it.item.includes('TRANSF') || it.item.includes('NEUTRO'))).toBe(false)
+  })
+
+  it('granularidade n3 inclui codigo + nome', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'RECEITA MI', nivel2: 'X', nivel1: 'X', grupoDRE: 'RoB', op: '+' },
+    }
+    const result = buildBreakdownByCategoria([
+      { categoria: '1.01.01', valor: 100 },
+    ], map, 'n3')
+    expect(result.RoB[0].item).toBe('1.01.01 — RECEITA MI')
+  })
+
+  it('granularidade n1 consolida cada grupo numa linha unica', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'RECEITA MI', nivel2: 'X', nivel1: 'X', grupoDRE: 'RoB', op: '+' },
+      '1.01.02': { codigo: '1.01.02', nome: 'RECEITA ME', nivel2: 'X', nivel1: 'X', grupoDRE: 'RoB', op: '+' },
+    }
+    const result = buildBreakdownByCategoria([
+      { categoria: '1.01.01', valor: 100 },
+      { categoria: '1.01.02', valor: 200 },
+    ], map, 'n1')
+    expect(result.RoB).toHaveLength(1)
+    expect(result.RoB[0]).toMatchObject({ item: 'RoB', valor: 300, pct: 100 })
+  })
+})
+
+describe('buildBreakdownByFavorecido (Step 14)', () => {
+  it('agrupa por favorecido dentro do grupo RoB', () => {
+    const result = buildBreakdownByFavorecido([
+      { categoria: '1.01.01', valor: 1000, favorecido: 'CLIENTE A' },
+      { categoria: '1.01.01', valor: 500, favorecido: 'CLIENTE A' },
+      { categoria: '1.01.01', valor: 700, favorecido: 'CLIENTE B' },
+    ])
+    expect(result.RoB).toHaveLength(2)
+    expect(result.RoB[0]).toMatchObject({ nome: 'CLIENTE A', valor: 1500 })
+    expect(result.RoB[1]).toMatchObject({ nome: 'CLIENTE B', valor: 700 })
+  })
+
+  it('favorecido vazio/null e mapeado para "Sem favorecido"', () => {
+    const result = buildBreakdownByFavorecido([
+      { categoria: '1.01.01', valor: 100, favorecido: null },
+      { categoria: '1.01.01', valor: 200, favorecido: '' },
+    ])
+    expect(result.RoB).toHaveLength(1)
+    expect(result.RoB[0]).toMatchObject({ nome: 'Sem favorecido', valor: 300 })
+  })
+
+  it('NEUTRO nao aparece em buildBreakdownByFavorecido', () => {
+    const map: Record<string, CategoriaInfo> = {
+      '1.99.99': { codigo: '1.99.99', nome: 'TRANSF', nivel2: 'X', nivel1: 'X', grupoDRE: 'NEUTRO', op: '+' },
+    }
+    const result = buildBreakdownByFavorecido([
+      { categoria: '1.99.99', valor: 5000, favorecido: 'INTERCO' },
+    ], map)
+    const total = [...result.RoB, ...result.RNOP, ...result.CV, ...result.CF, ...result.TDCF, ...result.DNOP]
+    expect(total).toEqual([])
   })
 })
