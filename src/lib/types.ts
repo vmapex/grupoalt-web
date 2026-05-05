@@ -117,8 +117,8 @@ export interface FluxoMensalAPI {
 
 export interface FluxoKPIsAPI {
   saldo_atual: number
-  total_entradas: number
-  total_saidas: number
+  entradas_previstas: number
+  saidas_previstas: number
   saldo_projetado: number
   cobertura: number
 }
