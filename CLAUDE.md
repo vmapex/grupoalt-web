@@ -239,11 +239,58 @@ numa única branch (`claude/validate-grupoalt-portal-csJsy`). Backend intocado.
 - Cross-filter Power BI, DRE mês a mês, admin contas bancárias, token
   Orbit persistido → Sessões D, E, F, G
 
+## Sessão 05/05/2026 — Step 14 (Testes de dominio e stores)
+
+Suite minima de testes automatizados para impedir regressao nas regras
+sensiveis identificadas no plano de seguranca. Vitest 2.1 + jsdom (ja
+configurado). Backend (`grupoalt-api`) intocado.
+
+**ANTES:** 5 arquivos de teste, 73 testes (Step 13 entregou tests para
+buildWeekly, DRE Math.abs, useCPAll/useCRAll).
+
+**AGORA:** 7 arquivos, **150 testes** (+77 novos).
+
+**ARQUIVOS MODIFICADOS:**
+- `src/lib/planoContas.test.ts` — adicionados 12 testes para `getGrupoDRE`
+  (lookup exato + fallback de prefixo + null/vazio/desconhecido + trim) e
+  `getCategoriaInfo`, alem de cobrir `buildCategoriasFromAPI` em mais
+  cenarios (override > prefixo, op +/- por grupo, descarte de codigo
+  desconhecido).
+- `src/lib/caixaBuilder.test.ts` — adicionados 15 testes para `buildMonthly`
+  (soma multipla mesmo mes, NEUTRO via map, datas null/invalidas, ordem
+  cross-ano), `buildQuarterly` (Q1-Q4, NEUTRO, data invalida),
+  `buildBreakdownByCategoria` (NEUTRO, granularidade n1/n3) e
+  `buildBreakdownByFavorecido` (agregacao, fallback "Sem favorecido",
+  exclusao NEUTRO).
+
+**ARQUIVOS CRIADOS:**
+- `src/lib/transformers.test.ts` — 33 testes para `transformExtrato`
+  (preserva valor negativo/zero, fallback descricao→favorecido,
+  banco→conta_id→"N/D", datas null), `transformCPCR` (5 status do
+  contrato, decimais, NF/PA, valor_pago null=0, valor_aberto null=saldo,
+  pagamentos com desconto/juros/multa), `transformSaldos` (codigos
+  numericos Omie, descricao truncada 20 chars, sinal preservado),
+  `transformConcilMovimento` (threshold 0.01, Math.abs, lista vazia) e
+  `buildContaMap`.
+- `src/store/empresaStore.test.ts` — 17 testes cobrindo as invariantes
+  do Step 11: `syncFromAuth` (cria empresas, mantem activeId valido,
+  descarta invalido, limpa quando user sem empresas, espelho legado),
+  `setActive` (rejeita id vazio, rejeita id de outro usuario,
+  pre-login fallback), `reset` (limpa estado e localStorage), e o cenario
+  critico de **isolamento entre sessoes** — logout do usuario A nao vaza
+  activeId para o usuario B.
+
+**VALIDACAO:**
+- `npm test` → 7 arquivos, 150 testes, 0 falhas (~2.5s).
+- `npm run typecheck` → sem erros.
+- `npm run build` → build de producao OK.
+
 ## Pendências / próxima sessão
 Veja `NEXT_SESSION_PROMPT.md` para contexto completo.
 
 Principais itens abertos:
 - Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit)
 - Marcar as categorias de repasse do Grupo ALT como NEUTRO e validar que RNOP/DNOP ficam limpos
+- Step 15 — CI bloqueante e audit (proximo do plano-acao-seguranca)
 - Identificar bugs encontrados durante uso real
 - Próximas features que o usuário vai mapear
