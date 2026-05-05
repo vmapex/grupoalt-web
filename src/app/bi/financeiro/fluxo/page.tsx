@@ -59,12 +59,12 @@ export default function PageFluxo() {
   }, [fluxoAPI, extratoAtual])
 
   const totalEnt = useMemo(() => {
-    if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_entradas
+    if (fluxoAPI?.kpis) return fluxoAPI.kpis.entradas_previstas
     return crAberto.reduce((s, r) => s + r.valor, 0)
   }, [fluxoAPI, crAberto])
 
   const totalSai = useMemo(() => {
-    if (fluxoAPI?.kpis) return fluxoAPI.kpis.total_saidas
+    if (fluxoAPI?.kpis) return fluxoAPI.kpis.saidas_previstas
     return cpAberto.reduce((s, r) => s + r.valor, 0)
   }, [fluxoAPI, cpAberto])
 
