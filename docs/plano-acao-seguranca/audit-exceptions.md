@@ -31,10 +31,10 @@ para remover ou atualizar a entrada com nova justificativa.
   - Hospedagem em Vercel — duas das cinco advisories sao especificas para self-hosted (image optimizer e disk cache) e nao se aplicam.
   - CSP restritiva em vigor (Step 10) com `unsafe-eval` removido e nonce dinamico.
   - Rate limit no backend protege contra DoS por exaustao.
-- **Dono**: TBD — definir no review do PR de Step 15.
+- **Dono**: Vinicius Menezes (@VinnyMMHH).
 - **Plano**: avaliar upgrade de Next durante Step 16 ou abrir step proprio.
 - **Revisao**: 2026-07-31 (~3 meses do registro da excecao).
-- **Issue de tracking**: criar quando dono for definido.
+- **Issue de tracking**: [#56](https://github.com/vmapex/grupoalt-web/issues/56).
 
 ### EXC-002 — postcss <8.5.10: XSS via Stringify (transitivo de Next 14.x)
 
@@ -43,8 +43,9 @@ para remover ou atualizar a entrada com nova justificativa.
 - **Advisory**: `GHSA-qx2v-qp2m-jg93`
 - **Fix disponivel**: presente em Next 16.x. Em Next 14.x, postcss e dependencia transitiva fixada.
 - **Mitigacoes**: o portal nao gera CSS dinamico a partir de input do usuario; postcss roda apenas em build-time.
-- **Dono**: TBD — herda do dono de EXC-001.
+- **Dono**: Vinicius Menezes (@VinnyMMHH) — herda de EXC-001.
 - **Revisao**: junto com EXC-001 (resolve no upgrade do Next).
+- **Issue de tracking**: [#56](https://github.com/vmapex/grupoalt-web/issues/56) (mesma de EXC-001).
 
 ## Dev-only (nao bloqueia merge)
 
