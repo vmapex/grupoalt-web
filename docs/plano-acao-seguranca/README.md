@@ -49,9 +49,9 @@ Preparar o portal para ser o hub central do Grupo ALT, com foco em:
 | 14 | [Testes de dominio e stores](./step-14-testes-dominio-stores.md) | DONE — `grupoalt-web` (Vitest 2.1: 150 testes em 7 arquivos; +77 testes novos cobrindo `planoContas` helpers, `caixaBuilder` mes/trimestre/NEUTRO/datas invalidas, `transformers` CP/CR/extrato/saldos/conciliacao, e `empresaStore` activeId valido/invalido + logout). |
 | 15 | [CI bloqueante e audit](./step-15-ci-bloqueante-audit.md) | DONE — `grupoalt-web` (CI agora bloqueia em typecheck/lint/test/build/audit:bundle; `npm audit --omit=dev --audit-level=high` em modo alerta com excecoes documentadas em [`audit-exceptions.md`](./audit-exceptions.md); `continue-on-error` removido do lint; suite de testes roda incondicional). |
 | 16 | [Orbit IA, LGPD e observabilidade](./step-16-orbit-lgpd-observabilidade.md) | **Fases A+B+C em andamento** — Fase A (`grupoalt-api`): politica LGPD escrita, tabela `orbit_audit_log` (sem conteudo), rate limit (30 req/min/user), system prompt blindado, limites de payload. Fase B (`grupoalt-web`): cap de historico (max 20 msgs), validacao client-side, mensagens de erro por status, graceful degradation, 24 testes Vitest. Fase C (`grupoalt-api` + `grupoalt-web`): endpoints admin `GET /orbit/audit` (paginado/filtros) e `GET /orbit/audit/summary` (metricas), job APScheduler de retencao 90d, pagina admin BI `/bi/financeiro/admin/orbit` com KPIs + ranking + tabela, 20 testes pytest. |
-| 17 | [Homologacao final](./step-17-homologacao-final.md) | TODO |
+| 17 | [Homologacao final](./step-17-homologacao-final.md) | DONE — relatorio em [`step-17-relatorio-homologacao.md`](./step-17-relatorio-homologacao.md). Validacoes automatizadas: api `pytest` 123/123, web `typecheck`/`lint`/`test` (174/174)/`build`/`audit:bundle` OK. `npm audit --omit=dev --audit-level=high` reporta 2 advisories cobertos por excecao formal (EXC-001/EXC-002). **GO TECNICO** sujeito ao checklist operacional descrito no relatorio. |
 
-> Status atualizado em 2026-05-06. Steps 01-15 concluidos. Step 16 em execucao por fases — Fases A, B e C em andamento.
+> Status atualizado em 2026-05-06. **Steps 01-17 concluidos** — plano de acao completo. Decisao Go/No-Go formalizada em [`step-17-relatorio-homologacao.md`](./step-17-relatorio-homologacao.md).
 
 ## Prioridade Consolidada
 
