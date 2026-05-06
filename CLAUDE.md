@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-05-06 (Step 16 — Fase B: ChatPanel hardening)
+> Última atualização: 2026-05-06 (Step 16 — Fase C: página admin de auditoria do Orbit)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -406,6 +406,65 @@ Hardening cliente do `ChatPanel` alinhado com a Fase A do `grupoalt-api`
 - Pagina BI/admin para visualizar audit log + metricas.
 - Politica de retencao 90d via cron.
 - Alertas de uso anormal.
+
+## Sessão 06/05/2026 (parte 2) — Step 16 Fase C (página admin de auditoria)
+
+Frontend da observabilidade administrativa do Orbit. Backend companion
+entrega 2 endpoints (`GET /orbit/audit` paginado e
+`GET /orbit/audit/summary`) + job APScheduler de retenção 90d.
+
+**ARQUIVOS NOVOS:**
+
+- `src/app/bi/financeiro/admin/orbit/page.tsx` — página admin completa:
+  - Sub-nav unificada (Empresas / Plano de Contas / Contas Bancárias /
+    **Orbit IA** — adicionado em todas as páginas admin).
+  - Seletor de janela (`24h` / `7d` / `30d` / `90d`).
+  - 5 KPI cards: total chamadas, tokens consumidos, taxa de erro
+    (highlight âmbar > 5%), latência média, tentativas bloqueadas.
+  - Top 5 usuários + Top 5 empresas (cards de ranking por tokens).
+  - Filtro de status em chips (Todos / Sucesso / Forbidden / Not Found
+    / Payload / Limite diario / Erro / Rate limit).
+  - Tabela paginada (25 itens/página): Quando, Usuário, Empresa, Status
+    (badge colorido por severidade), Modelo, Tokens, Latência, Erro.
+  - `useRequireAdmin` + `<AccessDenied />` (admin-only).
+
+**ARQUIVOS MODIFICADOS:**
+
+- `src/hooks/useAPI.ts` — novos hooks + types:
+  - `useOrbitAudit(filters: OrbitAuditFilters)`
+  - `useOrbitAuditSummary(desdeDias: number = 7)`
+  - Types: `OrbitAuditItemAPI`, `OrbitAuditPageAPI`,
+    `OrbitAuditSummaryAPI`, `OrbitAuditTopUserAPI`,
+    `OrbitAuditTopEmpresaAPI`, `OrbitAuditStatusBucketAPI`,
+    `OrbitAuditFilters`.
+- Sub-nav admin atualizada em 4 páginas:
+  - `src/app/bi/financeiro/admin/page.tsx` (Empresas)
+  - `src/app/bi/financeiro/admin/categorias/page.tsx` (Plano de Contas)
+  - `src/app/bi/financeiro/admin/contas-bancarias/page.tsx`
+  - `src/app/bi/financeiro/admin/orbit/page.tsx` (novo)
+
+**Por que sem testes Vitest novos:**
+
+A página é principalmente display (KPI cards, badges, tabela). Os hooks
+são wrappers finos sobre o `useApi` genérico já exercitado pelos 13
+testes do `api.test.ts`. A lógica de paginação, filtros e agregação é
+backend-side, com cobertura forte de **20 testes pytest novos** no PR
+companion (`tests/test_orbit_audit.py`): RBAC, filtros, agregação,
+retenção.
+
+**VALIDAÇÃO:**
+
+- `npm test` -> 174/174 verde (sem regressão).
+- `npm run typecheck` -> sem erros.
+- `npm run build` -> rota `/bi/financeiro/admin/orbit` (5.27 kB,
+  130 kB total c/ shared chunks); 50 rotas no total.
+- `npm run audit:bundle` -> sem credenciais expostas.
+
+**STEP 16 COMPLETO (Fases A + B + C):**
+Política LGPD escrita, audit log persistido sem conteúdo, rate limit por
+usuário, system prompt blindado, validação client-side, mensagens de
+erro por status, graceful degradation, página admin com KPIs + ranking
++ tabela paginada, retenção 90d via cron.
 
 ## Pendências / próxima sessão
 Veja `NEXT_SESSION_PROMPT.md` para contexto completo.

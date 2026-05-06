@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Settings, Tag, Landmark, Search, RefreshCw } from 'lucide-react'
+import { Settings, Tag, Landmark, Search, RefreshCw, Sparkles } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useContasBancarias, updateContaBancariaFlags, type ContaBancariaAPIItem } from '@/hooks/useAPI'
@@ -117,6 +117,15 @@ export default function AdminContasBancariasPage() {
           border: `1px solid ${t.blue}33`, textDecoration: 'none',
         }}>
           <Landmark size={12} /> Contas Bancárias
+        </Link>
+        <Link href="/bi/financeiro/admin/orbit" style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 6,
+          fontSize: 11, fontWeight: 600,
+          color: t.muted, background: 'transparent',
+          border: `1px solid ${t.border}`, textDecoration: 'none',
+        }}>
+          <Sparkles size={12} /> Orbit IA
         </Link>
       </div>
 

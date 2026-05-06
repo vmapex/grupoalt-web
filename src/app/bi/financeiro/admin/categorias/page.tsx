@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon, Square, CheckSquare, Layers, Landmark } from 'lucide-react'
+import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon, Square, CheckSquare, Layers, Landmark, Sparkles } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa, bulkUpdateCategoriasGrupoDRE } from '@/hooks/useAPI'
@@ -446,6 +446,19 @@ export default function AdminCategoriasPage() {
         >
           <Landmark size={12} />
           Contas Bancárias
+        </Link>
+        <Link
+          href="/bi/financeiro/admin/orbit"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 6,
+            fontSize: 11, fontWeight: 600,
+            color: t.muted, background: 'transparent',
+            border: `1px solid ${t.border}`, textDecoration: 'none',
+          }}
+        >
+          <Sparkles size={12} />
+          Orbit IA
         </Link>
       </div>
 
