@@ -89,3 +89,29 @@ O Orbit depende do contexto de usuario, empresa e pagina. Primeiro estabilizamos
 ```text
 Execute o STEP 16 do plano de acao do grupoalt-web: definir e implementar politica do Orbit IA, LGPD e observabilidade. Valide escopo por usuario/empresa/permissao no backend, limite contexto enviado pelo frontend, evite logs sensiveis e teste prompt injection, acesso cross-empresa e limite de tokens.
 ```
+
+## Quebra em fases (decidida em 2026-05-06)
+
+| Fase | Foco | Escopo |
+|---|---|---|
+| **A** — Politica + Backend hardening | LGPD escrita + endurecimento backend | Doc `orbit-policy.md` (no repo `grupoalt-api`), tabela `orbit_audit_log`, rate limit Redis (30 req/min/user), system prompt blindado, limites de payload (4000 chars/msg, 20 msgs), testes (limites + auditoria + rate limit). |
+| **B** — Frontend + UX | Cliente minimo + UX defensiva | Cap de historico no envio, validacao de tamanho client-side, mensagens de erro por status (429/403/5xx), Orbit indisponivel nao quebra portal, testes Vitest. |
+| **C** — Observabilidade + admin | Audit + metricas + alertas | Endpoint admin `/orbit/audit`, pagina BI/admin para visualizar uso, politica de retencao 90d (cron), alertas de uso anormal. |
+
+### Fase A — Resultado (2026-05-06)
+
+Entregue em `grupoalt-api` (PR companion). **Nao ha mudanca de codigo no
+`grupoalt-web` na Fase A** — ela e backend-only. O frontend ja envia o
+contexto correto desde a Sessao 11 (empresa ativa + pagina + filtros). A
+Fase B vai cuidar dos pontos restantes do frontend (cap de historico,
+validacao de tamanho, mensagens de erro especificas por status).
+
+Itens entregues em `grupoalt-api`:
+
+- Politica de dados em `docs/plano-acao-seguranca/orbit-policy.md`.
+- Tabela `orbit_audit_log` (auditoria sem conteudo).
+- Rate limit por usuario (30 req/min) em `POST /v1/orbit/chat`.
+- Limites Pydantic: `messages` (1..20), `content` (1..4000 chars), `role` em `Literal["user", "assistant"]`, `financial_context` (max 4000 chars).
+- System prompt blindado contra prompt injection (6 regras de seguranca explicitas).
+- Marcadores delimitadores em torno do contexto financeiro injetado.
+- 14 testes novos em `tests/test_orbit_policy.py` cobrindo limites, auditoria (sucesso/forbidden/not_found/usage_exceeded/error) e rate limit.
