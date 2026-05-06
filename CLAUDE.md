@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-05-06 (Step 16 — Fase C: página admin de auditoria do Orbit)
+> Última atualização: 2026-05-06 (Step 17 — Homologação final, GO técnico)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -466,13 +466,65 @@ usuário, system prompt blindado, validação client-side, mensagens de
 erro por status, graceful degradation, página admin com KPIs + ranking
 + tabela paginada, retenção 90d via cron.
 
-## Pendências / próxima sessão
-Veja `NEXT_SESSION_PROMPT.md` para contexto completo.
+## Sessão 06/05/2026 — Step 17 (Homologação Final)
 
-Principais itens abertos:
-- Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit, Step 13, Step 16 Fases A+B)
-- Marcar as categorias de repasse do Grupo ALT como NEUTRO e validar que RNOP/DNOP ficam limpos
-- Validação financeiro/controladoria sobre regra de estornos no DRE (Step 13 — Parte B fica aberta até essa decisão)
-- Identificar bugs encontrados durante uso real
-- Próximas features que o usuário vai mapear
-- Próximo passo do plano de ação: **Step 16 — Fase C** (observabilidade/admin) ou Step 17 (homologação final)
+Consolidação dos Steps 01-16 e decisão **GO técnico** para produção.
+Relatório companion no `grupoalt-api` em
+`docs/plano-acao-seguranca/step-17-relatorio-homologacao.md`. Cópia
+local do mesmo relatório em
+`docs/plano-acao-seguranca/step-17-relatorio-homologacao.md`.
+
+**VALIDAÇÕES AUTOMATIZADAS (verde, web):**
+
+- `npm run typecheck` → sem erros TS
+- `npm run lint` → apenas warnings (`react-hooks/exhaustive-deps`,
+  `@next/next/no-img-element`); CI do Step 15 só bloqueia em erros
+- `npm test` → **174/174** em 8 arquivos (~3.2s)
+- `npm run build` → 50 rotas, middleware 26.8kB, sem regressão
+- `npm run audit:bundle` → 0 credenciais expostas em 79 arquivos JS
+- `npm audit --omit=dev --audit-level=high` → 2 advisories
+  (Next 14.x + postcss transitivo) com **EXC-001/EXC-002** formais em
+  `docs/plano-acao-seguranca/audit-exceptions.md`. Plano de upgrade do
+  Next 16 ate 2026-07-31 (issue #56).
+
+**CHECKLIST FRONTEND:**
+
+- Auth (Step 07): interceptor sem race, refresh dedicado, redirect em
+  401 não recuperável.
+- RBAC (Step 06+08): `lib/access.ts` com 29 testes; `useRequireAdmin`
+  + `<AccessDenied />` em todas as páginas admin.
+- Empresa ativa (Step 11): `empresaStore.activeId` é fonte única,
+  17 testes garantindo isolamento entre sessões.
+- BI: 6 telas (Dashboard, Caixa, Extrato, CP/CR, Fluxo, Conciliação)
+  consumindo plano dinâmico via `useCategoriasMap`.
+- Admin: 4 páginas com sub-nav unificada (Empresas, Plano de Contas,
+  Contas Bancárias, Orbit).
+- CSP (Step 10): nonce dinâmico via `src/middleware.ts`, sem
+  `'unsafe-eval'`/`'unsafe-inline'` em produção.
+- Orbit (Step 16 B): `validateOutgoing` + `trimHistoryForApi` +
+  `describeAxiosError` no ChatPanel; banner de erro com cores por
+  severidade; graceful degradation em 5xx/network.
+
+**RISCOS RESIDUAIS ACEITOS:** R-01 (Next 14.x), R-02 (postcss),
+R-03 (DRE Math.abs em estornos). Detalhes no relatório.
+
+**PLANO DE ROLLBACK:** rollback Vercel <2min, Railway <5min, schema
+migrations não destrutivas.
+
+**ARQUIVOS NOVOS:**
+
+- `docs/plano-acao-seguranca/step-17-relatorio-homologacao.md`
+
+**ARQUIVOS MODIFICADOS:**
+
+- `docs/plano-acao-seguranca/README.md` — Step 17 marcado como DONE.
+
+## Pendências (operacional, fora do código)
+
+- Validar em produção todas as features entregues (Steps 11-16).
+- Marcar as categorias de repasse do Grupo ALT como NEUTRO e validar
+  que RNOP/DNOP ficam limpos.
+- Validação financeiro/controladoria sobre regra de estornos no DRE
+  (Step 13 — Parte B aberta até decisão contábil).
+- Cumprir checklist operacional da Seção 9 do relatório do Step 17
+  antes de cada deploy de produção.
