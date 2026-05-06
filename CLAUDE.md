@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-05-05 (Step 13 — Cálculos BI/DRE e paginação)
+> Última atualização: 2026-05-06 (Step 16 — Fase B: ChatPanel hardening)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -352,13 +352,68 @@ buildWeekly, DRE Math.abs, useCPAll/useCRAll).
 - `npm run typecheck` → sem erros.
 - `npm run build` → build de producao OK.
 
+## Sessão 06/05/2026 — Step 16 Fase B (ChatPanel hardening)
+
+Hardening cliente do `ChatPanel` alinhado com a Fase A do `grupoalt-api`
+(politica em `docs/plano-acao-seguranca/orbit-policy.md` no repo backend).
+
+**ARQUIVOS NOVOS:**
+
+- `src/components/chat/chatHelpers.ts` — modulo puro com:
+  - `MAX_MSG_CHARS = 4000`, `MAX_MESSAGES = 20` (espelho dos limites Pydantic).
+  - `trimHistoryForApi(messages)` — corta historico para `MAX_MESSAGES` mais
+    recentes; descarta `assistant` orfa no inicio (backend rejeita).
+  - `validateOutgoing(text)` — valida texto antes do envio (vazio,
+    > 4000 chars). Retorna `{ ok: false, reason, message }` para alimentar
+    o banner de erro sem round trip.
+  - `describeAxiosError(err)` — mapeia erros do axios para
+    `ErrorPresentation { kind, message, severity, retryAfterSeconds? }`.
+    Cobre 401 (warn), 403/404/422 (error), 429 com `Retry-After`
+    (`rate_limited_burst`), 429 sem header (`rate_limited_daily`), 5xx ou
+    network error (`unavailable` info — graceful degradation), desconhecido
+    (`unknown` error com `detail` do servidor).
+
+- `src/components/chat/chatHelpers.test.ts` — **24 testes Vitest**.
+
+**ARQUIVOS MODIFICADOS:**
+
+- `src/components/chat/ChatPanel.tsx`:
+  - `sendMessage` agora roda `validateOutgoing` antes de despachar.
+  - Envia apenas `trimHistoryForApi(...)` (max 20 mensagens).
+  - Estado `error: string` substituido por `errorState: ErrorPresentation`,
+    com cores do banner por severidade (rate/warn=ambar, error=vermelho,
+    info=cinza). Banner com botao X e `role="alert"`.
+  - "Fake assistant message" `⚠️ ...` removida — erros vivem no banner.
+  - Contador `N/4000` no input quando passa de 80% do limite (vermelho em
+    overflow). Botao de envio desabilitado em overflow.
+  - Cores aplicadas em ambos os modos (overlay padrao + embedded da
+    AnaliseIAView).
+
+**INTERACAO ENTRE FASES A E B:**
+- Fase A defende com 422/429/403 no servidor (autoridade final).
+- Fase B antecipa esses erros no cliente e melhora UX, sem confiar no
+  cliente como barreira de seguranca. Mesmo se o cliente for adulterado,
+  o backend rejeita.
+
+**VALIDACAO:**
+- `npm test` -> 174/174 verde (150 anteriores + 24 novos).
+- `npm run typecheck` -> sem erros.
+- `npm run build` -> build de producao OK.
+- `npm run audit:bundle` -> sem credenciais expostas.
+
+**DEFERIDO PARA FASE C:**
+- Endpoint admin `/orbit/audit` no backend.
+- Pagina BI/admin para visualizar audit log + metricas.
+- Politica de retencao 90d via cron.
+- Alertas de uso anormal.
+
 ## Pendências / próxima sessão
 Veja `NEXT_SESSION_PROMPT.md` para contexto completo.
 
 Principais itens abertos:
-- Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit, Step 13)
+- Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit, Step 13, Step 16 Fases A+B)
 - Marcar as categorias de repasse do Grupo ALT como NEUTRO e validar que RNOP/DNOP ficam limpos
 - Validação financeiro/controladoria sobre regra de estornos no DRE (Step 13 — Parte B fica aberta até essa decisão)
 - Identificar bugs encontrados durante uso real
 - Próximas features que o usuário vai mapear
-- Próximo step do plano de ação: **Step 16 — Orbit IA, LGPD e observabilidade** (Steps 14 e 15 já entregues)
+- Próximo passo do plano de ação: **Step 16 — Fase C** (observabilidade/admin) ou Step 17 (homologação final)
