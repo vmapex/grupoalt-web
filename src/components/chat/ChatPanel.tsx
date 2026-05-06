@@ -4,6 +4,13 @@ import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { Orbit, X, Send, User, Bot, Zap, Brain } from 'lucide-react'
 import api from '@/lib/api'
+import {
+  MAX_MSG_CHARS,
+  describeAxiosError,
+  trimHistoryForApi,
+  validateOutgoing,
+  type ErrorPresentation,
+} from './chatHelpers'
 
 interface Message {
   id: string
@@ -66,7 +73,7 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [usage, setUsage] = useState<TokenUsage | null>(null)
-  const [error, setError] = useState('')
+  const [errorState, setErrorState] = useState<ErrorPresentation | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -89,10 +96,24 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
   }, [open])
 
   const sendMessage = useCallback(async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed || isTyping) return
+    if (isTyping) return
 
-    setError('')
+    // Validacao client-side antes do round-trip — espelha limites do
+    // backend (Step 16 Fase A) para feedback instantaneo. Mostra como
+    // erro de validacao no banner, sem alterar o historico.
+    const v = validateOutgoing(text)
+    if (!v.ok) {
+      setErrorState({
+        kind: v.reason === 'too_long' ? 'payload_too_large' : 'unknown',
+        message: v.message,
+        severity: 'error',
+      })
+      return
+    }
+
+    const trimmed = text.trim()
+    setErrorState(null)
+
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: trimmed }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -100,7 +121,11 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
     setIsTyping(true)
 
     try {
-      const apiMessages = newMessages.map((m) => ({ role: m.role, content: m.content }))
+      // Cap de historico — envia apenas as ultimas 20 mensagens (Step 16
+      // Fase A enforça no backend; aqui evitamos o 422 desnecessario).
+      const apiMessages = trimHistoryForApi(
+        newMessages.map((m) => ({ role: m.role, content: m.content })),
+      )
       const res = await api.post('/orbit/chat', {
         messages: apiMessages,
         financial_context: financialContext || `Página atual: ${pageLabel}`,
@@ -117,28 +142,22 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
       }
       setMessages((prev) => [...prev, assistantMsg])
 
-      // Update usage
       setUsage((prev) => prev ? {
         ...prev,
         tokens_used: prev.tokens_limit - data.tokens_remaining,
         tokens_remaining: data.tokens_remaining,
       } : null)
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail || 'Erro ao enviar mensagem'
-      if (err?.response?.status === 429) {
-        setError(detail)
-      } else {
-        const errorMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `⚠️ ${detail}`,
-        }
-        setMessages((prev) => [...prev, errorMsg])
-      }
+    } catch (err) {
+      // Mapeia o erro para banner consistente. O historico permanece intacto
+      // (a pergunta do usuario continua visivel), o usuario pode tentar
+      // novamente sem refazer o texto. Graceful degradation: status 5xx /
+      // network error vira banner cinza "Orbit indisponivel" — o portal
+      // continua funcionando normalmente.
+      setErrorState(describeAxiosError(err))
     } finally {
       setIsTyping(false)
     }
-  }, [isTyping, messages, pageLabel])
+  }, [isTyping, messages, pageLabel, financialContext, empresaAtiva])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -150,6 +169,17 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
   const usagePct = usage ? Math.min(100, (usage.tokens_used / usage.tokens_limit) * 100) : 0
 
   const activeSuggestions = customSuggestions || SUGGESTIONS
+
+  const inputLength = input.trim().length
+  const overLimit = inputLength > MAX_MSG_CHARS
+
+  // Cores do banner por severidade do erro. `info` (Orbit indisponivel)
+  // usa cinza azulado para nao alarmar — a degradacao e' graceful.
+  const bannerColors = (severity: ErrorPresentation['severity']) => {
+    if (severity === 'rate' || severity === 'warn') return { bg: t.amberDim, fg: t.amber }
+    if (severity === 'info') return { bg: `${t.muted}20`, fg: t.textSec }
+    return { bg: t.redDim, fg: t.red }
+  }
 
   // Embedded mode: render as inline flex column
   if (embedded) {
@@ -203,9 +233,25 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
           )}
         </div>
 
-        {/* Token limit error */}
-        {error && (
-          <div className="px-4 py-2 text-[10px] shrink-0" style={{ background: t.redDim, color: t.red }}>{error}</div>
+        {/* Banner de erro / status (rate limit, indisponivel, etc) */}
+        {errorState && (
+          <div
+            role="alert"
+            className="px-4 py-2 text-[10px] shrink-0 flex items-center justify-between gap-2"
+            style={{
+              background: bannerColors(errorState.severity).bg,
+              color: bannerColors(errorState.severity).fg,
+            }}
+          >
+            <span className="flex-1">{errorState.message}</span>
+            <button
+              onClick={() => setErrorState(null)}
+              aria-label="Fechar aviso"
+              className="rounded p-0.5 hover:bg-white/10"
+            >
+              <X size={11} />
+            </button>
+          </div>
         )}
 
         {/* Messages */}
@@ -301,26 +347,43 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
               onKeyDown={handleKeyDown}
               placeholder="Pergunte sobre os dados do dashboard..."
               rows={1}
+              maxLength={MAX_MSG_CHARS + 200}
+              aria-invalid={overLimit}
               className="flex-1 bg-transparent border outline-none resize-none text-[11px] leading-relaxed rounded-lg px-3 py-2"
-              style={{ color: t.text, borderColor: t.border, background: t.surface, maxHeight: 80 }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = `rgba(192,132,252,0.4)` }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = t.border }}
+              style={{
+                color: t.text,
+                borderColor: overLimit ? t.red : t.border,
+                background: t.surface,
+                maxHeight: 80,
+              }}
+              onFocus={(e) => { if (!overLimit) e.currentTarget.style.borderColor = `rgba(192,132,252,0.4)` }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = overLimit ? t.red : t.border }}
             />
             <button
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isTyping || overLimit}
               className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-all cursor-pointer"
               style={{
-                background: input.trim() && !isTyping ? `rgba(192,132,252,0.15)` : t.surface,
-                border: `1px solid ${input.trim() && !isTyping ? `rgba(192,132,252,0.3)` : t.border}`,
-                color: input.trim() && !isTyping ? t.purple : t.muted,
-                opacity: input.trim() && !isTyping ? 1 : 0.4,
+                background: input.trim() && !isTyping && !overLimit ? `rgba(192,132,252,0.15)` : t.surface,
+                border: `1px solid ${input.trim() && !isTyping && !overLimit ? `rgba(192,132,252,0.3)` : t.border}`,
+                color: input.trim() && !isTyping && !overLimit ? t.purple : t.muted,
+                opacity: input.trim() && !isTyping && !overLimit ? 1 : 0.4,
               }}
               aria-label="Enviar mensagem"
             >
               <Send size={14} />
             </button>
           </div>
+          {/* Contador de chars — so aparece a partir de 80% do limite */}
+          {inputLength > MAX_MSG_CHARS * 0.8 && (
+            <div
+              className="mt-1 text-[8px] font-mono text-right"
+              style={{ color: overLimit ? t.red : t.muted }}
+              aria-live="polite"
+            >
+              {inputLength}/{MAX_MSG_CHARS}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -407,10 +470,24 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
           )}
         </div>
 
-        {/* Token limit error */}
-        {error && (
-          <div className="px-4 py-2 text-[10px] shrink-0" style={{ background: t.redDim, color: t.red }}>
-            {error}
+        {/* Banner de erro / status (rate limit, indisponivel, etc) */}
+        {errorState && (
+          <div
+            role="alert"
+            className="px-4 py-2 text-[10px] shrink-0 flex items-center justify-between gap-2"
+            style={{
+              background: bannerColors(errorState.severity).bg,
+              color: bannerColors(errorState.severity).fg,
+            }}
+          >
+            <span className="flex-1">{errorState.message}</span>
+            <button
+              onClick={() => setErrorState(null)}
+              aria-label="Fechar aviso"
+              className="rounded p-0.5 hover:bg-white/10"
+            >
+              <X size={11} />
+            </button>
           </div>
         )}
 
@@ -511,7 +588,13 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
 
         {/* Input */}
         <div className="px-4 py-3 shrink-0" style={{ borderTop: `1px solid ${t.border}`, background: t.surfaceElevated }}>
-          <div className="flex items-end gap-2 rounded-xl px-3 py-2" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+          <div
+            className="flex items-end gap-2 rounded-xl px-3 py-2"
+            style={{
+              background: t.surface,
+              border: `1px solid ${overLimit ? t.red : t.border}`,
+            }}
+          >
             <textarea
               ref={textareaRef}
               value={input}
@@ -519,23 +602,35 @@ export function ChatPanel({ open, onClose, currentPage = '/portal', embedded = f
               onKeyDown={handleKeyDown}
               placeholder="Pergunte sobre seus dados..."
               rows={1}
+              maxLength={MAX_MSG_CHARS + 200}
+              aria-invalid={overLimit}
               className="flex-1 bg-transparent border-none outline-none resize-none text-[11px] leading-relaxed"
               style={{ color: t.text, maxHeight: 80 }}
             />
             <button
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isTyping || overLimit}
               className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all cursor-pointer"
               style={{
-                background: input.trim() && !isTyping ? `linear-gradient(135deg, ${t.blue}, ${t.purple})` : t.surface,
-                color: input.trim() && !isTyping ? '#fff' : t.muted,
-                opacity: input.trim() && !isTyping ? 1 : 0.5,
+                background: input.trim() && !isTyping && !overLimit ? `linear-gradient(135deg, ${t.blue}, ${t.purple})` : t.surface,
+                color: input.trim() && !isTyping && !overLimit ? '#fff' : t.muted,
+                opacity: input.trim() && !isTyping && !overLimit ? 1 : 0.5,
               }}
               aria-label="Enviar mensagem"
             >
               <Send size={12} />
             </button>
           </div>
+          {/* Contador de chars — so aparece a partir de 80% do limite */}
+          {inputLength > MAX_MSG_CHARS * 0.8 && (
+            <div
+              className="mt-1 text-[8px] font-mono text-right"
+              style={{ color: overLimit ? t.red : t.muted }}
+              aria-live="polite"
+            >
+              {inputLength}/{MAX_MSG_CHARS}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
