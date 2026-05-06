@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-04-17 (Sessão A — quick wins frontend)
+> Última atualização: 2026-05-05 (Step 13 — Cálculos BI/DRE e paginação)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -235,9 +235,76 @@ numa única branch (`claude/validate-grupoalt-portal-csJsy`). Backend intocado.
 - Saldo NOP detalhe N2/N3 → Sessão B (toggle N2/N3 global)
 - Filtro de unidade (Dashboard #7) → Sessão C (backend + front)
 - SLA real em dias fora → Sessão H (backend `dias_fora_sla`)
-- Fluxo 30d ignorar `data_fim` → Sessão H (backend)
+- Fluxo 30d ignorar `data_fim` → Sessão H (backend) ✅ ENTREGUE no Step 13 — Parte D
 - Cross-filter Power BI, DRE mês a mês, admin contas bancárias, token
   Orbit persistido → Sessões D, E, F, G
+
+## Sessão 01-05/05/2026 — Step 13 (Cálculos BI/DRE e paginação)
+
+PRs `grupoalt-web` #49 + #50 + #52 mergeados em `main`. Companion: `grupoalt-api` PR #34 + #35.
+
+### Parte A — Semana 5 (`buildWeekly`)
+- `src/lib/caixaBuilder.ts::buildWeekly` gera `S1..Smax` dinamicamente conforme
+  `daysInMonth`. Antes fixava `S1..S4` e descartava silenciosamente lançamentos
+  dos dias 29-31. Mês com 28d (Fev não bissexto) continua S1..S4; 29-31d → S1..S5.
+- 12 testes em `src/lib/caixaBuilder.test.ts`.
+
+### Parte B — Math.abs no DRE (DOCUMENTADO, não alterado)
+- Limitação conhecida: estornos lançados com sinal contrário inflam o agregador
+  em vez de compensá-lo. Mudar a regra requer validação prévia com financeiro.
+- 14 testes "golden" em `src/lib/planoContas.test.ts` capturam o comportamento
+  atual pra servir de baseline em mudança futura.
+- Plano: `docs/plano-acao-seguranca/step-13-calculos-bi-dre-paginacao.md`.
+
+### Parte C — Paginação CP/CR (sem truncamento silencioso)
+- Novos hooks `useCPAll` / `useCRAll` em `src/hooks/useAPI.ts` paginam até
+  esgotar (`PAGINATED_ALL_PAGE_SIZE=1000`, cap atual do backend).
+- Função pura `fetchAllPages` extraída e exportada para teste — 5 testes em
+  `src/hooks/useAPI.test.ts`.
+- Migrados todos os call sites `useCP/useCR({ registros: 500 })` que alimentam
+  KPIs, breakdowns e contexto da IA: Dashboard, AnaliseIA, Fluxo (BI + portal),
+  cp-cr (BI + portal).
+
+### Parte D — Fluxo (contrato explícito)
+- `useFluxoCaixa` aceita `horizonteDias` e `saldoAtual` como parâmetros
+  explícitos. Backend (`/empresas/{id}/fluxo-caixa`) tem `horizonte_dias`
+  (1-365) com prioridade sobre `data_fim`.
+- Dashboard usa `horizonte_dias=30` em vez de calcular `today+30d` localmente.
+- Página Fluxo passa o `hz` (estado dos botões `+7d/+30d/+60d/+90d`) como
+  `horizonte_dias` — antes os botões só faziam `slice` no resultado, sem
+  controlar a chamada da API.
+
+### Hotfixes pós-deploy
+
+**PR #50** — Saldo Projetado começava em zero porque `saldo_atual` nunca era
+enviado pra API; chart Mensais tinha sort alfabético em fallback. Fix: passar
+`saldoAtualExtrato` pra API + usar `sortByMonthYear` no fallback.
+
+**PR #52 + api #35** — Cards "Entradas Prev." e "Saídas Prev." mostravam R$ 0
+mesmo com fluxo retornando dados. Causa: bug de naming no contrato. Backend
+retorna `entradas_previstas`/`saidas_previstas` no objeto `kpis`, mas
+`FluxoKPIsAPI` (types) e os consumidores liam `total_entradas`/`total_saidas`
+(undefined → 0). Bug pré-existente, ficou visível só após o Step 13 porque
+antes a chamada caía no fallback. Mesmo bug em `services/orbit_chat.py`
+(`build_financial_context`) — corrigido junto.
+
+**ARQUIVOS MODIFICADOS:**
+- `src/lib/caixaBuilder.ts` (Parte A)
+- `src/lib/planoContas.ts` (Parte B — só docstring, regra inalterada)
+- `src/hooks/useAPI.ts` (Parte C + D — `useCPAll`, `useCRAll`,
+  `fetchAllPages`, `PAGINATED_ALL_PAGE_SIZE`, `useFluxoCaixa` ampliado)
+- `src/lib/types.ts` (`FluxoKPIsAPI` campos renomeados)
+- `src/app/bi/financeiro/page.tsx` (Dashboard)
+- `src/app/bi/financeiro/{cp-cr,fluxo}/page.tsx`
+- `src/app/portal/financeiro/{cp,fluxo}/_content.tsx`
+- `src/components/analise/AnaliseIAView.tsx`
+
+**ARQUIVOS CRIADOS:**
+- `src/lib/caixaBuilder.test.ts` (12 testes)
+- `src/lib/planoContas.test.ts` (14 testes)
+- `src/hooks/useAPI.test.ts` (5 testes)
+
+**Total testes**: 73 (29 antigos + 31 novos do Step 13).
 
 ## Sessão 05/05/2026 — Step 14 (Testes de dominio e stores)
 
@@ -289,8 +356,9 @@ buildWeekly, DRE Math.abs, useCPAll/useCRAll).
 Veja `NEXT_SESSION_PROMPT.md` para contexto completo.
 
 Principais itens abertos:
-- Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit)
+- Validar em produção todas as features entregues (categorias dinâmicas, NEUTRO, Análise IA, bulk edit, Step 13)
 - Marcar as categorias de repasse do Grupo ALT como NEUTRO e validar que RNOP/DNOP ficam limpos
-- Step 15 — CI bloqueante e audit (proximo do plano-acao-seguranca)
+- Validação financeiro/controladoria sobre regra de estornos no DRE (Step 13 — Parte B fica aberta até essa decisão)
 - Identificar bugs encontrados durante uso real
 - Próximas features que o usuário vai mapear
+- Próximo step do plano de ação: **Step 16 — Orbit IA, LGPD e observabilidade** (Steps 14 e 15 já entregues)
