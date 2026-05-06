@@ -179,3 +179,67 @@ defesa em profundidade alinhada aos limites e codigos de erro do backend.
 - `npm run lint` -> apenas warnings pre-existentes do Step 05 (img-element
   no Navbar e exhaustive-deps no useAPI). Nada novo introduzido.
 - `npm run audit:bundle` -> sem credenciais expostas no bundle.
+
+### Fase C — Resultado (2026-05-06)
+
+Entregue em `grupoalt-web` (este branch) + `grupoalt-api` (PR companion
+com endpoints + retencao + 20 testes pytest).
+
+**ARQUIVOS NOVOS (`grupoalt-web`):**
+
+- `src/app/bi/financeiro/admin/orbit/page.tsx` — pagina admin completa:
+  - Header + sub-nav unificada (Empresas / Plano de Contas / Contas
+    Bancarias / **Orbit IA**).
+  - Seletor de janela (`24h` / `7d` / `30d` / `90d`).
+  - 5 KPI cards: total chamadas, tokens consumidos, taxa de erro
+    (highlight ambar > 5%), latencia media, tentativas bloqueadas.
+  - Cards de ranking: Top 5 usuarios + Top 5 empresas por tokens.
+  - Filtro de status em chips.
+  - Tabela paginada (25 itens/pagina): Quando, Usuario, Empresa, Status
+    (badge colorido por severidade), Modelo, Tokens, Latencia, Erro.
+  - `useRequireAdmin` + `<AccessDenied />` (admin-only).
+
+**ARQUIVOS MODIFICADOS:**
+
+- `src/hooks/useAPI.ts` — novos hooks:
+  - `useOrbitAudit(filters)` consome `GET /orbit/audit` com filtros
+    opcionais (`limit`, `offset`, `usuario_id`, `empresa_id`,
+    `audit_status`, `desde_dias`).
+  - `useOrbitAuditSummary(desdeDias)` consome `GET /orbit/audit/summary`.
+  - Types: `OrbitAuditItemAPI`, `OrbitAuditPageAPI`,
+    `OrbitAuditSummaryAPI`, `OrbitAuditTopUserAPI`,
+    `OrbitAuditTopEmpresaAPI`, `OrbitAuditStatusBucketAPI`,
+    `OrbitAuditFilters`.
+- Sub-nav admin atualizada em 4 paginas:
+  - `src/app/bi/financeiro/admin/page.tsx`
+  - `src/app/bi/financeiro/admin/categorias/page.tsx`
+  - `src/app/bi/financeiro/admin/contas-bancarias/page.tsx`
+  - `src/app/bi/financeiro/admin/orbit/page.tsx` (novo)
+
+**Por que sem testes Vitest novos:**
+
+A pagina e principalmente display (KPI cards, badges, tabela). Os hooks
+sao wrappers finos sobre o `useApi` generico ja exercitado pelos 13
+testes do `api.test.ts`. A logica de paginacao, filtros e agregacao e
+backend-side, com cobertura forte de 20 testes pytest no companion PR
+(`tests/test_orbit_audit.py`): RBAC (sem login 401, viewer 403), filtros
+(status, usuario, empresa, desde_dias), agregacao (totals, by_status,
+top_users, top_empresas, avg_duracao_ms), retencao (purge alem do
+cutoff, idempotente).
+
+**VALIDACAO Fase C:**
+
+- `npm test` -> 174/174 verde (sem regressao).
+- `npm run typecheck` -> sem erros.
+- `npm run build` -> rota `/bi/financeiro/admin/orbit` (5.27 kB, 130 kB
+  total c/ shared chunks); 50 rotas no total.
+- `npm run audit:bundle` -> sem credenciais expostas.
+- Lint: apenas warnings pre-existentes (Step 05).
+
+**STEP 16 COMPLETO:**
+
+| Fase | Foco | Entregue |
+|---|---|---|
+| A | Politica + backend hardening | doc, audit log, rate limit, prompt blindado, limites Pydantic |
+| B | Frontend / UX defensiva | helpers puros, ChatPanel hardening, 24 testes Vitest |
+| C | Observabilidade + admin | endpoints admin, retencao 90d, pagina admin BI, 20 testes pytest |
