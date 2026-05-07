@@ -120,19 +120,6 @@ export default function LoginPage() {
       <div className={styles.scanline} aria-hidden="true" />
       <div className={styles.noise} aria-hidden="true" />
 
-      {/* ─── Header ─── */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.brand}>
-            <img
-              src="/logo_grupo_alt.png"
-              alt="Grupo ALT — Portal Corporativo"
-              className={styles.brandLogo}
-            />
-          </div>
-        </div>
-      </header>
-
       {/* ─── Stage with main card ─── */}
       <section className={styles.stage}>
         <div className={styles.card}>
@@ -140,9 +127,16 @@ export default function LoginPage() {
           <div className={styles.formPane}>
             <div className={styles.formPaneGlow} aria-hidden="true" />
 
-            <div className={styles.eyebrow}>
-              <span className={styles.eyebrowDot} aria-hidden="true" />
-              <span>Identifique-se</span>
+            <div className={styles.formHeader}>
+              <div className={styles.eyebrow}>
+                <span className={styles.eyebrowDot} aria-hidden="true" />
+                <span>Identifique-se</span>
+              </div>
+              <img
+                src="/logo_grupo_alt.png"
+                alt="Grupo ALT — Portal Corporativo"
+                className={styles.brandLogo}
+              />
             </div>
 
             <h1 className={styles.headline}>
