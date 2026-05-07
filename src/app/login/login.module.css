@@ -901,82 +901,6 @@
   z-index: 4;
 }
 
-/* Floating mini cards (visual depth) */
-.miniCard {
-  position: absolute;
-  z-index: 4;
-  background: rgba(10, 20, 38, 0.78);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 14px;
-  padding: 16px 18px;
-  width: 196px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(224, 184, 46, 0.10);
-  animation: floatY 9s ease-in-out infinite;
-}
-.miniCardTop {
-  top: 38px;
-  right: 32px;
-  animation-delay: 0s;
-}
-.miniCardBottom {
-  bottom: 110px;
-  right: 250px;
-  animation-delay: 1.2s;
-  animation-direction: reverse;
-}
-
-.miniLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 9px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(224, 184, 46, 0.85);
-  margin-bottom: 8px;
-}
-.miniLabelDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #4A964E;
-  box-shadow: 0 0 6px rgba(74, 150, 78, 0.8);
-  animation: pulseDot 2s ease-in-out infinite;
-}
-.miniLabelDot.warn { background: #E0B82E; box-shadow: 0 0 6px rgba(224, 184, 46, 0.8); }
-.miniValue {
-  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
-  font-size: 22px;
-  color: #fff;
-  margin-bottom: 4px;
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-.miniDesc {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  letter-spacing: 0.04em;
-}
-.miniBar {
-  margin-top: 10px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.miniBar span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #045199, #E0B82E);
-  border-radius: 999px;
-  box-shadow: 0 0 8px rgba(224, 184, 46, 0.5);
-  animation: barFill 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════
    FOOTER (security badges + copyright)
 ═══════════════════════════════════════════════════════════════════════ */
@@ -1061,10 +985,6 @@
   0%   { transform: scale(1);   opacity: 0.85; }
   100% { transform: scale(2.4); opacity: 0; }
 }
-@keyframes pulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.45; transform: scale(1.15); }
-}
 @keyframes heroRise {
   0%   { opacity: 0; transform: translate3d(0, 32px, 0) scale(0.985); filter: blur(8px); }
   100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
@@ -1081,10 +1001,6 @@
   from { width: 0%; }
   to   { width: 100%; }
 }
-@keyframes barFill {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
-}
 
 /* ═══════════════════════════════════════════════════════════════════════
    RESPONSIVE
@@ -1095,7 +1011,6 @@
   .footer { padding: 12px 32px 20px; }
   .formPane { padding: 40px 40px 32px; }
   .brandPane { padding: 36px 36px; }
-  .miniCardBottom { right: 32px; bottom: 200px; }
 }
 
 @media (max-width: 880px) {
@@ -1115,7 +1030,6 @@
     min-height: 280px;
     order: 1;
   }
-  .miniCard { display: none; }
   .pillarContent { max-width: 100%; }
   .headerEyebrow { display: none; }
 }
@@ -1135,12 +1049,9 @@
   .orb,
   .card::after,
   .headlineAccent::after,
-  .miniCard,
   .eyebrowDot::after,
   .headerEyebrowDot::after,
-  .miniLabelDot,
-  .pillar,
-  .miniBar span {
+  .pillar {
     animation: none !important;
     transition: none !important;
   }
