@@ -120,12 +120,6 @@ export default function LoginPage() {
       <div className={styles.scanline} aria-hidden="true" />
       <div className={styles.noise} aria-hidden="true" />
 
-      {/* ─── Cinematic frame corners ─── */}
-      <div className={`${styles.corner} ${styles.cornerTL}`} aria-hidden="true" />
-      <div className={`${styles.corner} ${styles.cornerTR}`} aria-hidden="true" />
-      <div className={`${styles.corner} ${styles.cornerBL}`} aria-hidden="true" />
-      <div className={`${styles.corner} ${styles.cornerBR}`} aria-hidden="true" />
-
       {/* ─── Header ─── */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
