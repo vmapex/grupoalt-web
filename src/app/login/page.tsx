@@ -130,18 +130,15 @@ export default function LoginPage() {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.brand}>
-            <div className={styles.brandMark} aria-hidden="true">
-              A
-            </div>
+            <img
+              src="/logo_grupo_alt.png"
+              alt="Grupo ALT"
+              className={styles.brandLogo}
+            />
             <div className={styles.brandText}>
               <span className={styles.brandName}>Grupo ALT</span>
               <span className={styles.brandTag}>Portal Corporativo</span>
             </div>
-          </div>
-
-          <div className={styles.headerEyebrow}>
-            <span className={styles.headerEyebrowDot} aria-hidden="true" />
-            <span>Acesso seguro · v3.0</span>
           </div>
         </div>
       </header>
@@ -433,76 +430,10 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
+      {/* ─── Footer (apenas copyright) ─── */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <div className={styles.footerLeft}>
-            <span className={styles.footerItem}>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#84C487"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
-              SSL/TLS 256-bit
-            </span>
-            <span className={styles.footerSep} aria-hidden="true">
-              ·
-            </span>
-            <span className={styles.footerItem}>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#3D8AD6"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="m7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              LGPD compliant
-            </span>
-            <span className={styles.footerSep} aria-hidden="true">
-              ·
-            </span>
-            <span className={styles.footerItem}>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#EBCF5C"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 20h.01" />
-                <path d="M2 8.82a15 15 0 0 1 20 0" />
-                <path d="M5 12.859a10 10 0 0 1 14 0" />
-                <path d="M8.5 16.429a5 5 0 0 1 7 0" />
-              </svg>
-              Conexão segura
-            </span>
-          </div>
-          <div className={styles.footerRight}>
-            <span>© 2026 Grupo ALT</span>
-            <span className={styles.footerVersion}>
-              v3.0 · cinematic
-            </span>
-          </div>
+          <span>© 2026 Grupo ALT</span>
         </div>
       </footer>
     </main>
