@@ -356,34 +356,6 @@ export default function LoginPage() {
               <div className={styles.pillarGrid} />
             </div>
 
-            {/* Floating mini cards */}
-            <div
-              className={`${styles.miniCard} ${styles.miniCardTop}`}
-              aria-hidden="true"
-            >
-              <div className={styles.miniLabel}>
-                <span className={styles.miniLabelDot} />
-                Status
-              </div>
-              <div className={styles.miniValue}>Operante</div>
-              <div className={styles.miniDesc}>Todos os sistemas online</div>
-              <div className={styles.miniBar}>
-                <span style={{ width: '96%' }} />
-              </div>
-            </div>
-
-            <div
-              className={`${styles.miniCard} ${styles.miniCardBottom}`}
-              aria-hidden="true"
-            >
-              <div className={styles.miniLabel}>
-                <span className={`${styles.miniLabelDot} ${styles.warn}`} />
-                Latência
-              </div>
-              <div className={styles.miniValue}>42ms</div>
-              <div className={styles.miniDesc}>Conexão estável · BR-Sul</div>
-            </div>
-
             {/* Pillar copy + nav */}
             <div className={styles.pillarContent}>
               <div className={styles.pillarEyebrow}>
