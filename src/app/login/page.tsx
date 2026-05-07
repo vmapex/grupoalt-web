@@ -5,29 +5,51 @@ import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import styles from './login.module.css'
 
-const PILLARS = [
+type Pillar = {
+  label: string
+  title: string
+  accent: string
+  img: string
+  desc?: string
+  bullets?: { name: string; desc: string }[]
+}
+
+const PILLARS: Pillar[] = [
   {
     label: 'Nossa Missão',
-    title: 'Conectar o agro ao futuro',
-    accent: 'futuro',
-    desc: 'Soluções logísticas e operacionais que impulsionam o agronegócio brasileiro com excelência, segurança e compromisso socioambiental.',
+    title: 'Gerar valor em toda a cadeia bovina',
+    accent: 'cadeia bovina',
+    desc: 'Da alimentação à biotecnologia — levando excelência e inovação ao mercado global.',
     img: '/missao.jpeg',
   },
   {
     label: 'Nossa Visão',
-    title: 'Referência em logística agro',
-    accent: 'logística agro',
-    desc: 'Ser reconhecida como a principal parceira logística do agronegócio no Brasil, inovando continuamente para superar expectativas.',
+    title: 'Ultrapassar R$ 150 milhões em 2 anos',
+    accent: 'R$ 150 milhões',
+    desc: 'Em faturamento — construindo uma operação sólida, sustentável e em crescimento consistente.',
     img: '/visao.jpg',
   },
   {
     label: 'Nossos Valores',
     title: 'O que nos move todos os dias',
     accent: 'todos os dias',
-    desc: 'Integridade, trabalho em equipe, comprometimento com resultados e respeito às pessoas e ao meio ambiente.',
     img: '/valores.jpg',
+    bullets: [
+      {
+        name: 'Respeito',
+        desc: 'Trato todos com respeito — colegas, motoristas, gestores e clientes — independente de cargo ou função.',
+      },
+      {
+        name: 'Cabeça de Dono',
+        desc: 'Ajo como se a empresa fosse minha — cuido, decido bem e não espero alguém mandar.',
+      },
+      {
+        name: 'Ética',
+        desc: 'Ajo com integridade e transparência, cumpro o que prometo e construo relações sólidas baseadas no que é certo — sempre.',
+      },
+    ],
   },
-] as const
+]
 
 const ROTATE_MS = 6000
 
@@ -367,9 +389,26 @@ export default function LoginPage() {
                 <span className={styles.accent}>{pillar.accent}</span>
                 {pillar.title.split(pillar.accent)[1]}
               </h2>
-              <p className={styles.pillarDesc} key={pillar.desc}>
-                {pillar.desc}
-              </p>
+
+              {pillar.bullets ? (
+                <ul className={styles.pillarValues} key={pillar.label}>
+                  {pillar.bullets.map((b, idx) => (
+                    <li key={b.name} className={styles.valueItem}>
+                      <span className={styles.valueIndex} aria-hidden="true">
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <div className={styles.valueBody}>
+                        <h3 className={styles.valueName}>{b.name}</h3>
+                        <p className={styles.valueDesc}>{b.desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.pillarDesc} key={pillar.desc}>
+                  {pillar.desc}
+                </p>
+              )}
 
               <div
                 className={styles.pillarNav}
