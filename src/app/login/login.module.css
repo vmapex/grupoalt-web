@@ -117,16 +117,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 40px;
+  margin-bottom: 28px;
   animation: fadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 .brandLogo {
   display: block;
-  height: 140px;
+  height: 120px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  filter: drop-shadow(0 12px 24px rgba(4, 58, 118, 0.20));
+  filter: drop-shadow(0 8px 16px rgba(4, 58, 118, 0.16));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -139,7 +139,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 64px 64px 64px;
+  padding: 48px 64px 48px;
 }
 
 .card {
@@ -211,7 +211,7 @@
 ═══════════════════════════════════════════════════════════════════════ */
 .formPane {
   position: relative;
-  padding: 48px 56px 36px;
+  padding: 40px 56px 32px;
   display: flex;
   flex-direction: column;
   z-index: 2;
@@ -932,33 +932,33 @@
    RESPONSIVE
 ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1080px) {
-  .stage { padding: 56px 32px 56px; }
+  .stage { padding: 40px 32px 40px; }
   .footer { padding: 12px 32px 20px; }
-  .formPane { padding: 40px 40px 32px; }
+  .formPane { padding: 32px 40px 28px; }
   .brandPane { padding: 36px 36px; }
-  .brandLogo { height: 116px; }
+  .brandLogo { height: 104px; }
 }
 
 @media (max-width: 880px) {
-  .stage { padding: 40px 16px 40px; }
+  .stage { padding: 32px 16px 32px; }
   .footer { padding: 12px 20px 18px; font-size: 10px; }
   .footerInner { text-align: center; }
   .card {
     grid-template-columns: 1fr;
     min-height: auto;
   }
-  .formPane { padding: 36px 28px 28px; order: 2; }
+  .formPane { padding: 32px 28px 28px; order: 2; }
   .brandPane {
     padding: 36px 28px;
     min-height: 280px;
     order: 1;
   }
   .pillarContent { max-width: 100%; }
-  .brandLogo { height: 100px; }
+  .brandLogo { height: 92px; }
 }
 
 @media (max-width: 480px) {
-  .formPane { padding: 28px 20px 24px; }
+  .formPane { padding: 24px 20px 24px; }
   .brandPane { padding: 28px 20px; }
   .formMeta { flex-direction: column; align-items: flex-start; gap: 12px; }
   .headline { font-size: 1.65rem; }
@@ -968,10 +968,10 @@
   .formHeader {
     flex-direction: column-reverse;
     align-items: flex-start;
-    gap: 18px;
-    margin-bottom: 28px;
+    gap: 16px;
+    margin-bottom: 24px;
   }
-  .brandLogo { height: 84px; }
+  .brandLogo { height: 76px; }
 }
 
 /* Reduce motion preference */
