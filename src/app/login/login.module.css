@@ -117,12 +117,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   animation: fadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 .brandLogo {
   display: block;
-  height: 150px;
+  height: 200px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
@@ -139,7 +139,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 64px 40px;
+  padding: 24px 64px 32px;
 }
 
 .card {
@@ -211,7 +211,7 @@
 ═══════════════════════════════════════════════════════════════════════ */
 .formPane {
   position: relative;
-  padding: 28px 56px 32px;
+  padding: 20px 56px 32px;
   display: flex;
   flex-direction: column;
   z-index: 2;
@@ -932,31 +932,31 @@
    RESPONSIVE
 ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1080px) {
-  .stage { padding: 32px 32px 32px; }
+  .stage { padding: 24px 32px 28px; }
   .footer { padding: 12px 32px 20px; }
-  .formPane { padding: 24px 40px 28px; }
+  .formPane { padding: 16px 40px 28px; }
   .brandPane { padding: 36px 36px; }
-  .formHeader { margin-bottom: 12px; }
-  .brandLogo { height: 130px; }
+  .formHeader { margin-bottom: 8px; }
+  .brandLogo { height: 172px; }
 }
 
 @media (max-width: 880px) {
-  .stage { padding: 24px 16px 24px; }
+  .stage { padding: 20px 16px 24px; }
   .footer { padding: 12px 20px 18px; font-size: 10px; }
   .footerInner { text-align: center; }
   .card {
     grid-template-columns: 1fr;
     min-height: auto;
   }
-  .formPane { padding: 24px 28px 28px; order: 2; }
+  .formPane { padding: 16px 28px 28px; order: 2; }
   .brandPane {
     padding: 36px 28px;
     min-height: 280px;
     order: 1;
   }
   .pillarContent { max-width: 100%; }
-  .formHeader { margin-bottom: 12px; }
-  .brandLogo { height: 116px; }
+  .formHeader { margin-bottom: 8px; }
+  .brandLogo { height: 144px; }
 }
 
 @media (max-width: 480px) {
@@ -973,7 +973,7 @@
     gap: 12px;
     margin-bottom: 16px;
   }
-  .brandLogo { height: 96px; }
+  .brandLogo { height: 116px; }
 }
 
 /* Reduce motion preference */
