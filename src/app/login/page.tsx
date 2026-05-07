@@ -132,13 +132,9 @@ export default function LoginPage() {
           <div className={styles.brand}>
             <img
               src="/logo_grupo_alt.png"
-              alt="Grupo ALT"
+              alt="Grupo ALT — Portal Corporativo"
               className={styles.brandLogo}
             />
-            <div className={styles.brandText}>
-              <span className={styles.brandName}>Grupo ALT</span>
-              <span className={styles.brandTag}>Portal Corporativo</span>
-            </div>
           </div>
         </div>
       </header>
