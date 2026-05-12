@@ -1,0 +1,8 @@
+{
+  "lancamentos": [
+    { "valor": 0, "categoria": "1.01.01" },
+    { "valor": 1000, "categoria": "1.01.01" },
+    { "valor": 0, "categoria": null },
+    { "valor": 500, "categoria": null }
+  ]
+}

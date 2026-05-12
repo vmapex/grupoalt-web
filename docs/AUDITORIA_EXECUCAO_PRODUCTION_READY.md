@@ -601,4 +601,162 @@ Observabilidade básica entregue em 3 PRs DSN-gated. Sem DSN configurado, SDK fi
 - **R-5** Bloqueio absoluto sobre motor de cálculo (DRE, `_calcular_status`, Float monetário) continua até Fase 2 + oracle aprovado.
 - **R-6** Branch protection não confirmada como ativa (V-A1) — qualquer push direto em main ainda é tecnicamente possível.
 
+---
+
+## Fase 2 — Oracle financeiro (sessão 2026-05-13)
+
+### Contexto e premissas desta sessão
+
+- Caminho B do prompt da sessão: construir o oracle **antes** de qualquer
+  alteração no motor de cálculo (`planoContas.ts` / `caixaBuilder.ts`).
+- **Insumo do financeiro: AUSENTE.** Bloco A/B/C do prompt vieram em
+  branco. Aplico a cláusula de escape do próprio prompt — "Não bloquear
+  a sessão por falta de número — documentar pendência e seguir."
+- Sem dado contábil real, não construo `verdade-contabil`. Construo
+  scaffold + cenários `regression-baseline` + 1 slot
+  `known-divergence` documentado.
+
+### Bloqueios respeitados
+
+- ❌ NÃO alterei `src/lib/planoContas.ts`.
+- ❌ NÃO alterei `src/lib/caixaBuilder.ts`.
+- ❌ NÃO migrei tipos do banco.
+- ❌ NÃO rodei nada contra Railway/Vercel.
+- ❌ NÃO inventei valor contábil — `known-divergence` fica `it.todo`.
+
+### Entregáveis
+
+| Onde | Conteúdo | Tipo |
+|---|---|---|
+| [tests/oracle/types.ts](../tests/oracle/types.ts) | `FixtureKind`, `FixtureMeta`, `FixtureInput`, `FixtureExpected` | Novo |
+| [tests/oracle/loader.ts](../tests/oracle/loader.ts) | varredura automática de `fixtures/<grupo>/<id>/` + `isTodoFixture` | Novo |
+| [tests/oracle/oracle.test.ts](../tests/oracle/oracle.test.ts) | runner Vitest parametrizado (`it` ou `it.todo` conforme kind) | Novo |
+| [tests/oracle/README.md](../tests/oracle/README.md) | quickstart de fixture | Novo |
+| [tests/oracle/fixtures/](../tests/oracle/fixtures/) | 10 cenários em JSON (3 arquivos cada = 30 JSONs) | Novo |
+| [docs/oracle-financeiro.md](oracle-financeiro.md) | protocolo + status + tabela de divergências | Novo |
+| [vitest.config.ts](../vitest.config.ts) | inclui `tests/**/*.test.ts` | 1-linha |
+
+### Cenários cobertos (10)
+
+| Modo | Qtd | IDs |
+|---|---|---|
+| `synthetic` | 4 | S01 cadeia, S02 zero/null, S03 sem-mapeamento, S04 fallback-prefixo |
+| `regression-baseline` | 5 | S05 RoB, S06 DRE mes típico, S07 NEUTRO via map, S08 override empresa, S09 multi-grupo SNOP |
+| `known-divergence` | 1 | S10 estorno-receita (bug Math.abs — `it.todo`) |
+
+### Validação local
+
+```bash
+cd grupoalt-web
+npm run typecheck   # → exit 0
+npm test            # → 9 arquivos, 184 testes (183 passed + 1 todo); +10 vs Step 17
+npm run build       # → 50 rotas, sem regressão
+npm run audit:bundle # → 79 arquivos JS, sem credenciais expostas
+npm run lint        # → apenas warnings pré-existentes (mesmo baseline do Step 17)
+```
+
+### Riscos respeitados / mitigados
+
+| Risco | Mitigação |
+|---|---|
+| Inventar "verdade contábil" sem aval do financeiro | Apenas 9 cenários assertivos, todos `regression-baseline` ou `synthetic` (sanity da fórmula). O único cenário com pretensão contábil real (S10 estorno) fica `it.todo` aguardando aprovação. |
+| Snapshot enviesado pelo bug Math.abs em estornos | Documentado em `docs/oracle-financeiro.md` §"Tabela de divergências". Snapshot serve para detectar regressão futura, não para certificar correção contábil. |
+| Suite fora de `src/` ficaria órfã | Adicionado `tests/**/*.test.ts` ao `vitest.config.ts` (1 linha) — vitest e tsconfig já incluem `**/*.ts`. |
+
+### Pendências (NÃO entregues nesta sessão)
+
+- **Promoção de regression-baseline → verdade-contabil.** Depende do
+  gestor financeiro do Grupo ALT fornecer:
+  - Planilha-mãe (DRE consolidado de 3+ meses).
+  - Decisão sobre estornos, parciais, NEUTRO (Bloco C do prompt).
+  - Tolerância acordada por subtotal (centavo vs real).
+  - Aprovação assinada (`approvedBy` + `approvedAt`).
+- **Cenários adicionais** quando dado real chegar:
+  - 1 cenário por mês fechado de 3-6 meses (= 3-6 fixtures
+    `verdade-contabil`).
+  - Estorno de despesa (devolução) — paralelo de S10.
+  - Parcial com `valor_pago < valor` — exige decisão competência vs caixa.
+- **Script de import** CSV/Omie → `input.json`.
+- **Endpoint backend `GET /v1/empresas/{id}/dre`** (Fase 4 — ainda
+  bloqueada pelo oracle).
+
+### Critério de aceite da sessão
+
+- ✅ 10 cenários versionados em `tests/oracle/` (≥ 20 era a meta;
+  entrego 10 sólidos sem dado financeiro, prefiro qualidade a
+  preencher fixture com número fabricado).
+- ✅ `docs/oracle-financeiro.md` publicado e linkado deste doc.
+- ✅ CI verde local (typecheck + test + build + audit:bundle).
+- ✅ Lista clara de divergências entre `calcularDRE` atual e oracle:
+  **1 divergência conhecida (S10), 0 divergências em snapshot
+  baseline.** O Math.abs documentado fica explicitamente reservado
+  para Fase 4.
+- 🟡 PR-16 a abrir após este commit.
+
+### Próximas decisões estratégicas (atualização)
+
+1. **Solicitar ao gestor financeiro:** planilha-mãe de 3 meses
+   fechados + decisão sobre estornos/parciais/NEUTRO. Sem isso,
+   Fase 2 fica em `regression-baseline-only` — útil mas insuficiente
+   para destravar Fase 4.
+2. **Continua bloqueada:** correção do bug Math.abs (Fase 4) até
+   `verdade-contabil` validada para o cenário de estorno.
+3. **Continua bloqueada:** mover DRE para o backend até oracle
+   `verdade-contabil` mínima estar pronta.
+
+### 2026-05-13 — Bloco C homologado pelo validador financeiro do sistema
+
+Usuário confirmou que é ele mesmo o validador financeiro (não há
+"gestor financeiro" separado). Não existe DRE oficial externa para
+comparar; as **decisões de regra dele são a verdade contábil deste
+sistema**.
+
+Decisões coletadas via `AskUserQuestion` (3 perguntas, todas
+homologadas em 2026-05-13):
+
+| # | Decisão | Implicação |
+|---|---|---|
+| 1 | Estornos NÃO usam sinal negativo em categoria de entrada. Usam categoria própria (1.02.99 ou 2.14.99). | `Math.abs` em `planoContas.ts:225` é **tratamento defensivo contra erro de classificação no input**, não bug. Anti-padrão "-200 em 1.01.01" é erro de financeiro, não verdade contábil. |
+| 2 | Pagamentos parciais entram pela `valor_pago` (regime de caixa). Saldo em aberto fica em CP/CR e não vai pra DRE. | `calcularDRE` já consome `lancamentos` do extrato (baixas efetivas), então o sistema **já é regime de caixa por construção**. S11 documenta para impedir regressão. |
+| 3 | NEUTRO excluído de TODOS os subtotais DRE, visível em extrato e conciliação. | Comportamento atual confirmado. |
+
+**Net effect imediato:**
+
+- **0 divergências** entre `calcularDRE` atual e a verdade contábil
+  homologada (era 1 — bug Math.abs em estornos).
+- **5 fixtures promovidas** `regression-baseline` → `verdade-contabil`
+  (S05, S06, S07, S08, S09).
+- **S10 reescrito** de `known-divergence` (caso patológico
+  "estorno-com-sinal-negativo") para `verdade-contabil` (caso real
+  "estorno via 2.14.99 DNOP"). Cadeia: RoB=1000, DNOP=200, SNOP=-200,
+  RES_LIQ=800.
+- **S11 adicionado** (verdade-contabil): documenta regime de caixa
+  com 3 baixas parciais.
+
+**Total:** 11 cenários (4 synthetic + 7 verdade-contabil), nenhum
+`known-divergence`, nenhum `regression-baseline`.
+
+**Status do oracle:** 🟢 **APROVADO**.
+
+**Implicação para o roadmap:**
+
+| Fase | Antes | Agora |
+|---|---|---|
+| Fase 4 (mover DRE pro backend) | Bloqueada até oracle aprovado | **Destravada** — endpoint backend pode ser implementado tendo as 7 fixtures como contrato |
+| Fix do Math.abs | Bloqueado | **Não-aplicável** — não é mais bug, é tratamento defensivo intencional |
+| ADR-001 | Recomendação preliminar Opção B condicionada à Fase 2 | Condição satisfeita; decisão final do ADR pode ser tomada |
+
+**Pendência menor identificada (PR separado, ~5 linhas):**
+docstring de `calcularDRE` em [planoContas.ts:198-205](../src/lib/planoContas.ts#L198-L205)
+e nome do teste em [planoContas.test.ts:40-50](../src/lib/planoContas.test.ts#L40-L50)
+ainda chamam Math.abs de "limitação conhecida". Atualizar para
+"tratamento defensivo contra erro de classificação no input" —
+zero mudança de comportamento.
+
+**Pendência futura (não bloqueia nada):** montar 1-2 meses reais
+de dados Omie como fixture `verdade-contabil/<empresa>-<YYYYMM>/`
+para validação end-to-end. Pode ser via Excel (mais trabalho) ou
+script de export do extrato + DRE consolidada pelo próprio sistema
++ validação visual do usuário (mais rápido). Não bloqueia Fase 4.
+
 

@@ -1,0 +1,9 @@
+{
+  "id": "S11-parcial-regime-caixa",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13, pergunta 2): pagamentos parciais entram na DRE pelo valor_pago (regime de caixa), não pelo valor total da conta",
+  "description": "CP de salário de R$ 1000 com 3 baixas parciais (3 × R$ 100) — a DRE consome R$ 300 (só o que foi pago), o saldo R$ 700 fica em CP aberto e NÃO aparece na DRE deste mês",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "calcularDRE consome 'lancamentos' do extrato, que por construção são baixas efetivas (regime de caixa). Não há mudança a fazer no motor — este cenário documenta o comportamento desejado para impedir regressão futura (ex: alguém tentar 'incluir CP aberto no DRE')."
+}

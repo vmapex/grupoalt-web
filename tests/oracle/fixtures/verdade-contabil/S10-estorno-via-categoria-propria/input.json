@@ -1,0 +1,6 @@
+{
+  "lancamentos": [
+    { "valor": 1000, "categoria": "1.01.01", "origem": "venda original" },
+    { "valor": 200, "categoria": "2.14.99", "origem": "estorno (devolução ao cliente)" }
+  ]
+}

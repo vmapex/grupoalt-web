@@ -1,0 +1,9 @@
+{
+  "id": "S09-multi-grupo-com-snop",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13): cadeia DRE completa em regime de caixa, NOP composto pelos grupos 1.02 (RNOP) e 2.14 (DNOP)",
+  "description": "Mês com lançamentos em todos os grupos, incluindo SNOP positivo e negativo — verifica EBT2 e cadeia até RES_LIQ",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Cobre a cadeia EBT1 → SNOP → EBT2 → IRPJ/CSLL → RES_LIQ que é a parte mais escorregadia do agregador. Lançamentos distribuídos em múltiplas categorias por grupo (mais realista do que cenário sintético S01)."
+}

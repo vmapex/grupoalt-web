@@ -1,0 +1,6 @@
+{
+  "lancamentos": [
+    { "valor": 1000, "categoria": "1.01.77" },
+    { "valor": 200, "categoria": "2.03.99" }
+  ]
+}

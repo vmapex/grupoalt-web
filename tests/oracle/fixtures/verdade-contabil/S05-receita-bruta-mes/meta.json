@@ -1,0 +1,9 @@
+{
+  "id": "S05-receita-bruta-mes",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13): regime de caixa, agregação direta das categorias 1.01.x",
+  "description": "Mês só com receitas em 1.01.01 e 1.01.02 — verifica agregador puro de RoB",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Cenário sem estornos, parciais ou NEUTRO. Comportamento atual do calcularDRE bate com a regra acordada: RoB = soma direta dos lançamentos do extrato em categorias 1.01.x."
+}

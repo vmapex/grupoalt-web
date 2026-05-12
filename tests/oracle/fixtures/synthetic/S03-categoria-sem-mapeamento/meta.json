@@ -1,0 +1,7 @@
+{
+  "id": "S03-categoria-sem-mapeamento",
+  "kind": "synthetic",
+  "source": "comportamento documentado em planoContas.test.ts:76-82",
+  "description": "Lançamento com código fora do CATEGORIAS é descartado silenciosamente do DRE",
+  "notes": "Inclui caso de código completamente desconhecido (9.99.99) e categoria null. Ambos somem do agregador. Para detectar 'vazamento' contábil (categoria nova na Omie sem mapeamento), o portal precisa de alerta separado — fora do escopo do oracle."
+}

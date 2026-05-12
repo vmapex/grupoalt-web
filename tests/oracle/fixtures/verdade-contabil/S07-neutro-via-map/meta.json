@@ -1,0 +1,9 @@
+{
+  "id": "S07-neutro-via-map",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13, pergunta 3): NEUTRO excluído do DRE inteiro, visível apenas em extrato/conciliação",
+  "description": "Categoria 1.99.99 marcada como NEUTRO via categoriaMap é excluída de RoB, TDCF, CV, CF, RNOP, DNOP, IRPJ, CSLL e RES_LIQ",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Use case: repasse intra-grupo entre unidades não infla nenhum subtotal do DRE. Lançamentos com valor negativo (`-3000` no input) também são excluídos — confirma que NEUTRO ignora sinal."
+}

@@ -1,0 +1,7 @@
+{
+  "id": "S01-cadeia-dre-completa",
+  "kind": "synthetic",
+  "source": "planoContas.test.ts:93-110 (mesmo cenário, formato oracle)",
+  "description": "Sanity check da fórmula RES_LIQ — números escolhidos para validar manualmente a cadeia DRE",
+  "notes": "Espelha o teste 'subtotal RES_LIQ aplica cadeia DRE corretamente' do planoContas.test.ts. Se este falhar, o motor mudou ou a fórmula da cadeia quebrou."
+}
