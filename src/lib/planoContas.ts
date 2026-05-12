@@ -195,14 +195,23 @@ export function getCategoriaInfo(categoria: string | null): CategoriaInfo | null
  * cálculo (usadas para repasses internos / mútuos entre unidades que devem
  * aparecer no extrato mas não inflar o DRE).
  *
- * REGRA DE SINAL (Step 13 — Parte B):
- *   Todo lançamento entra no grupo como `Math.abs(valor)`. Isso assume que o
- *   sinal está implícito no grupo DRE (RoB e RNOP somam, CV/CF/TDCF/DNOP
- *   subtraem nos subtotais). Limitação conhecida: estornos lançados com sinal
- *   contrário (ex: -200 em RoB ou +50 em CV) inflam o agregador em vez de
- *   compensá-lo. Mudar essa regra requer validação prévia com financeiro;
- *   ver `planoContas.test.ts` ("comportamento atual com Math.abs") e
- *   `docs/plano-acao-seguranca/step-13-calculos-bi-dre-paginacao.md`.
+ * REGRA DE SINAL (Step 13 — Parte B, homologada em 2026-05-13):
+ *   Todo lançamento entra no grupo como `Math.abs(valor)`. O sinal está
+ *   implícito no grupo DRE (RoB e RNOP somam; CV/CF/TDCF/DNOP/IRPJ/CSLL
+ *   subtraem nos subtotais).
+ *
+ *   No modelo do sistema, estornos NÃO usam sinal contrário na categoria
+ *   original — usam categoria própria:
+ *     - Estorno de venda (devolução ao cliente) → 2.14.99 em DNOP.
+ *     - Estorno de despesa (devolução de fornecedor) → 1.02.99 em RNOP.
+ *
+ *   Lançamento negativo numa categoria de entrada (ex: -200 em 1.01.01)
+ *   é erro de classificação no input, não verdade contábil. O `Math.abs`
+ *   é tratamento defensivo contra esse anti-padrão — evita que erro de
+ *   financeiro vire número absurdo no DRE.
+ *
+ *   Ver oracle: `tests/oracle/fixtures/verdade-contabil/S10-estorno-via-categoria-propria/`
+ *   e `docs/oracle-financeiro.md` (Bloco C, pergunta 1).
  */
 export function calcularDRE(
   lancamentos: Array<{ valor: number; categoria: string | null; origem?: string }>,

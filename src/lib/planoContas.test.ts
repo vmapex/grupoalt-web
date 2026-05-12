@@ -12,15 +12,19 @@ import {
 /**
  * Testes do Step 13 — Parte B: regra Math.abs no DRE
  *
- * Estes testes capturam o comportamento ATUAL para servir de referencia
- * antes de qualquer mudanca de regra. A documentacao do step diz:
+ * Regra homologada pelo validador financeiro do sistema em 2026-05-13
+ * (Bloco C, pergunta 1; ver `docs/oracle-financeiro.md`).
  *
- *   "Aplicar alteracao somente depois de validada com negocio."
+ * No modelo do sistema, estornos NÃO usam sinal contrário na categoria
+ * de entrada — usam categoria própria (1.02.99 RNOP ou 2.14.99 DNOP).
+ * Lançamento negativo numa categoria de entrada é erro de classificação
+ * no input. O `Math.abs` em `calcularDRE` é tratamento defensivo contra
+ * esse anti-padrão.
  *
- * Se a regra mudar (passar a respeitar sinal de estorno, por exemplo),
- * esses testes servem de evidencia do que foi alterado.
+ * Os 2 testes "valor negativo em receita / valor positivo em despesa"
+ * abaixo documentam o tratamento defensivo, não uma limitação.
  */
-describe('calcularDRE — comportamento atual com Math.abs', () => {
+describe('calcularDRE — Math.abs (tratamento defensivo, Bloco C)', () => {
   it('soma valores positivos no grupo certo (caso normal)', () => {
     const dre = calcularDRE([
       { valor: 1000, categoria: '1.01.01' }, // RoB
@@ -37,24 +41,26 @@ describe('calcularDRE — comportamento atual com Math.abs', () => {
     expect(dre.EBT1).toBe(400) // 700 - 300
   })
 
-  it('valor negativo em receita e somado como positivo (limitacao conhecida)', () => {
-    // Cenario: estorno de receita lancado como valor negativo.
-    // Comportamento ATUAL: estorno -200 vira +200 → RoB = 1200.
-    // Comportamento ESPERADO (apos validacao com negocio): RoB = 800.
-    // Step 13 / Parte B mantem a regra atual ate validacao do financeiro.
+  it('valor negativo em receita e somado em modulo (tratamento defensivo)', () => {
+    // Anti-padrao: -200 em 1.01.01 (categoria de entrada) seria erro de
+    // classificacao do financeiro. No modelo correto, estorno de venda
+    // vai em 2.14.99 DNOP — ver fixture S10-estorno-via-categoria-propria.
+    // Math.abs mascara o erro para evitar numero absurdo no DRE.
     const dre = calcularDRE([
       { valor: 1000, categoria: '1.01.01' },
-      { valor: -200, categoria: '1.01.01' }, // estorno simulado
+      { valor: -200, categoria: '1.01.01' }, // anti-padrao: nao deveria existir
     ])
     expect(dre.RoB).toBe(1200)
   })
 
-  it('valor positivo em despesa e somado como positivo (limitacao conhecida)', () => {
-    // Cenario: estorno de despesa (devolucao) lancado positivo.
-    // Comportamento ATUAL: +50 entra como +50 em CV.
+  it('valor positivo em despesa soma direto (regime de caixa)', () => {
+    // Caixa: cada lancamento do extrato eh uma baixa efetiva. 2 baixas
+    // de 500 e 50 em 2.03.01 (CV) consomem CV=550. Devolucao de
+    // fornecedor (caso existisse) iria em 1.02.99 RNOP, nao em CV
+    // com sinal contrario.
     const dre = calcularDRE([
-      { valor: 500, categoria: '2.03.01' },  // CV normal
-      { valor: 50, categoria: '2.03.01' },   // possivel devolucao
+      { valor: 500, categoria: '2.03.01' },
+      { valor: 50, categoria: '2.03.01' },
     ])
     expect(dre.CV).toBe(550)
   })
