@@ -1,3 +1,5 @@
+const { withSentryConfig } = require('@sentry/nextjs')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -67,4 +69,21 @@ const nextConfig = {
     ]
   },
 }
-module.exports = nextConfig
+// PR-11 (Fase 1B): wrap com Sentry. Sem NEXT_PUBLIC_SENTRY_DSN /
+// SENTRY_AUTH_TOKEN configurados, withSentryConfig só faz no-op
+// (não tenta upload de source maps).
+module.exports = withSentryConfig(nextConfig, {
+  // silent durante build se nenhum token de upload está disponível.
+  silent: true,
+  // Não tenta upload de source maps em build local (sem auth token).
+  // Para ativar em produção: setar SENTRY_AUTH_TOKEN no Vercel.
+  widenClientFileUpload: true,
+  // Não injeta o tunnel route automaticamente — evita problemas com
+  // o CSP/nonce do middleware. Se quiser ativar, garantir que o path
+  // /monitoring esteja permitido em src/middleware.ts.
+  tunnelRoute: undefined,
+  disableLogger: true,
+  // Sentry recomenda hidden source maps em prod para não vazar source
+  // no bundle, mas requer upload. Mantemos default false aqui.
+  hideSourceMaps: false,
+})
