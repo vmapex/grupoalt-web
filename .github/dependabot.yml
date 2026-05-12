@@ -22,10 +22,17 @@ updates:
       patch-updates:
         update-types:
           - "patch"
-    # Bloqueio explícito: o upgrade de Next 14 → 16 é EXC-001 e tem plano
-    # próprio (issue #56). Dependabot não deve abrir PR para esse major.
+    # Bloqueios explícitos:
+    # - "next" 14 → 16 é EXC-001 (plano próprio, issue #56). Major bloqueado.
+    # - "date-fns" não é importado em src/ (dep morta). Removida do
+    #   package.json em PR-7 e ignorada aqui para não voltar via Dependabot.
+    # - "recharts" major (3.x) requer migração visual dedicada — bloqueado
+    #   até a migração ser planejada em sprint específica.
     ignore:
       - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "date-fns"
+      - dependency-name: "recharts"
         update-types: ["version-update:semver-major"]
 
   # GitHub Actions
