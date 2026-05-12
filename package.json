@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.53.1",
     "axios": "^1.16.0",
     "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
