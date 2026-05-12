@@ -704,4 +704,59 @@ npm run lint        # → apenas warnings pré-existentes (mesmo baseline do Ste
 3. **Continua bloqueada:** mover DRE para o backend até oracle
    `verdade-contabil` mínima estar pronta.
 
+### 2026-05-13 — Bloco C homologado pelo validador financeiro do sistema
+
+Usuário confirmou que é ele mesmo o validador financeiro (não há
+"gestor financeiro" separado). Não existe DRE oficial externa para
+comparar; as **decisões de regra dele são a verdade contábil deste
+sistema**.
+
+Decisões coletadas via `AskUserQuestion` (3 perguntas, todas
+homologadas em 2026-05-13):
+
+| # | Decisão | Implicação |
+|---|---|---|
+| 1 | Estornos NÃO usam sinal negativo em categoria de entrada. Usam categoria própria (1.02.99 ou 2.14.99). | `Math.abs` em `planoContas.ts:225` é **tratamento defensivo contra erro de classificação no input**, não bug. Anti-padrão "-200 em 1.01.01" é erro de financeiro, não verdade contábil. |
+| 2 | Pagamentos parciais entram pela `valor_pago` (regime de caixa). Saldo em aberto fica em CP/CR e não vai pra DRE. | `calcularDRE` já consome `lancamentos` do extrato (baixas efetivas), então o sistema **já é regime de caixa por construção**. S11 documenta para impedir regressão. |
+| 3 | NEUTRO excluído de TODOS os subtotais DRE, visível em extrato e conciliação. | Comportamento atual confirmado. |
+
+**Net effect imediato:**
+
+- **0 divergências** entre `calcularDRE` atual e a verdade contábil
+  homologada (era 1 — bug Math.abs em estornos).
+- **5 fixtures promovidas** `regression-baseline` → `verdade-contabil`
+  (S05, S06, S07, S08, S09).
+- **S10 reescrito** de `known-divergence` (caso patológico
+  "estorno-com-sinal-negativo") para `verdade-contabil` (caso real
+  "estorno via 2.14.99 DNOP"). Cadeia: RoB=1000, DNOP=200, SNOP=-200,
+  RES_LIQ=800.
+- **S11 adicionado** (verdade-contabil): documenta regime de caixa
+  com 3 baixas parciais.
+
+**Total:** 11 cenários (4 synthetic + 7 verdade-contabil), nenhum
+`known-divergence`, nenhum `regression-baseline`.
+
+**Status do oracle:** 🟢 **APROVADO**.
+
+**Implicação para o roadmap:**
+
+| Fase | Antes | Agora |
+|---|---|---|
+| Fase 4 (mover DRE pro backend) | Bloqueada até oracle aprovado | **Destravada** — endpoint backend pode ser implementado tendo as 7 fixtures como contrato |
+| Fix do Math.abs | Bloqueado | **Não-aplicável** — não é mais bug, é tratamento defensivo intencional |
+| ADR-001 | Recomendação preliminar Opção B condicionada à Fase 2 | Condição satisfeita; decisão final do ADR pode ser tomada |
+
+**Pendência menor identificada (PR separado, ~5 linhas):**
+docstring de `calcularDRE` em [planoContas.ts:198-205](../src/lib/planoContas.ts#L198-L205)
+e nome do teste em [planoContas.test.ts:40-50](../src/lib/planoContas.test.ts#L40-L50)
+ainda chamam Math.abs de "limitação conhecida". Atualizar para
+"tratamento defensivo contra erro de classificação no input" —
+zero mudança de comportamento.
+
+**Pendência futura (não bloqueia nada):** montar 1-2 meses reais
+de dados Omie como fixture `verdade-contabil/<empresa>-<YYYYMM>/`
+para validação end-to-end. Pode ser via Excel (mais trabalho) ou
+script de export do extrato + DRE consolidada pelo próprio sistema
++ validação visual do usuário (mais rápido). Não bloqueia Fase 4.
+
 

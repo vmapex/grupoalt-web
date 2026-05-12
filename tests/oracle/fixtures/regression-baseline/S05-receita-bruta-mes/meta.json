@@ -1,7 +1,0 @@
-{
-  "id": "S05-receita-bruta-mes",
-  "kind": "regression-baseline",
-  "source": "snapshot do calcularDRE() atual em 2026-05-12 (commit ef424e0)",
-  "description": "Mês só com receitas em 1.01.01 e 1.01.02 — verifica agregador puro de RoB",
-  "notes": "Sem aval do financeiro. Failure = mudança não justificada no agregador (positiva ou negativa). NÃO certifica que a regra está contábilmente correta — apenas que NÃO mudou desde o snapshot."
-}

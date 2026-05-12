@@ -1,0 +1,9 @@
+{
+  "id": "S10-estorno-via-categoria-propria",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13, pergunta 1): estornos NÃO usam sinal negativo em categoria de entrada — usam categoria própria (1.02.99 para entrada, 2.14.99 para saída)",
+  "description": "Venda de R$ 1000 em 1.01.01 (RoB) com estorno parcial de R$ 200 lançado em 2.14.99 (-ESTORNO em DNOP) — receita líquida sai correta via SNOP no EBT2",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Modelo confirmado: estornos são SEMPRE positivos na sua categoria específica. Estorno de venda (devolução ao cliente, saída do caixa) → 2.14.99 DNOP. Estorno de despesa (devolução de fornecedor, entrada no caixa) → 1.02.99 RNOP. Lançamento negativo numa categoria de entrada (ex: -200 em 1.01.01) seria erro de classificação no input — Math.abs em planoContas.ts:225 é tratamento defensivo contra esse anti-padrão, NÃO é bug. Cenário S10 anterior (que assumia o anti-padrão como entrada legítima) foi removido nesta revisão.\n\nCadeia esperada: RoB=1000, DNOP=200, SNOP=-200, EBT2=1000-200=800, RES_LIQ=800."
+}

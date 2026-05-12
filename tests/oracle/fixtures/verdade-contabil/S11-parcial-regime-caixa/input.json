@@ -1,0 +1,7 @@
+{
+  "lancamentos": [
+    { "valor": 100, "categoria": "2.05.93", "origem": "baixa 1 de 3 (CP R$ 1000 — salário)" },
+    { "valor": 100, "categoria": "2.05.93", "origem": "baixa 2 de 3" },
+    { "valor": 100, "categoria": "2.05.93", "origem": "baixa 3 de 3" }
+  ]
+}

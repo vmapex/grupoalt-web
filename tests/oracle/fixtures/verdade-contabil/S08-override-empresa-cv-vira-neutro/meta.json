@@ -1,0 +1,9 @@
+{
+  "id": "S08-override-empresa-cv-vira-neutro",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra (Step 13/14 + Bloco C 2026-05-13): override por empresa em `categorias_omie.grupo_dre_override` tem precedência sobre o mapa estático CATEGORIAS",
+  "description": "Override no categoriaMap vence o mapeamento estático CATEGORIAS — uma categoria que seria CV vira NEUTRO",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Se este teste falhar e o agregador voltar a usar CV, a empresa estará vendo número diferente do esperado. Implementa a personalização por empresa do plano de contas."
+}

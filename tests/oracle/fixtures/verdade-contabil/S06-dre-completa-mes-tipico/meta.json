@@ -1,0 +1,9 @@
+{
+  "id": "S06-dre-completa-mes-tipico",
+  "kind": "verdade-contabil",
+  "source": "decisão de regra Bloco C (2026-05-13). Estrutura modelada após DRE típica descrita em CLAUDE.md (Step 17)",
+  "description": "Mês típico de PME — receita em 1.01.x, tributos 2.01.x, custos variáveis 2.03.x/2.04.x, custos fixos 2.05.x..2.13.x, IRPJ 2.15.99, CSLL 2.16.99, sem NOP",
+  "approvedBy": "Vinicius Menezes (validador financeiro do sistema)",
+  "approvedAt": "2026-05-13",
+  "notes": "Valores fabricados (não vêm de cliente real), mas a estrutura e a cadeia DRE refletem o caso comum. Quando houver mês fechado real com lançamentos vindos da Omie, adicionar como fixture separada (ex.: verdade-contabil/<empresa>-2026-04/) sem remover este caso sintético."
+}
