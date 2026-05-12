@@ -28,11 +28,26 @@ updates:
     #   package.json em PR-7 e ignorada aqui para não voltar via Dependabot.
     # - "recharts" major (3.x) requer migração visual dedicada — bloqueado
     #   até a migração ser planejada em sprint específica.
+    # - "eslint" major (9+/10): incompatível com
+    #   eslint-config-next@14.x (peer "^7.23.0 || ^8.0.0"). PR #79
+    #   confirmou eresolve failure. Destrava quando Next 14→16 (EXC-001).
+    # - "tailwindcss" major (4.x): mudança brutal de config (novo
+    #   PostCSS, remove autoprefixer, migration manual). PR #80
+    #   confirmou CI fail. Aguardar migração dedicada após Next 16.
+    # - "typescript" major (6.x): peer conflict com eslint-config-next e
+    #   provável surfacing de type errors. PR #82 confirmou CI fail.
+    #   Destrava com Next 16.
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
       - dependency-name: "date-fns"
       - dependency-name: "recharts"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
   # GitHub Actions
