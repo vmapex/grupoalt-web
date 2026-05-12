@@ -1,0 +1,35 @@
+# CODEOWNERS — donos por área para revisão automática de PR.
+# Docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Padrão: dono catch-all do repo. Em cada linha, o último match vence.
+# Conforme DRIs forem definidos por área (V-A2 do handoff), substituir
+# os entries abaixo por times do GitHub (@org/time-financeiro, etc.).
+
+*                       @VinnyMMHH
+
+# Motor de cálculo / lógica financeira (bloqueio absoluto do handoff
+# até oracle financeiro aprovado — Fase 2). Toda mudança aqui exige
+# validação financeira ANTES do merge.
+/src/lib/planoContas.ts   @VinnyMMHH
+/src/lib/caixaBuilder.ts  @VinnyMMHH
+/src/lib/transformers.ts  @VinnyMMHH
+/src/lib/types.ts         @VinnyMMHH
+
+# Infra crítica do front
+/src/middleware.ts        @VinnyMMHH
+/src/app/layout.tsx       @VinnyMMHH
+/src/lib/api.ts           @VinnyMMHH
+/src/store/authStore.ts   @VinnyMMHH
+/src/store/empresaStore.ts @VinnyMMHH
+/next.config.js           @VinnyMMHH
+/vercel.json              @VinnyMMHH
+/.github/workflows/       @VinnyMMHH
+/.github/CODEOWNERS       @VinnyMMHH
+/package.json             @VinnyMMHH
+/package-lock.json        @VinnyMMHH
+
+# Documentação de auditoria / planos de ação
+/docs/plano-acao-seguranca/                       @VinnyMMHH
+/docs/AUDITORIA_HANDOFF_PRODUCTION_READY.md       @VinnyMMHH
+/docs/AUDITORIA_EXECUCAO_PRODUCTION_READY.md      @VinnyMMHH
+/docs/adr/                                        @VinnyMMHH
