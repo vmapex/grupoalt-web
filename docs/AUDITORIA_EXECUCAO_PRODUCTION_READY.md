@@ -436,4 +436,169 @@ Após PR-2 e PR-3 mergeados, o segundo terá conflito trivial em `app/main.py` (
 
 **Próximo bloco (Fase 1B — observabilidade):** aguarda DSNs do Sentry e decisão sobre middleware `X-Request-ID`. Não bloqueado por nenhum dos 4 PRs.
 
+---
+
+### 2026-05-12 — Fase 1A merged + governança (PR-5, PR-6)
+
+Os 4 PRs da Fase 1A mergeados em sequência limpa (~3 min). Sem
+incidente. Em paralelo, abertos 2 PRs de governança:
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| PR-5 | grupoalt-api | [#45](https://github.com/vmapex/grupoalt-api/pull/45) | `.github/CODEOWNERS` + `.github/pull_request_template.md` |
+| PR-6 | grupoalt-web | [#69](https://github.com/vmapex/grupoalt-web/pull/69) | CODEOWNERS + PR template + `docs/adr/` (README + template + 3 ADRs) |
+
+Templates ADR criados em **status Proposta**:
+
+- `001-dre-localizacao.md` — DRE no back vs front. Recomendação preliminar: **Opção B** (back), condicionada à Fase 2 (oracle).
+- `002-sync-omie-async.md` — Sync Omie síncrono vs assíncrono. Recomendação preliminar: **Opção B** (async + polling).
+- `003-multi-tenant.md` — `empresa_id` vs `emp_{slug}`. Recomendação preliminar: **Opção A** (manter `empresa_id`), pendente LGPD/jurídico.
+
+**ESLint hardening** (`no-explicit-any` warn) ficou de fora — exige plugin `@typescript-eslint/eslint-plugin` extra; deferido para PR separado.
+
+### 2026-05-12 — Dependabot wave 1 (15 PRs abertos automaticamente)
+
+Imediatamente após PR-4 / PR-1 mergeados, Dependabot abriu **15 PRs** seguindo as regras configuradas:
+
+- **grupoalt-web (7):** axios, postcss group, autoprefixer, recharts 3, date-fns 4, actions/checkout 6, actions/setup-node 6.
+- **grupoalt-api (8):** asyncpg, aiosqlite, patch-updates group, pydantic-settings 2.14, cryptography 48, docker python 3.14, actions/checkout 6, actions/setup-python 6.
+
+**Triagem:**
+
+| Categoria | Quantidade | Ação |
+|---|---|---|
+| SAFE (patch / minor / CI bumps) | 10 | Mergeados via UI após CI green |
+| ATENÇÃO (major / runtime crítico) | 5 | Avaliados individualmente |
+
+**SAFE merged (10):** web #70 (checkout), #71 (setup-node), #72 (postcss), #73 (axios), #75 (autoprefixer); api #46 (setup-python), #47 (checkout), #49 (patch group), #51 (asyncpg), #52 (aiosqlite).
+
+**ATENÇÃO triados (5):**
+
+| PR | Bump | Decisão |
+|---|---|---|
+| api #48 docker python 3.14 | major | **Fechado** — `python-bidi`/`xhtml2pdf` não tem wheel para 3.14 (confirmado localmente). PR-8 adiciona ignore. |
+| api #50 pydantic-settings 2.14 | minor jump | **Mergeado** — CI green (1m45s); blast radius mínimo (`config.py` único consumer) |
+| api #53 cryptography 48 | major | **Mergeado com smoke** — Fernet API estável; CI roda `TestFernet`; recomendado smoke decrypt de cred Omie real pós-deploy |
+| web #74 recharts 3.x | major | **Fechado** — usado em 7 charts BI; migração visual dedicada exige sprint própria. PR-7 adiciona ignore. |
+| web #76 date-fns 4.x | major | **Fechado** — dep morta (zero imports em src/). PR-7 remove a dep e adiciona ignore. |
+
+### 2026-05-12 — Cleanup do Dependabot wave 1 (PR-7, PR-8)
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| PR-7 | grupoalt-web | [#77](https://github.com/vmapex/grupoalt-web/pull/77) | Remove `date-fns` (dep morta) + ignore de `date-fns` e `recharts` major |
+| PR-8 | grupoalt-api | [#54](https://github.com/vmapex/grupoalt-api/pull/54) | Ignore de python docker > 3.12 (incompat xhtml2pdf) |
+
+Ambos mergeados sem incidente. PRs #48, #74, #76 fechados manualmente após.
+
+### 2026-05-12 — Dependabot wave 2 (10 PRs)
+
+Steady-state. Outra leva imediatamente após cleanup.
+
+**grupoalt-web (5):** #78 tailwind-merge 2→3, #79 eslint 8→10, #80 tailwindcss 3→4, #81 jsdom 25→29, #82 typescript 5→6 — todos **majors**.
+
+**grupoalt-api (5):** #55 apscheduler, #56 redis 5→7, #57 uvicorn 0.30→0.46, #58 anthropic 0.89→0.101, #59 pyjwt — mix de major/minor.
+
+**Triagem web:** 2 SAFE (#78 tailwind-merge, #81 jsdom — CI green), 3 FAIL (#79 eslint, #80 tailwindcss 4, #82 typescript 6 — todos peer/migration conflicts pelo ecossistema **Next 14.x** / EXC-001).
+
+**Triagem api:** **5 SAFE** — surpresa positiva. Mesmo majors (#56 redis 5→7) e jumps grandes (#57 uvicorn) passaram a suite completa de testes. Todos mergeados.
+
+### 2026-05-12 — Cleanup wave 2 (PR-9)
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| PR-9 | grupoalt-web | [#83](https://github.com/vmapex/grupoalt-web/pull/83) | Ignore de `eslint`, `tailwindcss`, `typescript` (major) — todos travados pelo Next 14.x |
+
+Mergeado. PRs #79, #80, #82 fechados.
+
+### 2026-05-12 — Fase 1B publicada (PR-10, PR-11, PR-12)
+
+Observabilidade básica entregue em 3 PRs DSN-gated. Sem DSN configurado, SDK fica inerte — então PRs podiam mergear antes de criar projeto Sentry.
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| PR-10 | grupoalt-api | [#60](https://github.com/vmapex/grupoalt-api/pull/60) | `sentry-sdk[fastapi]` + init em `main.py` (DSN-gated, `send_default_pii=False`) + `RequestIDMiddleware` propagando `X-Request-ID` |
+| PR-11 | grupoalt-web | [#89](https://github.com/vmapex/grupoalt-web/pull/89) | `@sentry/nextjs` + 4 config files (`sentry.{client,server,edge}.config.ts` + `src/instrumentation.ts`) + `next.config.js` envolto em `withSentryConfig` |
+| PR-12 | grupoalt-api | [#61](https://github.com/vmapex/grupoalt-api/pull/61) | Substitui 3 sites de `try/except Exception: pass` por `logger.{debug,warning}` (P1-22). Site em `sync_service._calcular_status` preservado (bloqueio do handoff) |
+
+**Trade-off documentado no PR-11:** bundle shared JS subiu 87.9 kB → 154 kB (+60 kB ungzipped, ~25 kB gzipped). É o custo do SDK estar no bundle mesmo dormente.
+
+**Para ativar Sentry em produção (pendente do usuário):**
+
+1. Criar projeto `grupoalt-api` no Sentry (platform Python/FastAPI). Setar `SENTRY_DSN` no Railway.
+2. Criar projeto `grupoalt-web` no Sentry (platform Next.js). Setar `NEXT_PUBLIC_SENTRY_DSN` no Vercel.
+3. (Opcional Vercel) `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` para upload de source maps.
+4. Redeploy.
+
+### Status consolidado (2026-05-12)
+
+**Total mergeado nesta auditoria: ~25 PRs**, sem incidente registrado.
+
+**Por bloco:**
+- **Fase 0:** investigação read-only. Confirmado: `fast-jwt`, `baseline.ts`, `adm123456` são NÃO-APLICÁVEIS.
+- **Fase 1A:** 4 PRs (#42, #43, #44, #68) + 2 governance (#45, #69).
+- **Cleanup waves Dependabot:** 17 PRs SAFE + 3 PRs de ignore (PR-7, PR-8, PR-9) + 5 PRs fechados como obsoletos/deferidos.
+- **Fase 1B:** 3 PRs (#60, #89, #61).
+
+**Achados originais do handoff fechados em código:**
+- ✅ P0-1 admin reset
+- ✅ P0-2 setup_logging
+- ✅ P0-8 Sentry + request_id (DSN-gated)
+- ✅ P0-10 CI tests conditional
+- ✅ P1-3 JWT type validation
+- ✅ P1-7 `/docs` hidden in prod
+- ✅ P1-10 GZipMiddleware
+- ✅ P1-22 bare except cleanup (parcial — 3 de 4 sites)
+- ✅ P1-25 Anthropic timeout
+- ✅ P1-29 pip-audit
+- ✅ P2-33 Dependabot
+
+**Achados ainda abertos:**
+- ❌ P0-3 webhook token — bloqueado por V-01 (Railway)
+- ❌ P0-4 Alembic — Fase 3
+- ❌ P0-5 sync async — ADR-002 / Fase 2-4
+- ❌ P0-6 índices — depende de migration (Fase 3)
+- ❌ P0-7 cascade DELETE — Fase 3 (soft delete + Alembic)
+- ❌ P0-9 ADRs decididos (3 ADRs em status Proposta)
+- ❌ P1-1 Float → Numeric — bloqueado pelo handoff
+- ❌ P1-2 String → Date — Fase 3
+- ❌ P1-4/5 logout blacklist / refresh rotation — Fase auth dedicada
+- ❌ P1-6 upload documentos — Fase 2/3
+- ❌ P1-8 admin guards endpoints pesados — PR separado
+- ❌ P1-11 baixas DELETE all + INSERT all — Fase 3
+- ❌ P1-12 filtros Python em vez de SQL — Fase 4
+- ❌ P1-13 schema drift models vs empresa_models — ADR-003
+- ❌ P1-14 endpoints admin/* vs gestao/* duplicados — Fase 5
+- ❌ P1-15 try/except em router imports — refator
+- ❌ P1-16 get_db auto-commit — refator
+- ❌ P1-17 DRE no front — bloqueado (Fase 4 + oracle)
+- ❌ P1-18 tabelas sem virtualization — perf
+- ❌ P1-19/20/21 testes adicionais — testes
+- ❌ P1-23 logs JSON estruturado — Fase 1B continuação
+- ❌ P1-24 sem staging — F-01 operacional
+- ❌ P1-26/27 jspdf bundle + imagens — perf
+- ❌ P1-28 tipos do front à mão — OpenAPI gen
+- ❌ P1-30 branch protection / CODEOWNERS — **CODEOWNERS feito**, branch protection pendente (V-A1)
+- ❌ Todos os P2/P3 — backlog
+
+### Validações empíricas (V-01 a V-A4)
+
+**Ainda pendentes** — todas dependem do usuário em Railway/Vercel/GitHub Settings. Detalhe na seção §"Fase 0 — Validações empíricas pendentes" acima.
+
+### Próximas decisões estratégicas
+
+1. **Ativar Sentry** (criar 2 projetos + setar DSNs). Ação operacional do usuário.
+2. **Fase 2 (oracle financeiro)** — bloqueio absoluto: precisa do **gestor financeiro do Grupo ALT** fornecer planilha-mãe (DRE consolidado de 3+ meses como referência).
+3. **Fase 3 (Alembic + Numeric)** — depende de Fase 2 estar pronta + backup automatizado confirmado.
+4. **Decidir os 3 ADRs** — agendar sessão com tech lead / financeiro / LGPD.
+
+### Riscos remanescentes (consolidado)
+
+- **R-1** V-01..V-A4 ainda pendentes → bloqueiam P0-3, validações de P0-2 (logs redação) e P1-7 (docs prod), confirmação de `SECRET_KEY` em prod.
+- **R-2** Sentry em standby — código pronto, mas sem DSN o painel está vazio.
+- **R-3** `pip-audit` com `continue-on-error: true` mascara CVEs até criar `audit-exceptions.md` Python.
+- **R-4** Dependabot vai continuar abrindo PRs semanalmente — equipe precisa processo de triagem.
+- **R-5** Bloqueio absoluto sobre motor de cálculo (DRE, `_calcular_status`, Float monetário) continua até Fase 2 + oracle aprovado.
+- **R-6** Branch protection não confirmada como ativa (V-A1) — qualquer push direto em main ainda é tecnicamente possível.
+
 
