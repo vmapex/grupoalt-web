@@ -601,4 +601,119 @@ Observabilidade básica entregue em 3 PRs DSN-gated. Sem DSN configurado, SDK fi
 - **R-5** Bloqueio absoluto sobre motor de cálculo (DRE, `_calcular_status`, Float monetário) continua até Fase 2 + oracle aprovado.
 - **R-6** Branch protection não confirmada como ativa (V-A1) — qualquer push direto em main ainda é tecnicamente possível.
 
+---
+
+## 🛑 Encerramento da sessão 2026-05-12
+
+### PRs criados nesta sessão (cronológico)
+
+Total: **~27 PRs**.
+
+| Bloco | PRs |
+|---|---|
+| Fase 1A | #68 (web docs), #42 (api security), #43 (api perf+CI), #44 (api dependabot) |
+| Governance | #45 (api CODEOWNERS+PR template), #69 (web CODEOWNERS+PR template+ADRs) |
+| Dependabot wave 1 (SAFE) | #70, #71, #72, #73, #75, #46, #47, #49, #50, #51, #52, #53 |
+| Dependabot wave 1 cleanup | #77 (PR-7 remove date-fns), #54 (PR-8 ignore python docker) |
+| Dependabot wave 2 (SAFE api) | #55, #56, #57, #58, #59 |
+| Dependabot wave 2 (SAFE web) | #78, #81 |
+| Dependabot wave 2 cleanup | #83 (PR-9 ignore eslint/tailwindcss/typescript major) |
+| Fase 1B | #60 (api sentry + request_id), #89 (web sentry-nextjs), #61 (api try/except cleanup) |
+| Fase 1B polish | #90 (este doc), #91 (web Sentry tags) |
+| Fechados (obsoletos/deferidos) | #48 (python 3.14), #74 (recharts), #76 (date-fns), #79 (eslint), #80 (tailwindcss), #82 (typescript), #88 (react-dom) |
+
+### Triagem do Dependabot wave 3 (não mergeada nesta sessão)
+
+| PR | CI | Recomendação para você executar |
+|---|---|---|
+| [#84 vitest 2→4](https://github.com/vmapex/grupoalt-web/pull/84) | ✅ PASS | **Mergear** (dev-dep) |
+| [#85 lucide-react 0.447→1.14](https://github.com/vmapex/grupoalt-web/pull/85) | ✅ PASS | **Mergear + smoke visual** (usado em 50 files; check rapidamente ícones em algumas páginas) |
+| [#86 zustand 4→5](https://github.com/vmapex/grupoalt-web/pull/86) | ✅ PASS | **Mergear** (testes cobrem; 6 stores afetadas) |
+| [#87 @types/node 20→25](https://github.com/vmapex/grupoalt-web/pull/87) | ✅ PASS | **Mergear** (dev-dep) |
+| [#88 react-dom major](https://github.com/vmapex/grupoalt-web/pull/88) | ❌ FAIL | **Fechar** — locked pelo Next 14.x. Tarefa da próxima sessão: PR pequeno adicionando `react-dom` ao ignore. |
+
+### 📋 Sua "lição de casa" entre sessões
+
+Em ordem de impacto. Itens marcados com **(bloqueia próxima sessão)** são pré-requisito para destravar trabalho substantivo.
+
+1. **Mergear os 4 PRs SAFE da wave 3** acima (#84-#87), + fechar #88.
+2. **Mergear PR-13 (#90) e PR-14 (#91)** se ainda não fez — fecham a Fase 1B.
+3. **Ativar Sentry** (opcional mas alto ROI):
+   - Criar projeto `grupoalt-api` em https://sentry.io (platform Python/FastAPI). Setar `SENTRY_DSN` no Railway.
+   - Criar projeto `grupoalt-web` em https://sentry.io (platform Next.js). Setar `NEXT_PUBLIC_SENTRY_DSN` no Vercel.
+   - Redeploy ambos. Validar que erros aparecem no painel.
+4. **Responder as 17 dúvidas operacionais V-01..V-A4** **(bloqueia próxima sessão)**:
+   - Abrir painel Railway → Variables → confirmar valores reais de `SECRET_KEY`, `WEBHOOK_TOKEN`, `CORS_ORIGINS`, `DEBUG`, `ACCESS_TOKEN_EXPIRE_MINUTES`. Anotar (em local seguro) se algum precisa rotação.
+   - `curl -I https://api.grupoalt.agr.br/docs` — deve retornar 404 (P1-7 já mergeado).
+   - `curl -I https://api.grupoalt.agr.br/debug/omie-raw` — deve retornar 404 (V-09).
+   - GitHub → Settings → Branches → confirmar branch protection ativa em `main`.
+   - Registrar respostas em `docs/audit/validations-2026-05-XX.md` (criar arquivo novo, **sem incluir valores de credenciais**).
+5. **Conversa com o gestor financeiro do Grupo ALT** **(bloqueia Fase 2)**:
+   - Pedir DRE fechada de **3-6 meses** como referência (Excel, Google Sheets, PDF ou screenshot).
+   - Validar com ele se mudança da regra de **estornos** (hoje `Math.abs` no agregador) é correção desejada — ou se o comportamento atual está correto e algo mais explica.
+   - Confirmar quem tem autoridade para aprovar o "oracle" como verdade contábil.
+6. **Decidir os 3 ADRs** em Proposta:
+   - [001 — DRE no back vs front](adr/001-dre-localizacao.md)
+   - [002 — Sync Omie sync vs async](adr/002-sync-omie-async.md)
+   - [003 — Multi-tenant `empresa_id` vs `emp_{slug}`](adr/003-multi-tenant.md)
+   - Pode ser sessão presencial com tech lead, financeiro e (para ADR-003) LGPD/jurídico.
+
+### 🚀 First task da próxima sessão
+
+Três caminhos possíveis, em ordem de dependência:
+
+#### Caminho A — V-01..V-A4 prontos + Sentry ativo → **avançar para fechar P0s restantes**
+Se você completou itens 3 e 4 da lição de casa:
+- **PR-16:** Ativar `WEBHOOK_TOKEN` obrigatório em `validate_critical_config()` (P0-3 — agora destravado).
+- **PR-17:** Sanity checks pós-Sentry — gerar erro intencional, validar tags `request_id` / `empresa_id` no painel.
+- **Tempo estimado:** ~1h.
+
+#### Caminho B — Planilha-mãe do financeiro disponível → **iniciar Fase 2 (oracle)**
+Se você completou item 5:
+- Configurar `tests/oracle/` no `grupoalt-web` com fixtures dos dados reais.
+- 20+ cenários parametrizados comparando `calcularDRE` com o expected.
+- Documentar bug `Math.abs` com casos onde resultado atual ≠ esperado.
+- **Tempo estimado:** 1 sessão inteira (5-10 dias dependendo da complexidade dos dados).
+
+#### Caminho C — Nada da lição de casa pronto → **mais cleanup operacional**
+Se nem 3 nem 5 acontecerem:
+- **PR-16:** Criar `audit-exceptions.md` para Python (mirror do front), para destravar `pip-audit --strict` em CI.
+- **PR-17:** Substituir o último site de `try/except: pass` em `omie_client.py` (não foi tratado em PR-12 por estar relacionado a retry).
+- **PR-18:** P1-8 (admin guards em `notificacoes/gerar-alertas` etc) — mapear chamadores existentes primeiro.
+- **Tempo estimado:** ~2h.
+
+### 📐 Prompt sugerido para abrir a próxima sessão
+
+```
+Estou continuando a auditoria production-ready do Portal Grupo ALT.
+
+Leia primeiro:
+- docs/AUDITORIA_HANDOFF_PRODUCTION_READY.md (handoff original)
+- docs/AUDITORIA_EXECUCAO_PRODUCTION_READY.md (registro vivo —
+  scroll até "Encerramento da sessão 2026-05-12")
+
+Atualize o registro com a data de hoje no início. Confirme com
+git pull origin main e gh pr list que o estado bate.
+
+Da minha lição de casa, completei:
+- [ ] Item 1 (mergear wave 3)
+- [ ] Item 2 (PR-13 / PR-14)
+- [ ] Item 3 (Sentry ativo)
+- [ ] Item 4 (V-01..V-A4 + branch protection)
+- [ ] Item 5 (planilha-mãe do financeiro)
+- [ ] Item 6 (decisão ADRs)
+
+Recomende qual caminho (A, B ou C) seguir baseado no que está
+completo, e execute esse caminho com a mesma cadência das sessões
+anteriores: bloqueios respeitados, PRs pequenos, CI sempre verde,
+registrar tudo no doc.
+```
+
+### Estado final desta sessão
+
+- ✅ Working tree limpo em ambos os repos
+- ✅ Branches locais apagadas após merge (deleted-branch)
+- ✅ ~27 PRs entregues sem incidente
+- ✅ 11 achados originais do handoff fechados em código
+- ⏸️ Próxima sessão precisa da lição de casa para destravar Caminho A ou B
 
