@@ -1,0 +1,44 @@
+# Dependabot — atualizações automáticas de dependências.
+# Cria PRs (não merge). Revisão humana obrigatória.
+# Docs: https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  # Dependências Node via package.json
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      patch-updates:
+        update-types:
+          - "patch"
+    # Bloqueio explícito: o upgrade de Next 14 → 16 é EXC-001 e tem plano
+    # próprio (issue #56). Dependabot não deve abrir PR para esse major.
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
