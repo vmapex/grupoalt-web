@@ -401,5 +401,39 @@ cd grupoalt-web && npm run audit:bundle # → 79 arquivos JS verificados, sem cr
 
 ---
 
-**Estado da Fase 1A:** ✅ código pronto, validado localmente, **aguardando autorização para commit/push e PR**.
+**Estado da Fase 1A (pré-PRs):** ✅ código pronto, validado localmente, aguardando autorização para commit/push e PR.
+
+---
+
+### 2026-05-12 — Fase 1A publicada em 4 PRs
+
+Usuário autorizou abrir os PRs. Mudanças divididas em 4 PRs lógicos.
+
+| # | Repo | Branch | PR | Conteúdo |
+|---|---|---|---|---|
+| PR-1 | grupoalt-web | `docs/audit-handoff-and-dependabot` | [#68](https://github.com/vmapex/grupoalt-web/pull/68) | Handoff + este doc + `.github/dependabot.yml` |
+| PR-2 | grupoalt-api | `security/p0-quick-wins` | [#42](https://github.com/vmapex/grupoalt-api/pull/42) | P0-1, P0-2, P1-3, P1-7 |
+| PR-3 | grupoalt-api | `perf-ci/quick-wins` | [#43](https://github.com/vmapex/grupoalt-api/pull/43) | P0-10, P1-10, P1-25, P1-29 |
+| PR-4 | grupoalt-api | `chore/add-dependabot` | [#44](https://github.com/vmapex/grupoalt-api/pull/44) | Dependabot back (pip + actions + docker) |
+
+**Estratégia:** PR-2 e PR-3 modificam ambos `app/main.py`. Branches partem de `main` independentemente; conflito trivial (~1 região) esperado no segundo merge, resolvível em rebase. Mantidos independentes para revisão isolada de cada PR.
+
+**Validação por PR antes do push:**
+- PR-1: `npm test` 174/174, `typecheck`, `lint` (só warnings), `build`, `audit:bundle` limpo, YAMLs válidos.
+- PR-2: `ruff check` verde; pytest (security + orbit_audit + rbac) → 56/56.
+- PR-3: `ruff check` verde; pytest (security + orbit_router + orbit_policy) → 39/39; `ci.yml` válido.
+- PR-4: `dependabot.yml` válido.
+
+**Recomendação de ordem de merge:**
+1. **PR-1** (docs) — zero risco; baseline de leitura para os demais.
+2. **PR-4** (dependabot back) — zero risco.
+3. **PR-3** (perf+CI) — zero risco em runtime.
+4. **PR-2 por último, com smoke em staging** — único com mudança de comportamento visível em produção. **Pré-requisito:** garantir caminho de fallback (SQL via Railway) para resetar senha do admin caso necessário, **antes** de mergear.
+
+Após PR-2 e PR-3 mergeados, o segundo terá conflito trivial em `app/main.py` (importações + ordem dos middlewares). Resolução: manter ambas mudanças coexistindo (setup_logging + GZip + docs_url condicional + admin reset opt-in).
+
+**Estado:** ✅ 4 PRs abertos aguardando review humano + execução do CI no GitHub Actions.
+
+**Próximo bloco (Fase 1B — observabilidade):** aguarda DSNs do Sentry e decisão sobre middleware `X-Request-ID`. Não bloqueado por nenhum dos 4 PRs.
+
 
