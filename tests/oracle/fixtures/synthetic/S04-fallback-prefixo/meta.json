@@ -1,0 +1,7 @@
+{
+  "id": "S04-fallback-prefixo",
+  "kind": "synthetic",
+  "source": "getGrupoDRE em planoContas.ts:156-176",
+  "description": "Códigos com sufixo desconhecido caem em fallback por prefixo (2 primeiros segmentos)",
+  "notes": "1.01.77 → RoB pelo prefixMap['1.01']. 2.03.99 → CV pelo prefixMap['2.03']. Cobre o caminho 'API ainda não retornou esse subcódigo, mas o grupo é inferível'."
+}

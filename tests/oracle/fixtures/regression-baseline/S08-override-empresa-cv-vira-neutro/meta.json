@@ -1,0 +1,7 @@
+{
+  "id": "S08-override-empresa-cv-vira-neutro",
+  "kind": "regression-baseline",
+  "source": "snapshot do calcularDRE() atual + feature de override por empresa (Step 13/14)",
+  "description": "Override no categoriaMap vence o mapeamento estático CATEGORIAS — uma categoria que seria CV vira NEUTRO",
+  "notes": "Comprova que o override por empresa (`categorias_omie.grupo_dre_override` na API) tem precedência sobre a tabela CATEGORIAS hardcoded. Se este teste falhar e o agregador voltar a usar CV, a empresa estará vendo número diferente do esperado."
+}

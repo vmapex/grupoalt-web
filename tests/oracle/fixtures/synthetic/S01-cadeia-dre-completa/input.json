@@ -1,0 +1,12 @@
+{
+  "lancamentos": [
+    { "valor": 10000, "categoria": "1.01.01" },
+    { "valor": 1000, "categoria": "2.01.01" },
+    { "valor": 2000, "categoria": "2.03.01" },
+    { "valor": 3000, "categoria": "2.05.93" },
+    { "valor": 500, "categoria": "1.02.99" },
+    { "valor": 200, "categoria": "2.14.94" },
+    { "valor": 100, "categoria": "2.15.99" },
+    { "valor": 50, "categoria": "2.16.99" }
+  ]
+}

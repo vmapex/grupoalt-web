@@ -1,0 +1,27 @@
+{
+  "lancamentos": [
+    { "valor": 100000, "categoria": "1.01.01", "data_lancamento": "05/04/2026" },
+    { "valor": 50000, "categoria": "1.01.02", "data_lancamento": "12/04/2026" },
+
+    { "valor": 5000, "categoria": "2.01.01", "data_lancamento": "10/04/2026" },
+    { "valor": 8000, "categoria": "2.01.02", "data_lancamento": "10/04/2026" },
+    { "valor": 2000, "categoria": "2.01.03", "data_lancamento": "10/04/2026" },
+    { "valor": 1000, "categoria": "2.01.04", "data_lancamento": "10/04/2026" },
+    { "valor": 4000, "categoria": "2.02.01", "data_lancamento": "11/04/2026" },
+
+    { "valor": 30000, "categoria": "2.03.01", "data_lancamento": "08/04/2026" },
+    { "valor": 15000, "categoria": "2.03.04", "data_lancamento": "15/04/2026" },
+    { "valor": 5000, "categoria": "2.04.03", "data_lancamento": "20/04/2026" },
+
+    { "valor": 25000, "categoria": "2.05.93", "data_lancamento": "30/04/2026" },
+    { "valor": 4000, "categoria": "2.05.92", "data_lancamento": "30/04/2026" },
+    { "valor": 3000, "categoria": "2.05.90", "data_lancamento": "30/04/2026" },
+    { "valor": 6000, "categoria": "2.06.01", "data_lancamento": "05/04/2026" },
+    { "valor": 2000, "categoria": "2.07.02", "data_lancamento": "08/04/2026" },
+    { "valor": 1500, "categoria": "2.08.01", "data_lancamento": "08/04/2026" },
+    { "valor": 3500, "categoria": "2.11.95", "data_lancamento": "10/04/2026" },
+
+    { "valor": 1000, "categoria": "2.15.99", "data_lancamento": "30/04/2026" },
+    { "valor": 500, "categoria": "2.16.99", "data_lancamento": "30/04/2026" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "lancamentos": [
+    { "valor": 5000, "categoria": "1.01.01", "data_lancamento": "03/04/2026" },
+    { "valor": 3000, "categoria": "1.01.01", "data_lancamento": "08/04/2026" },
+    { "valor": 2000, "categoria": "1.01.02", "data_lancamento": "15/04/2026" },
+    { "valor": 1500, "categoria": "1.01.02", "data_lancamento": "22/04/2026" },
+    { "valor": 4500, "categoria": "1.01.01", "data_lancamento": "29/04/2026" }
+  ]
+}

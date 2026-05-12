@@ -1,0 +1,7 @@
+{
+  "id": "S10-estorno-receita",
+  "kind": "known-divergence",
+  "source": "bug Math.abs documentado em src/lib/planoContas.test.ts:42-43 e planoContas.ts:198-205",
+  "description": "Estorno de receita lançado com sinal negativo é somado em módulo, inflando RoB",
+  "notes": "Comportamento ATUAL: +1000 e -200 em 1.01.01 → RoB = 1200 (Math.abs).\nComportamento ESPERADO (pendente financeiro): RoB = 800 (compensação real).\nExpected.json mantém os campos null porque NÃO podemos inventar o valor 'correto' antes do financeiro homologar a regra. Quando o financeiro confirmar, basta preencher o expected.json — o runner sai de it.todo automaticamente."
+}

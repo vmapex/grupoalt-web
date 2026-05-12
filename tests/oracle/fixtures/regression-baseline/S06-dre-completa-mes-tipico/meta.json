@@ -1,0 +1,7 @@
+{
+  "id": "S06-dre-completa-mes-tipico",
+  "kind": "regression-baseline",
+  "source": "snapshot do calcularDRE() atual em 2026-05-12 (commit ef424e0). Estrutura modelada após DRE típica descrita em CLAUDE.md (Step 17)",
+  "description": "Mês típico de PME — receita em 1.01.x, tributos 2.01.x, custos variáveis 2.03.x/2.04.x, custos fixos 2.05.x..2.13.x, IRPJ 2.15.99, CSLL 2.16.99, sem NOP",
+  "notes": "Valores fabricados (não vêm de cliente real). Quando o financeiro fornecer mês fechado, este snapshot deve ser substituído por uma fixture 'verdade-contabil' com aprovação assinada."
+}

@@ -1,0 +1,25 @@
+{
+  "lancamentos": [
+    { "valor": 10000, "categoria": "1.01.01" },
+    { "valor": 500, "categoria": "2.03.01" },
+    { "valor": 200, "categoria": "2.03.01" }
+  ],
+  "categoriaMap": {
+    "1.01.01": {
+      "codigo": "1.01.01",
+      "nome": "RECEITA MI",
+      "nivel2": "( + ) RECEITAS REALIZADAS",
+      "nivel1": "( + ) RECEITAS BRUTAS",
+      "grupoDRE": "RoB",
+      "op": "+"
+    },
+    "2.03.01": {
+      "codigo": "2.03.01",
+      "nome": "AGREGADOS (REPASSE INTERNO)",
+      "nivel2": "( ~ ) NEUTRO",
+      "nivel1": "( ~ ) NEUTRO",
+      "grupoDRE": "NEUTRO",
+      "op": "-"
+    }
+  }
+}

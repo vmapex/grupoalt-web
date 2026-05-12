@@ -1,0 +1,25 @@
+{
+  "lancamentos": [
+    { "valor": 1000, "categoria": "1.01.01" },
+    { "valor": 5000, "categoria": "1.99.99" },
+    { "valor": -3000, "categoria": "1.99.99" }
+  ],
+  "categoriaMap": {
+    "1.01.01": {
+      "codigo": "1.01.01",
+      "nome": "RECEITA MI",
+      "nivel2": "( + ) RECEITAS REALIZADAS",
+      "nivel1": "( + ) RECEITAS BRUTAS",
+      "grupoDRE": "RoB",
+      "op": "+"
+    },
+    "1.99.99": {
+      "codigo": "1.99.99",
+      "nome": "TRANSFERENCIA INTRA-GRUPO",
+      "nivel2": "( ~ ) NEUTRO",
+      "nivel1": "( ~ ) NEUTRO",
+      "grupoDRE": "NEUTRO",
+      "op": "+"
+    }
+  }
+}

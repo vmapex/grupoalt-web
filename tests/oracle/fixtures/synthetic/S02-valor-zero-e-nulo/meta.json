@@ -1,0 +1,7 @@
+{
+  "id": "S02-valor-zero-e-nulo",
+  "kind": "synthetic",
+  "source": "robustness — Math.abs(r.valor || 0)",
+  "description": "Valores 0 e categoria null não quebram o agregador",
+  "notes": "Captura defensiva: o motor faz `r.valor || 0`, então 0/null/undefined viram 0. Categoria null não tem grupo DRE, então é ignorada."
+}
