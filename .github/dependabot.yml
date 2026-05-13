@@ -37,6 +37,11 @@ updates:
     # - "typescript" major (6.x): peer conflict com eslint-config-next e
     #   provável surfacing de type errors. PR #82 confirmou CI fail.
     #   Destrava com Next 16.
+    # - "react" / "react-dom" major (19.x): Next 14.x exige peer
+    #   `react@^18.2.0` / `react-dom@^18.2.0`. PR #88 confirmou eresolve.
+    #   Destrava com Next 16.
+    # - "@types/react" / "@types/react-dom" major (19.x): seguem a react
+    #   correspondente (não faz sentido subir types antes da runtime).
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
@@ -48,6 +53,14 @@ updates:
       - dependency-name: "tailwindcss"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
         update-types: ["version-update:semver-major"]
 
   # GitHub Actions
