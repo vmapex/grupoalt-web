@@ -759,4 +759,70 @@ para validação end-to-end. Pode ser via Excel (mais trabalho) ou
 script de export do extrato + DRE consolidada pelo próprio sistema
 + validação visual do usuário (mais rápido). Não bloqueia Fase 4.
 
+---
+
+## Bloco 1 — Cleanup operacional (sessão 2026-05-13)
+
+Sequência otimizada do roadmap: tirar PRs abertos + ruído Dependabot
+do caminho **antes** de Fases 3/4. Custo total ~1h, valor alto.
+
+### PR-16 (#92) e PR-17 (#93) — Oracle financeiro
+
+| # | Status | Mergeado |
+|---|---|---|
+| #92 oracle baseline + Bloco C | ✅ MERGED | 2026-05-12T21:22 |
+| #93 docstring Math.abs defensivo | ✅ MERGED | 2026-05-12T21:23 |
+
+Resultado em main: oracle financeiro com 11 cenários (7
+`verdade-contabil` + 4 `synthetic`), zero `known-divergence`, zero
+`regression-baseline`. `planoContas.ts` docstring + nomes de testes
+atualizados para "tratamento defensivo".
+
+### Dependabot wave 3 (5 PRs abertos)
+
+CI ran independente em cada um. Triagem:
+
+| PR | Bump | CI | Decisão |
+|---|---|---|---|
+| #84 vitest 2.1 → 4.1 | dev | ✅ pass 2m3s | **MERGED** — test runner, suite green |
+| #85 lucide-react 0.4 → 1.1 | runtime | ✅ pass 1m31s | **MERGED** — 0.x → 1.x foi declaração de stable, sem breaking real |
+| #86 zustand 4.5 → 5.0 | runtime | ✅ pass 1m24s | **MERGED** — `create` + `persist` middleware (API que usamos) inalterados; 17 testes de empresaStore cobrem |
+| #87 @types/node 20 → 25 | dev-types | ✅ pass 2m12s | **MERGED** — só TS types, sem runtime |
+| #88 react-dom 18 → 19 | runtime | ❌ fail (eresolve) | **FECHADO** — Next 14.x locked-in. Ignore rule via [#94](https://github.com/vmapex/grupoalt-web/pull/94). |
+
+### PR-18 (#94) — Ignore rule react major
+
+Bloqueio adicionado em `.github/dependabot.yml` para impedir
+re-abertura dos PRs de `react`, `react-dom`, `@types/react`,
+`@types/react-dom` enquanto Next 14.x estiver vigente.
+
+| # | Status | Mergeado |
+|---|---|---|
+| #94 ignore react major | ✅ MERGED | 2026-05-13 |
+
+### Validação local pós-bumps
+
+```bash
+npm install   # 17 added, 12 removed, 20 changed
+npm run typecheck   # exit 0
+npm test            # 9 arquivos, 185 testes verdes; vitest 4.1.6 confirmado
+```
+
+Os 4 majors (vitest, lucide-react, zustand, types/node) coexistem
+sem regressão na suite. Bundle e oracle continuam funcionais.
+
+### PRs fechados na sessão
+
+| # | Motivo |
+|---|---|
+| #88 react-dom 18→19 | Next 14.x lock; coberto por ignore em #94 |
+
+### Restante do plano
+
+- ✅ **Bloco 1 — Cleanup operacional**: concluído.
+- ⏭️ **Bloco 2 — V-01..V-A4**: aguarda você abrir painéis Railway/Vercel/GitHub. ~30-60min.
+- ⏭️ **Bloco 3 — Fechar 3 ADRs**: status final dos ADRs 001/002/003 (decisão).
+- ⏭️ **Bloco 4 — Fase 3 (Alembic + Numeric + índices)**: 5-7 dias.
+- ⏭️ **Bloco 5 — Fase 4 (DRE no backend)**: 7-10 dias, depende do Bloco 4.
+
 
