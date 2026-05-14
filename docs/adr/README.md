@@ -27,11 +27,11 @@ revisões futuras partem de premissas claras.
 
 ## ADRs ativos
 
-| # | Título | Status |
-|---|---|---|
-| [001](001-dre-localizacao.md) | Localização do motor de DRE (back vs front) | Proposta |
-| [002](002-sync-omie-async.md) | Sync Omie síncrono vs assíncrono | Proposta |
-| [003](003-multi-tenant.md) | Multi-tenant: `empresa_id` vs schema per-empresa | Proposta |
+| # | Título | Status | Decisão |
+|---|---|---|---|
+| [001](001-dre-localizacao.md) | Localização do motor de DRE (back vs front) | ✅ Aceito (2026-05-14) | Opção B — mover para backend |
+| [002](002-sync-omie-async.md) | Sync Omie síncrono vs assíncrono | ✅ Aceito (2026-05-14) | Opção B — assíncrono + polling |
+| [003](003-multi-tenant.md) | Multi-tenant: `empresa_id` vs schema per-empresa | ✅ Aceito (2026-05-14) | Opção A — manter `empresa_id` |
 
 ## Onde a decisão acontece
 

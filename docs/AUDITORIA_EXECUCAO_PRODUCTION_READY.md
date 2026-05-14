@@ -820,9 +820,83 @@ sem regressão na suite. Bundle e oracle continuam funcionais.
 ### Restante do plano
 
 - ✅ **Bloco 1 — Cleanup operacional**: concluído.
-- ⏭️ **Bloco 2 — V-01..V-A4**: aguarda você abrir painéis Railway/Vercel/GitHub. ~30-60min.
-- ⏭️ **Bloco 3 — Fechar 3 ADRs**: status final dos ADRs 001/002/003 (decisão).
+- 🟡 **Bloco 2 — V-01..V-A4**: 11 de 13 fechadas. V-A3 e V-07 pendentes do usuário.
+- ✅ **Bloco 3 — Fechar 3 ADRs**: concluído em 2026-05-14.
 - ⏭️ **Bloco 4 — Fase 3 (Alembic + Numeric + índices)**: 5-7 dias.
 - ⏭️ **Bloco 5 — Fase 4 (DRE no backend)**: 7-10 dias, depende do Bloco 4.
+
+---
+
+## Bloco 2 — Validações operacionais (sessão 2026-05-13 → 2026-05-14, parcial)
+
+### Validações executadas e fechadas
+
+| ID | Resultado | Ação tomada |
+|---|---|---|
+| V-01 `WEBHOOK_TOKEN` | Configurado, ≥ 32 chars | PR #62 (api): hardening — required em prod via `validate_critical_config` |
+| V-02 `DEBUG` | `false` em prod | ✅ OK |
+| V-03 `CORS_ORIGINS` | Só `portal.grupoalt.agr.br`, sem wildcard | ✅ OK |
+| V-04 `ACCESS_TOKEN_EXPIRE_MINUTES` | Não setada, default 30 vencia | PR #62: default 30 → 480 (alinha com README) |
+| `SECRET_KEY` | ≥ 64 chars | ✅ OK |
+| `FERNET_KEY` | Configurada | ✅ OK |
+| `ADMIN_PASSWORD` | Configurada | ✅ OK |
+| V-05 `/docs` HEAD | 404 em prod | ✅ P1-7 confirmado |
+| V-06 `/health` | Retorna `deploy_sha` | ✅ OK |
+| V-09 `/debug/omie-raw` | 404 | ✅ Removido |
+| V-A1 web (público) | Branch protection nativa ativa | PR #98 adicionou pre-push hook (defesa em profundidade) |
+| V-A1 api (privado) | Free tier NÃO enforces — limitação plataforma | PR #63 adicionou pre-push hook como mitigação local |
+| V-A2 CODEOWNERS | Configurado em PR #45 + #69 | ✅ OK |
+| V-A4 Dependabot | Ativo | ✅ OK |
+| V-12 pytest no CI | Conditional removido em PR-14 | ✅ OK |
+
+### Pendentes do Bloco 2 (não bloqueiam Fase 3)
+
+| ID | Item | Status |
+|---|---|---|
+| V-A3 | Vercel preview env aponta para qual API? | Aguarda usuário abrir Vercel Settings |
+| V-07 | Logs Railway redatam segredos? | Aguarda usuário inspecionar logs |
+| V-08, V-10, V-11, V-13 | Nice-to-have | Diferidos |
+
+### Decisão pendente sobre V-A1 api
+
+Branch protection nativa não enforces em repo privado no Free tier.
+Opções (a decidir antes da Fase 3 — Alembic):
+- **A**: Upgrade `vmapex` org para GitHub Team ($4/mês) — proteção real.
+- **B**: Tornar `grupoalt-api` público — proteção real + exposição do código.
+- **C**: Status quo (hook local + disciplina) — sem custo, defesa limitada.
+
+Mitigação imediata (hook local) é suficiente para o ritmo atual.
+
+### PRs do Bloco 2
+
+| # | Repo | Conteúdo |
+|---|---|---|
+| [#62](https://github.com/vmapex/grupoalt-api/pull/62) | api | WEBHOOK_TOKEN required + token expira em 8h |
+| [#63](https://github.com/vmapex/grupoalt-api/pull/63) | api | pre-push hook |
+| [#96](https://github.com/vmapex/grupoalt-web/pull/96) | web | exec log do Bloco 1 |
+| [#98](https://github.com/vmapex/grupoalt-web/pull/98) | web | pre-push hook + auto-install via npm prepare |
+
+Todos mergeados em 2026-05-13/14.
+
+---
+
+## Bloco 3 — ADRs aceitos (sessão 2026-05-14)
+
+3 ADRs em status Proposta desde 2026-05-12. Decisor: Vinicius Menezes
+(validador financeiro do sistema + tech lead).
+
+| ADR | Decisão | Custo estimado | Justificativa |
+|---|---|---|---|
+| [001](adr/001-dre-localizacao.md) DRE back vs front | ✅ **Opção B** — mover para backend | 7-10 dias (Fase 5) | Pré-condições satisfeitas: oracle (PR #92) e Math.abs como defesa intencional (PR #93). Endpoint testável contra fixtures `verdade-contabil`. |
+| [002](adr/002-sync-omie-async.md) Sync sync vs async | ✅ **Opção B** — assíncrono + polling | 2-3 dias | Risco real de timeout 504 (sync ~30s + healthcheck Railway 60s). `/sync/status` já existe parcialmente. |
+| [003](adr/003-multi-tenant.md) `empresa_id` vs schema | ✅ **Opção A** — manter `empresa_id`, deletar `empresa_models.py` | 1 dia | Portal interno; RBAC + Fernet + audit log suficientes. Opção B custaria 4-6 semanas sem benefício proporcional. |
+
+### Impacto no roadmap
+
+- ADR-001 valida o desenho do endpoint backend da Fase 5.
+- ADR-002 vira escopo da Fase 4 (ou sprint dedicado pré-Fase 3).
+- ADR-003 entra como cleanup de 1 dia, podendo rodar paralelo à Fase 3.
+
+
 
 

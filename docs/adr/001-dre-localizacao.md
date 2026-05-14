@@ -1,8 +1,9 @@
 # ADR-001 — Localização do motor de DRE (back vs front)
 
-- **Status:** Proposta
-- **Data:** 2026-05-12
-- **Decisores:** _pendente_ (precisa de @financeiro + tech lead)
+- **Status:** ✅ Aceito (2026-05-14)
+- **Data proposta:** 2026-05-12
+- **Data aceite:** 2026-05-14
+- **Decisor:** Vinicius Menezes (validador financeiro do sistema + tech lead)
 - **Áreas afetadas:** frontend (src/lib/), backend (app/), API
 
 ## Contexto
@@ -93,35 +94,51 @@ financeiro; Fase 4 = corrigir Math.abs) fica refém de discussão de
 
 ## Decisão
 
-_Pendente._ Aguarda:
+**✅ Opção B — Mover para o backend.**
 
-1. Conversa com o gestor financeiro do Grupo ALT (oracle / planilha-mãe).
-2. Alinhamento sobre se "simulação no cliente" é caso de uso real
-   ou ginástica desnecessária.
+Condições prévias satisfeitas:
+- Fase 2 (oracle financeiro) concluída em 2026-05-13 (PR #92): 7
+  fixtures `verdade-contabil` homologadas pelo validador financeiro
+  formam o contrato do endpoint backend.
+- Bloco C (regras de estorno, parcial, NEUTRO) homologado em
+  2026-05-13. Math.abs reclassificado como tratamento defensivo
+  intencional (PR #93), eliminando a "divergência conhecida" que
+  preocupava no momento da proposta.
 
-Recomendação atual do autor desta ADR (sujeita a revisão):
-**Opção B**, condicionada à entrega da Fase 2 (oracle) primeiro.
+Razões finais:
+1. Auditor/contábil consegue replicar a regra fora do código (SQL +
+   docs/oracle-financeiro.md).
+2. Mudanças de regra ficam num único ponto (backend), com cache
+   Redis cross-usuário.
+3. Bundle do front fica leve (367+394 LOC removidas).
+4. Endpoint testável diretamente contra as fixtures do oracle.
+
+Sobre simulação what-if no cliente (Opção C): não é caso de uso real
+hoje. Se virar, abre-se ADR-004 específico.
 
 ## Consequências
 
-### Positivas (se Opção B)
+### Positivas
 
 - Resolve P1-17 do handoff.
-- Destrava correção do bug `Math.abs` em estornos com validação
-  do financeiro.
-- Remove duplicação latente entre BI e Portal.
+- Remove duplicação latente entre BI e Portal (`bi/` e `portal/`).
+- Permite cache Redis cross-usuário do DRE consolidado.
+- Auditor/contábil replicável fora do código.
 
-### Negativas / aceitas (se Opção B)
+### Negativas / aceitas
 
 - Deploy coordenado: back primeiro, front depois.
-- Possível diferença de número no dia do switch — comunicar
-  com antecedência ao gestor.
+- Latência extra por hit no back (mitigada com cache).
+- ~7-10 dias de refator (Fase 4 do roadmap).
 
 ### Mitigações
 
-- Manter `calcularDRE` no front em modo "fallback" por uma sprint
-  após o switch, com flag de feature.
-- Snapshot tests (golden DRE files) no CI antes do switch.
+- Manter `calcularDRE` no front em modo "fallback" por 1 sprint após
+  o switch (feature flag), removível após validação em prod.
+- Suite oracle (`tests/oracle/fixtures/verdade-contabil/`) roda como
+  contrato do endpoint no CI do backend antes do switch.
+- Math.abs como tratamento defensivo já documentado (PR #93) — não
+  vai haver "mudança silenciosa de número" pro gestor.
 
 ## Links
 

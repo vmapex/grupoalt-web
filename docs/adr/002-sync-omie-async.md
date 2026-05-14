@@ -1,9 +1,10 @@
 # ADR-002 — Sync Omie síncrono vs assíncrono
 
-- **Status:** Proposta
-- **Data:** 2026-05-12
-- **Decisores:** _pendente_ (tech lead + ops)
-- **Áreas afetadas:** backend (app/routers/, app/services/sync_service.py)
+- **Status:** ✅ Aceito (2026-05-14)
+- **Data proposta:** 2026-05-12
+- **Data aceite:** 2026-05-14
+- **Decisor:** Vinicius Menezes (tech lead + ops)
+- **Áreas afetadas:** backend (app/routers/, app/services/sync_service.py), frontend (loading states + polling)
 
 ## Contexto
 
@@ -70,22 +71,35 @@ Histórico relevante:
 
 ## Decisão
 
-_Pendente._ Recomendação atual do autor: **Opção B**, com
-pré-sync da Opção C como otimização adicional. Conversar com ops
-sobre tolerância de UX no primeiro acesso.
+**✅ Opção B — Migrar para assíncrono com polling.**
+
+Implementação faseada:
+
+1. Backend marca sync como background task (FastAPI BackgroundTasks
+   ou job APScheduler imediato).
+2. Endpoint `GET /sync/status?empresa_id=X` retorna estágio atual
+   (já existe parcialmente em [app/routers/sync.py](../../../grupoalt-api/app/routers/sync.py)).
+3. Front detecta DB vazio (response 200 + flag `sync_pending`) e
+   exibe loading state com polling em 5s.
+
+Opção C (pré-sync no cadastro) NÃO incluída agora. Resolve um caso
+específico mas não cobre cache flush / rebuild / primeira execução
+pós-deploy de schema novo. Pode entrar depois como otimização se
+medirmos friction real.
 
 ## Consequências
 
-### Positivas (se Opção B)
+### Positivas
 
 - Resolve P0-5 do handoff.
 - Garante que healthcheck Railway nunca seja afetado por sync.
-- Abre porta para mostrar progresso real (UX melhor).
+- Abre porta para mostrar progresso real (UX "3/7 etapas").
 
-### Negativas / aceitas (se Opção B)
+### Negativas / aceitas
 
-- Mais código no front (loading state + polling).
+- Mais código no front (loading state + polling — 1 hook + 1 componente).
 - Estado intermediário visível (parcial → completo).
+- ~2-3 dias de refator (parte do roadmap pré-Fase 3 ou paralelo).
 
 ### Mitigações
 
