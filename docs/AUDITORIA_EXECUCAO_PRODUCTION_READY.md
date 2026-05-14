@@ -1012,11 +1012,73 @@ Decisão precisa estar tomada antes do primeiro PR de Alembic na Fase 3.
 | 1A — Quick wins segurança | ✅ | 9 PRs (P0 + P1 fechados) |
 | 1B — Observabilidade | ✅ | Sentry api + web + request_id middleware |
 | 1C — CI/processo | ✅ | Dependabot, CODEOWNERS, PR template |
-| 2 — Validações V-01..V-A4 | 🟡 | 11/13 fechadas, V-A3/V-07 pendentes não-bloqueantes |
+| 2 — Validações V-01..V-A4 | ✅ | 12/13 fechadas (V-A1 api hard-enforced após upgrade Team), V-A3/V-07 pendentes não-bloqueantes |
 | 3 — ADRs aceitos | ✅ | 3 decisões registradas + ADR-003 implementado em prod |
-| 4 — Fase 3 (Alembic + Numeric + índices) | ⏭️ | Próximo grande bloco — depende da decisão V-A1 api |
+| 4 — Fase 3 (Alembic + Numeric + índices) | ⏭️ | **Destravado** — pré-requisitos satisfeitos; pode iniciar |
 | 5 — Fase 4 (sync async, ADR-002) | ⏭️ | 2-3 dias quando entrar |
 | 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | 7-10 dias, depende de Fase 3 (Numeric) |
+
+---
+
+## V-A1 api hard-enforced em prod (sessão 2026-05-14)
+
+Decisão Opção A do V-A1 api foi tomada e aplicada.
+
+### O que foi feito
+
+1. **Upgrade `vmapex` org → GitHub Team** ($4/mês). Decisão tomada com base em custo-benefício vs blast radius da Fase 3 (Alembic + migrations destrutivas em DB de produção).
+2. **Branch protection rule revisitada** em [`vmapex/grupoalt-api`](https://github.com/vmapex/grupoalt-api/settings/branches):
+   - ☑ Require a pull request before merging (sem "Require approvals" — solo dev)
+   - ☑ Require status checks to pass (`ci`)
+   - ☑ Require branches to be up to date
+   - ☑ **Do not allow bypassing the above settings** ← crítico: sem isso, admin (você) podia push direto via `--no-verify` ainda
+   - ☐ Allow force pushes (mantido OFF)
+   - ☐ Allow deletions (mantido OFF)
+
+### Validação em produção
+
+Teste de force push pra confirmar enforcement HARD:
+
+```
+PS> git push --no-verify origin test-branch-protection-2:main
+
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote: error: - Changes must be made through a pull request.
+To https://github.com/vmapex/grupoalt-api.git
+ ! [remote rejected]   test-branch-protection-2 -> main (protected branch hook declined)
+error: failed to push some refs
+```
+
+**Palavra-chave:** `GH006: Protected branch update failed` + `failed to push`. Antes do hard-enforcement, output era `Bypassed rule violations` (rule detectava mas permitia).
+
+### Cleanup
+
+Primeira tentativa de teste passou por bypass admin (rule ainda em modo soft) e contaminou main com `bffcfd8` (commit + arquivo `test-bp.md`). Limpo via revert PR:
+
+| # | Conteúdo |
+|---|---|
+| [api #66](https://github.com/vmapex/grupoalt-api/pull/66) | `chore: revert test branch protection commit` — remove `test-bp.md` de main |
+
+PR mergeado normalmente (passou pelas rules, validou que o fluxo PR funciona end-to-end com a config nova).
+
+### Por que Opção A venceu
+
+1. Custo trivial vs blast radius da Fase 3 (Alembic com migrations destrutivas em DB de produção)
+2. Defesa em profundidade contra TODOS os atores (você, automações Claude Code, scripts CI)
+3. Audit log da org dá forensics se algo der errado
+4. Manter `grupoalt-api` privado preserva opacidade do backend financeiro (camada extra de proteção)
+
+Trade-off aceito: emergência exige editar a rule temporariamente (1 click pra desmarcar "Do not allow bypassing", fazer push, re-marcar). É proposital — emergência deve ser decisão consciente, não bypass silencioso.
+
+### Bloco 2 fechado
+
+12/13 validações resolvidas. V-A3 + V-07 ficam como nice-to-have leve, não bloqueiam Fase 3.
+
+**Pré-requisitos da Fase 3 (Alembic) satisfeitos:**
+- ✅ Branch protection enforcement em ambos os repos
+- ✅ CI required (PR não mergeia se Alembic upgrade test falhar)
+- ✅ Force push e delete bloqueados em main
+- ⏳ **Ainda pendente**: confirmar política de backup automatizado do Postgres no Railway (RPO/RTO + restore testado pelo menos 1×). Item operacional — abordar quando começarmos a Fase 3.
 
 
 

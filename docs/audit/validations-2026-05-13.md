@@ -43,7 +43,7 @@
 | ID | Item | Estado | Ação | PR |
 |---|---|---|---|---|
 | **V-A1 web** | Branch `main` protegida em `vmapex/grupoalt-web` (público)? | ✅ Rule criada + nativamente enforced (Free tier OK em repo público) | Defesa em profundidade adicionada via pre-push hook local | [web #98](https://github.com/vmapex/grupoalt-web/pull/98) |
-| **V-A1 api** | Branch `main` protegida em `vmapex/grupoalt-api` (privado)? | ⚠️ Rule criada mas **NÃO enforced** (limitação GitHub Free em repo privado) | Mitigação local: pre-push hook em `.githooks/pre-push`. **Decisão futura pendente** sobre Opção A (Team $4/mês) vs Opção B (tornar repo público) — antes da Fase 3 (Alembic) | [api #63](https://github.com/vmapex/grupoalt-api/pull/63) |
+| **V-A1 api** | Branch `main` protegida em `vmapex/grupoalt-api` (privado)? | ✅ **Enforced HARD** após upgrade para GitHub Team (2026-05-14). Bypass admin desabilitado (marcado "Do not allow bypassing"). Validado via teste de force push: `GH006: Protected branch update failed`. | Pre-push hook local mantido como defesa em profundidade. PR de cleanup do commit de teste: [api #66](https://github.com/vmapex/grupoalt-api/pull/66) | [api #63](https://github.com/vmapex/grupoalt-api/pull/63) (hook) + GitHub Team upgrade |
 | **V-A2** | CODEOWNERS configurado? | ✅ Configurado em PR #45 (api) e #69 (web) | Sem ação | — |
 | **V-A4** | Dependabot/Renovate ativos? | ✅ Dependabot ativo, wave 3 já processada | Sem ação | — |
 
@@ -88,15 +88,15 @@ Não é V-XX, mas validado no mesmo arco temporal:
 
 ### Decisões pendentes que saíram desta rodada
 
-1. **V-A1 api — Team vs público vs status quo.** Decisão antes da Fase 3.
+1. ~~**V-A1 api — Team vs público vs status quo.** Decisão antes da Fase 3.~~ → **Resolvido em 2026-05-14:** upgrade GitHub Team aplicado, branch protection enforced HARD com bypass admin desabilitado. Validado via teste de force push (`GH006: Protected branch update failed`).
 2. **README ACCESS_TOKEN_EXPIRE_MINUTES** — README falava `default 480` enquanto código tinha `30`. PR #62 alinhou o código com o README, mas vale revisar o README pra confirmar/atualizar a redação se ficou redundante.
 3. **Telas duplicadas `/portal/admin` vs `/bi/financeiro/admin`** — flagged como P1-14 do handoff. Item pra Fase 5 (consolidação BI/portal).
 
 ## Status final do Bloco 2
 
-🟡 **Quase fechado.** 11 de 13 validações encerradas (com hardening onde fazia sentido). 2 nice-to-have (V-A3, V-07) ficam como pendência leve, não bloqueiam Fase 3 nem Fase 5.
+✅ **Fechado.** 12 de 13 validações encerradas (com hardening onde fazia sentido). 2 nice-to-have (V-A3, V-07) ficam como pendência leve, não bloqueiam Fase 3 nem Fase 5.
 
-A decisão estratégica de V-A1 api (Team/público/status quo) é o único item antes de iniciar a Fase 3.
+A decisão estratégica de V-A1 api foi tomada (Opção A — GitHub Team), aplicada e validada em produção. Auditoria está pronta pra avançar para a Fase 3 (Alembic + Numeric + índices).
 
 ## PRs desta rodada
 
