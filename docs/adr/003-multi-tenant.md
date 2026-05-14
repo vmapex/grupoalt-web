@@ -1,8 +1,9 @@
 # ADR-003 — Multi-tenant: `empresa_id` vs schema per-empresa
 
-- **Status:** Proposta
-- **Data:** 2026-05-12
-- **Decisores:** _pendente_ (tech lead + LGPD/jurídico)
+- **Status:** ✅ Aceito (2026-05-14)
+- **Data proposta:** 2026-05-12
+- **Data aceite:** 2026-05-14
+- **Decisor:** Vinicius Menezes (tech lead, decisão técnica; LGPD/jurídico aceito como portal interno)
 - **Áreas afetadas:** backend (app/models/, app/services/schema_manager.py)
 
 ## Contexto
@@ -81,35 +82,49 @@ coluna em uma das tabelas, sem percebermos, pode esquecer da outra.
 
 ## Decisão
 
-_Pendente._ Recomendação atual do autor:
+**✅ Opção A — Manter `empresa_id` (deletar `empresa_models.py`).**
 
-**Opção A**. O isolamento físico da B não compensa o custo de
-migração e o risco operacional. RBAC + audit log + criptografia
-+ revisão LGPD documentada são suficientes para o nível de
-compliance esperado (portal interno, não SaaS público multi-cliente).
+Razões finais:
+1. Portal interno do Grupo ALT — não é SaaS público multi-cliente
+   onde isolamento físico é exigência regulatória forte.
+2. RBAC já existe (29 testes em `lib/access.ts` + middleware
+   `get_empresa_ctx`). Criptografia de credenciais Omie via Fernet.
+   Audit log estruturado (`LogAuditoria`, `OrbitAuditLog`).
+3. Custo da Opção B (4-6 semanas + risco operacional + complexidade
+   de relatórios consolidados) supera benefício marginal de
+   isolamento físico para este contexto.
+4. Drift atual (`models.py` em uso vs `empresa_models.py` órfão) é
+   débito visível — eliminá-lo simplifica mental model.
 
-Antes da decisão final, precisamos confirmar com jurídico/LGPD
-que multi-tenant via `empresa_id` é aceitável.
+LGPD: aceito como portal interno. Política explícita a ser registrada
+em `docs/plano-acao-seguranca/lgpd-multi-tenant.md` (não bloqueia
+esta decisão; pode ser PR separado).
 
 ## Consequências
 
-### Positivas (se Opção A)
+### Positivas
 
 - Resolve P1-13 do handoff.
 - Remove ~300 LOC mortas.
 - Simplifica `setup_empresa_schemas` no boot.
 - Mantém performance de relatórios consolidados.
 
-### Negativas / aceitas (se Opção A)
+### Negativas / aceitas
 
 - Reforçar testes RBAC para todo endpoint novo.
-- Documentar política LGPD explícita
-  (`docs/plano-acao-seguranca/lgpd-multi-tenant.md`).
+- Documentar política LGPD explícita em
+  `docs/plano-acao-seguranca/lgpd-multi-tenant.md` (próximo).
+- Operacional: `WHERE empresa_id = ?` esquecido vira bug de RBAC —
+  já mitigado por testes mas exige disciplina constante.
 
 ### Mitigações
 
-- Linter custom ou code review que rejeite queries sem
+- Linter custom ou code review checklist que rejeite queries sem
   `WHERE empresa_id = ?` ou sem dep `get_empresa_ctx`.
+- Suite RBAC (`tests/test_rbac.py` — 26 testes hoje) cobre
+  cross-empresa em endpoints críticos.
+- Cleanup: 1 PR pequeno deleta `empresa_models.py` +
+  `schema_manager._create_tables_in_schema` + chamada em `main.py`.
 
 ## Links
 
