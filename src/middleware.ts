@@ -30,13 +30,19 @@ export function middleware(request: NextRequest) {
     ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'`
     : `script-src 'self' 'nonce-${nonce}'`
 
+  // Sentry envelope endpoint: o<orgId>.ingest.us.sentry.io (US region) ou
+  // o<orgId>.ingest.sentry.io (default). Ambos precisam ser permitidos em
+  // connect-src; CSP wildcards só matcheiam UM nível de subdomínio, então
+  // *.ingest.sentry.io NÃO cobre *.ingest.us.sentry.io. Adicionar US/EU
+  // explicitamente garante cobertura sem precisar atualizar caso a região
+  // do projeto Sentry mude.
   const csp = [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
-    "connect-src 'self' https://api.grupoalt.agr.br https://api-staging.grupoalt.agr.br",
+    "connect-src 'self' https://api.grupoalt.agr.br https://api-staging.grupoalt.agr.br https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
