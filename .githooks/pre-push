@@ -1,0 +1,29 @@
+#!/bin/sh
+# Pre-push hook — bloqueia push direto em main.
+#
+# V-A1 mitigation: GitHub Free não enforces branch protection em repo
+# privado, então usamos hook local. Bypass consciente: --no-verify.
+#
+# Como instalar manualmente (já é automático em `npm install` via prepare):
+#   git config core.hooksPath .githooks
+
+protected_branch='main'
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/$protected_branch" ]; then
+    echo ""
+    echo "❌ Push direto em '$protected_branch' bloqueado pelo pre-push hook."
+    echo ""
+    echo "   Use uma branch + PR:"
+    echo "     git checkout -b feat/minha-mudanca"
+    echo "     git push -u origin feat/minha-mudanca"
+    echo "     gh pr create"
+    echo ""
+    echo "   Bypass consciente (use só em emergência):"
+    echo "     git push --no-verify"
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0

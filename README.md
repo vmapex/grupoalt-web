@@ -32,6 +32,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
 # acesse http://localhost:3000
 ```
 
+`npm install` configura automaticamente `core.hooksPath = .githooks` (script
+`prepare`), ativando o pre-push hook que bloqueia push direto em `main` (V-A1
+mitigation). Bypass consciente: `git push --no-verify`.
+
 ---
 
 ## Login
