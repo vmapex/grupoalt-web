@@ -100,7 +100,12 @@ function useApi<T>(
 export const PAGINATED_ALL_PAGE_SIZE = 1000
 
 /** Pagina ate esgotar e concatena `dados`. Funcao pura para facilitar
- *  testes — `useApiPaginatedAll` apenas cuida do ciclo React em volta. */
+ *  testes — `useApiPaginatedAll` apenas cuida do ciclo React em volta.
+ *
+ *  ADR-002: preserva `sync_pending`/`sync_status` da PRIMEIRA pagina pro
+ *  consumer detectar e montar SyncProgress. Quando o backend dispara
+ *  sync por DB vazio, `dados` esta vazio e o break interrompe o loop
+ *  na primeira iteracao — os campos ja foram capturados. */
 export async function fetchAllPages(
   fetcher: (pagina: number, registros: number) => Promise<PaginatedResponseAPI>,
 ): Promise<PaginatedResponseAPI> {
@@ -108,9 +113,15 @@ export async function fetchAllPages(
   let pagina = 1
   let totalPaginas = 1
   let totalRegistros = 0
+  let syncPending: boolean | null | undefined
+  let syncStatus: PaginatedResponseAPI['sync_status']
 
   while (pagina <= totalPaginas) {
     const res = await fetcher(pagina, PAGINATED_ALL_PAGE_SIZE)
+    if (pagina === 1) {
+      syncPending = res.sync_pending
+      syncStatus = res.sync_status
+    }
     allDados.push(...res.dados)
     totalPaginas = res.paginas || 1
     totalRegistros = res.total
@@ -126,6 +137,8 @@ export async function fetchAllPages(
     registros: allDados.length,
     paginas: 1,
     dados: allDados,
+    sync_pending: syncPending,
+    sync_status: syncStatus,
   }
 }
 
