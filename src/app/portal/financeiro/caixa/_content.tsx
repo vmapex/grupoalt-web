@@ -12,6 +12,7 @@ import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
 import { useExtrato } from '@/hooks/useAPI'
+import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -36,7 +37,7 @@ export default function PageCaixa() {
   const [detailView, setDetailView] = useState<string | null>(null)
 
   // API calls for KPI strip with date range
-  const { data: extratoRaw, loading: loadingExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: extratoRaw, loading: loadingExtrato, refetch: refetchExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
 
   // Plano de contas dinâmico (com overrides da empresa)
   const { map: categoriaMap } = useCategoriasMap(empresaId)
@@ -124,6 +125,15 @@ export default function PageCaixa() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {extratoRaw?.sync_pending && (
+        <div className="px-4 pt-3">
+          <SyncWatcher
+            empresaId={empresaId}
+            pending={extratoRaw?.sync_pending}
+            onComplete={refetchExtrato}
+          />
+        </div>
+      )}
       {/* View toggle bar */}
       <div
         className="flex items-center justify-between px-5 shrink-0"

@@ -7,6 +7,7 @@ import { ConcilBadge } from '@/components/ui/ConcilBadge'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { transformExtrato, transformSaldos } from '@/lib/transformers'
@@ -31,7 +32,7 @@ export default function PageExtrato() {
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
   // API call with date range (returns {saldo_inicial, saldo_atual, lancamentos, saldos_contas})
-  const { data: extratoResponse, loading } = useExtrato(empresaId, dt_inicio, dt_fim)
+  const { data: extratoResponse, loading, refetch: refetchExtrato } = useExtrato(empresaId, dt_inicio, dt_fim)
 
   // Extract data from response or fallback
   const extrato: ExtratoLancamento[] = useMemo(
@@ -88,6 +89,15 @@ export default function PageExtrato() {
     <div className="flex flex-col lg:grid min-h-full" style={{ gridTemplateColumns: '1fr 240px' }}>
       {/* Left: Table */}
       <div className="flex flex-col min-h-0" style={{ borderRight: `1px solid ${t.border}` }}>
+        {extratoResponse?.sync_pending && (
+          <div className="px-4 pt-3">
+            <SyncWatcher
+              empresaId={empresaId}
+              pending={extratoResponse?.sync_pending}
+              onComplete={refetchExtrato}
+            />
+          </div>
+        )}
         {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {/* Saldo Inicial */}

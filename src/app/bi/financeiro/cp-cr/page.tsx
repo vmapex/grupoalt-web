@@ -16,6 +16,7 @@ import { useBaixas } from '@/hooks/useAPI'
 import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
 import { useCPAll, useCRAll, useCPResumo, useCRResumo } from '@/hooks/useAPI'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
@@ -96,8 +97,8 @@ export default function PageCPCR() {
 
   // CP/CR: busca TODOS os lançamentos dentro do filtro de datas (Step 13 — Parte C).
   // useCPAll/useCRAll paginam ate esgotar pra evitar truncamento silencioso.
-  const { data: cpRaw, loading: loadingCP } = useCPAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
-  const { data: crRaw, loading: loadingCR } = useCRAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
+  const { data: cpRaw, loading: loadingCP, refetch: refetchCP } = useCPAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
+  const { data: crRaw, loading: loadingCR, refetch: refetchCR } = useCRAll(empresaId, { dtInicio: dt_inicio, dtFim: dt_fim, projetoIds })
   const { data: cpResumo } = useCPResumo(empresaId, dt_inicio, dt_fim, projetoIds)
   const { data: crResumo } = useCRResumo(empresaId, dt_inicio, dt_fim, projetoIds)
 
@@ -232,8 +233,23 @@ export default function PageCPCR() {
     return sortByMonthYear(rows, (r) => r.mes)
   }, [cpData, crData, cpRaw, crRaw])
 
+  const syncPending = cpRaw?.sync_pending || crRaw?.sync_pending
+  const refetchBoth = () => {
+    refetchCP()
+    refetchCR()
+  }
+
   return (
     <div className="flex flex-col min-h-full">
+      {syncPending && (
+        <div className="p-4">
+          <SyncWatcher
+            empresaId={empresaId}
+            pending={syncPending}
+            onComplete={refetchBoth}
+          />
+        </div>
+      )}
       {/* Tab Bar + View Toggle */}
       <div className="flex items-center shrink-0" style={{ borderBottom: `1px solid ${t.border}`, background: `${t.bg}DD` }}>
         {(['CP', 'CR'] as const).map((tb) => {
