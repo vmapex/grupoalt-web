@@ -1080,6 +1080,66 @@ Trade-off aceito: emergência exige editar a rule temporariamente (1 click pra d
 - ✅ Force push e delete bloqueados em main
 - ⏳ **Ainda pendente**: confirmar política de backup automatizado do Postgres no Railway (RPO/RTO + restore testado pelo menos 1×). Item operacional — abordar quando começarmos a Fase 3.
 
+---
+
+## ADR-002 implementado — sync async + polling (sessão 2026-05-15)
+
+Resolução completa do P0-5 do handoff: sync síncrono inline dentro
+do request HTTP migrado para pipeline em background com publicação
+de progresso em Redis. Front exibe `<SyncProgress />` ao detectar
+`sync_pending` na response, faz polling em `/sync/status/{id}` e
+refetch automático ao terminar.
+
+### 3 PRs encadeados
+
+| # | Repo | Conteúdo | LOC |
+|---|---|---|---|
+| [api #67](https://github.com/vmapex/grupoalt-api/pull/67) | api | PR-1: `sync_state` (lock + state em Redis) + `POST /sync/empresas/{id}` 202/409 + `GET /sync/status/{id}` shape expandido | +803 / −33 |
+| [web #103](https://github.com/vmapex/grupoalt-web/pull/103) | web | PR-2: `useSyncStatus` hook (polling + backoff) + `<SyncProgress />` componente | +951 |
+| [api #68](https://github.com/vmapex/grupoalt-api/pull/68) | api | PR-3: routers (dashboard/cp_cr/extrato) retornam `sync_pending` + scheduler migrado para `run_sync_with_progress` | +459 / −130 |
+| [web #104](https://github.com/vmapex/grupoalt-web/pull/104) | web | PR-3: `<SyncWatcher />` plugado em 6 páginas (3 BI + 3 portal); `fetchAllPages` preserva `sync_pending` | +183 / −11 |
+
+### Tradução das 7 etapas (PT-BR — backend serve, front não hardcoda)
+
+| Slug interno | Label UI |
+|---|---|
+| `contas_correntes` | Contas bancárias |
+| `unidades` | Unidades |
+| `lancamentos` | Extrato bancário |
+| `cp` | Contas a pagar |
+| `cr` | Contas a receber |
+| `baixas` | Pagamentos e recebimentos |
+| `categorias` | Plano de contas |
+
+### Decisões de design
+
+- **Path do status**: `GET /sync/status/{empresa_id}` (path param, consistente com `get_empresa_ctx`)
+- **Trigger duplo enquanto sync rolando**: `409 Conflict` + `Retry-After` + body com state atual
+- **Polling no front**: 5s inicial, backoff 5→7→10→13→15s cap, reset quando stage muda, timeout 10min
+- **Lock por empresa**: Redis `SET NX EX 600` — atômico, expira em 10min (evita zumbi)
+- **Contrato dos endpoints**: Opção A (mudou shape adicionando `sync_pending` + `sync_status` opcionais)
+
+### Tests
+
+- **api**: 25 testes novos (13 sync_state + 6 endpoints + 6 pending_flag). Suite total 139 verde.
+- **web**: 15 testes novos (9 useSyncStatus + 6 SyncProgress). Suite total 200 verde.
+- `@testing-library/react@^16` + `@vitejs/plugin-react@^5` adicionados como devDeps (vitest 4.x rolldown não tem JSX transform built-in).
+
+### Pendências / follow-ups (não bloqueantes)
+
+- **5 endpoints secundários ainda fazem sync síncrono inline**: `fluxo_caixa`, `conciliacao`, `?refresh=true` em dashboard/cp_cr, `/cp/resumo`, `/cr/resumo`. Escopo limitado ao caso principal de DB vazio. Issue de follow-up depois do merge.
+- **`sync_empresa_completo`** (sync_service.py:714) continua existindo para backward-compat. Nenhum consumer interno usa mais — pode ser removida em PR de cleanup futuro.
+- **TTL do lock = 600s**. Sync mais demorado que isso (sem precedente — típico ~30s) deixaria lock zumbi até expirar. Aceito como trade-off.
+- **Smoke E2E em prod** — pendente do @VinnyMMHH após merge dos 4 PRs (#67 → #68 → #103 → #104).
+
+### Estado consolidado pós-ADR-002
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 5 — Fase 4 (sync async, ADR-002) | ✅ | 4 PRs encadeados; CI api #67 verde, demais pendentes |
+| 4 — Fase 3 (Alembic + Numeric + índices) | ⏭️ | Próximo na fila — destravado pelo Bloco 3 |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | Depende de Fase 3 (Numeric)
+
 
 
 
