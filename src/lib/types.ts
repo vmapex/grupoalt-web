@@ -2,6 +2,27 @@
    Tipos compartilhados — Shapes da API + Frontend
    ═══════════════════════════════════════════════════════════════ */
 
+/** ADR-002: payload de sync embarcado em responses que detectam DB
+ *  vazio. Quando presente, front deve montar SyncProgress e fazer
+ *  polling de /sync/status/{empresa_id}. */
+export interface SyncPendingFields {
+  sync_pending?: boolean | null
+  sync_status?: {
+    empresa_id: number
+    in_progress: boolean
+    stage: string | null
+    stage_label: string | null
+    stages_completed: string[]
+    stages_failed: Array<{ stage: string; error: string }>
+    progress: { current: number; total: number }
+    started_at: string | null
+    last_completed_at: string | null
+    ultima_sync: string | null
+    registros: { lancamentos: number; contas_pagar: number; contas_receber: number }
+    stage_labels: Record<string, string>
+  } | null
+}
+
 // ── Extrato (GET /empresas/{id}/extrato) ──────────────────────
 
 export interface ExtratoAPI {
@@ -21,7 +42,7 @@ export interface ExtratoAPI {
   projeto_omie_id: string | null
 }
 
-export interface ExtratoResponseAPI {
+export interface ExtratoResponseAPI extends SyncPendingFields {
   saldo_inicial: number
   saldo_atual: number
   lancamentos: ExtratoAPI[]
@@ -90,7 +111,7 @@ export interface ResumoKPIsAPI {
   por_categoria: Array<{ categoria: string; valor: number }>
 }
 
-export interface PaginatedResponseAPI {
+export interface PaginatedResponseAPI extends SyncPendingFields {
   total: number
   pagina: number
   registros: number
