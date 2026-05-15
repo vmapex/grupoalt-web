@@ -897,6 +897,191 @@ Todos mergeados em 2026-05-13/14.
 - ADR-002 vira escopo da Fase 4 (ou sprint dedicado pré-Fase 3).
 - ADR-003 entra como cleanup de 1 dia, podendo rodar paralelo à Fase 3.
 
+---
+
+## ADR-003 implementado em produção (sessão 2026-05-14)
+
+Cleanup de schema-per-empresa morto. Implementação da decisão tomada
+no Bloco 3 acima.
+
+### PR
+
+[api #64](https://github.com/vmapex/grupoalt-api/pull/64) — `chore(adr-003): deleta schema-per-empresa morto, mantém validate_slug`
+
+Net: **-470 LOC** (543 deletadas, 73 inseridas).
+
+### Mudanças
+
+- DELETE `app/models/empresa_models.py` — modelos per-empresa sem consumidor
+- DELETE `app/services/schema_manager.py` — DDL inline para tabelas que ninguém lia
+- DELETE `tests/test_schema_manager.py` — testes do código morto
+- NEW `app/core/slug.py` — preserva `validate_slug` + `_assert_safe_identifier` (utilitários genuinamente usados em admin)
+- NEW `tests/test_slug.py` — 14 testes preservados
+- MOD `app/main.py` — removida `setup_empresa_schemas` + chamada no lifespan
+- MOD `app/core/deps.py` — removida `get_empresa_schema` (sem consumer) + import órfão
+- MOD `app/routers/admin.py` — removidas 3 chamadas `create_empresa_schema` e 1 `drop_empresa_schema`
+- MOD `app/models/models.py` — docstring atualizada (sem menção a `per_empresa`)
+
+### Smoke validado em produção
+
+| Stop | Resultado |
+|---|---|
+| Logs Railway no startup | ✅ Sem `setup_empresa_schemas`, sem `Schema 'emp_X' criado/verificado` |
+| Criar empresa via UI `/portal/admin` | ✅ "SMOKE TEST ADR-003" criada (ID 4) sem erro 500, propaga em `/bi/financeiro/admin` |
+| Stop 4 (verificar schema NÃO criado em DB) | Não executado — opcional; Stop 2 (logs) já confirma |
+| Stop 5 (delete via UI) | ⚠️ UI delete em `/portal/admin` não existe; `/bi/financeiro/admin` "Excluir" deleta apenas `EmpresaConfig` (logo). Smoke essencialmente passou pelos outros stops |
+
+### Observação P1-14 reforçada
+
+Smoke trouxe à tona que `/portal/admin` (CRUD empresas) e `/bi/financeiro/admin` (branding) têm UI de "Excluir" que faz coisas diferentes. Item de consolidação UX para a Fase 5 (unificação BI/portal).
+
+### Schemas órfãos no banco de produção
+
+`emp_<slug>` que existam ficam zumbis (sem leitor/escritor). Podem ser dropados manualmente via SQL quando se quiser limpar:
+
+```sql
+DROP SCHEMA emp_<slug> CASCADE;
+```
+
+Sem urgência, sem custo operacional.
+
+---
+
+## Sentry observability — ciclo fechado (sessão 2026-05-14)
+
+Ativação completa do Sentry em produção (api + web). Encerra o ciclo
+iniciado pela Fase 1B (PRs #60, #89, #91).
+
+### Sequência de eventos
+
+1. **Backend ativado** — `SENTRY_DSN` configurado no Railway, redeploy automático. Confirmação no log: `✓ Sentry inicializado (env=production, sample=0.1)`.
+2. **Frontend tentou ativar** — `NEXT_PUBLIC_SENTRY_DSN` configurado no Vercel + redeploy manual. SDK passou a tentar enviar eventos.
+3. **CSP bloqueava em runtime** — toda chamada `POST` para `*.ingest.us.sentry.io` retornava CSP violation. Console mostrava 5 erros "Refused to connect because it violates the document's Content Security Policy".
+4. **Diagnóstico** — bundle Vercel confirmou SDK presente (164 kB shared, era 87 kB pré-Sentry). Problema isolado ao `connect-src` do middleware.
+5. **Fix CSP** ([web #100](https://github.com/vmapex/grupoalt-web/pull/100)) — adicionados `https://*.ingest.sentry.io`, `https://*.ingest.us.sentry.io`, `https://*.ingest.de.sentry.io` ao `connect-src`. Wildcard CSP só matcha 1 nível, então cada região precisa explícita.
+6. **Smoke runtime confirmado** — após merge do #100, `throw new Error('test')` no console disparou POST 200 OK para `o4511384918032384.ingest.us.sentry.io/api/.../envelope/`. Erro chegou no painel Sentry → Issues.
+
+### Estado atual
+
+- ✅ Sentry api (Python/FastAPI) ATIVO em prod
+- ✅ Sentry web (Next.js) ATIVO em prod
+- ✅ DSNs configurados nos respectivos painéis
+- ✅ Spending cap N/A — free tier sem método de pagamento (blindado por design)
+- ✅ Sample rate: 10% das transactions, 100% dos erros (config padrão)
+
+### Warnings do build Vercel — itens menores futuros (NÃO bloqueiam)
+
+Identificados no build do PR #100. 1 PR pequeno opcional pode endereçá-los todos:
+
+- `[@sentry/nextjs] disableLogger is deprecated` → migrar para `webpack.treeshake.removeDebugLogging`
+- `[@sentry/nextjs] no global-error.js set up` → React render errors do App Router não são capturados; criar `src/app/global-error.tsx` com instrumentação Sentry resolve
+- `[@sentry/nextjs] sentry.client.config.ts deprecated for Turbopack` → migrar para `instrumentation-client.ts` (futuro-proof se ligar Turbopack)
+
+Backlog. Sem urgência.
+
+---
+
+## Bloco 2 — finalização (sessão 2026-05-14)
+
+Bloco 2 (validações operacionais V-01..V-A4) consolidado em
+[docs/audit/validations-2026-05-13.md](audit/validations-2026-05-13.md).
+
+### Resultado
+
+| Categoria | Quantidade | Estado |
+|---|---|---|
+| Validações OK + hardening aplicado | 11 | ✅ Fechadas |
+| Pendentes não-bloqueantes (V-A3, V-07) | 2 | 🟡 Aguardando usuário (~5 min) |
+| Diferidas (V-08, V-10, V-11, V-13) | 4 | ⏭️ Nice-to-have |
+
+### Ação operacional pendente (única antes da Fase 3)
+
+**V-A1 api — escolher entre 3 opções:**
+
+- **A.** Upgrade `vmapex` org → GitHub Team ($4/mês, ~R$ 25/mês). Branch protection real em repo privado.
+- **B.** Tornar `grupoalt-api` público. Free, mesma proteção do web. Expõe estrutura/lógica do backend.
+- **C.** Status quo (pre-push hook local + disciplina). Sem custo, defesa limitada.
+
+Decisão precisa estar tomada antes do primeiro PR de Alembic na Fase 3.
+
+### Estado consolidado da auditoria pós-Bloco 2 + 3
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0 — Preparação e handoff | ✅ | Investigações herdadas concluídas N/A |
+| 1A — Quick wins segurança | ✅ | 9 PRs (P0 + P1 fechados) |
+| 1B — Observabilidade | ✅ | Sentry api + web + request_id middleware |
+| 1C — CI/processo | ✅ | Dependabot, CODEOWNERS, PR template |
+| 2 — Validações V-01..V-A4 | ✅ | 12/13 fechadas (V-A1 api hard-enforced após upgrade Team), V-A3/V-07 pendentes não-bloqueantes |
+| 3 — ADRs aceitos | ✅ | 3 decisões registradas + ADR-003 implementado em prod |
+| 4 — Fase 3 (Alembic + Numeric + índices) | ⏭️ | **Destravado** — pré-requisitos satisfeitos; pode iniciar |
+| 5 — Fase 4 (sync async, ADR-002) | ⏭️ | 2-3 dias quando entrar |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | 7-10 dias, depende de Fase 3 (Numeric) |
+
+---
+
+## V-A1 api hard-enforced em prod (sessão 2026-05-14)
+
+Decisão Opção A do V-A1 api foi tomada e aplicada.
+
+### O que foi feito
+
+1. **Upgrade `vmapex` org → GitHub Team** ($4/mês). Decisão tomada com base em custo-benefício vs blast radius da Fase 3 (Alembic + migrations destrutivas em DB de produção).
+2. **Branch protection rule revisitada** em [`vmapex/grupoalt-api`](https://github.com/vmapex/grupoalt-api/settings/branches):
+   - ☑ Require a pull request before merging (sem "Require approvals" — solo dev)
+   - ☑ Require status checks to pass (`ci`)
+   - ☑ Require branches to be up to date
+   - ☑ **Do not allow bypassing the above settings** ← crítico: sem isso, admin (você) podia push direto via `--no-verify` ainda
+   - ☐ Allow force pushes (mantido OFF)
+   - ☐ Allow deletions (mantido OFF)
+
+### Validação em produção
+
+Teste de force push pra confirmar enforcement HARD:
+
+```
+PS> git push --no-verify origin test-branch-protection-2:main
+
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote: error: - Changes must be made through a pull request.
+To https://github.com/vmapex/grupoalt-api.git
+ ! [remote rejected]   test-branch-protection-2 -> main (protected branch hook declined)
+error: failed to push some refs
+```
+
+**Palavra-chave:** `GH006: Protected branch update failed` + `failed to push`. Antes do hard-enforcement, output era `Bypassed rule violations` (rule detectava mas permitia).
+
+### Cleanup
+
+Primeira tentativa de teste passou por bypass admin (rule ainda em modo soft) e contaminou main com `bffcfd8` (commit + arquivo `test-bp.md`). Limpo via revert PR:
+
+| # | Conteúdo |
+|---|---|
+| [api #66](https://github.com/vmapex/grupoalt-api/pull/66) | `chore: revert test branch protection commit` — remove `test-bp.md` de main |
+
+PR mergeado normalmente (passou pelas rules, validou que o fluxo PR funciona end-to-end com a config nova).
+
+### Por que Opção A venceu
+
+1. Custo trivial vs blast radius da Fase 3 (Alembic com migrations destrutivas em DB de produção)
+2. Defesa em profundidade contra TODOS os atores (você, automações Claude Code, scripts CI)
+3. Audit log da org dá forensics se algo der errado
+4. Manter `grupoalt-api` privado preserva opacidade do backend financeiro (camada extra de proteção)
+
+Trade-off aceito: emergência exige editar a rule temporariamente (1 click pra desmarcar "Do not allow bypassing", fazer push, re-marcar). É proposital — emergência deve ser decisão consciente, não bypass silencioso.
+
+### Bloco 2 fechado
+
+12/13 validações resolvidas. V-A3 + V-07 ficam como nice-to-have leve, não bloqueiam Fase 3.
+
+**Pré-requisitos da Fase 3 (Alembic) satisfeitos:**
+- ✅ Branch protection enforcement em ambos os repos
+- ✅ CI required (PR não mergeia se Alembic upgrade test falhar)
+- ✅ Force push e delete bloqueados em main
+- ⏳ **Ainda pendente**: confirmar política de backup automatizado do Postgres no Railway (RPO/RTO + restore testado pelo menos 1×). Item operacional — abordar quando começarmos a Fase 3.
+
+
+
 
 
 
