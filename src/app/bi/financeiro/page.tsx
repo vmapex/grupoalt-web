@@ -19,6 +19,7 @@ import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
+import { SyncWatcher } from '@/components/sync/SyncWatcher'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -60,7 +61,7 @@ function DashboardExecutivo() {
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
 
   // API calls with date range
-  const { data: extratoResponse } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
+  const { data: extratoResponse, refetch: refetchExtrato } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)
   // Extrato sem filtro de data para "Últimas Movimentações", mas com filtro de unidade
   const { data: extratoUltimas } = useExtrato(empresaId, undefined, undefined, projetoIds)
   // KPIs/breakdowns precisam de TODOS os lancamentos (Step 13 — Parte C):
@@ -262,6 +263,11 @@ function DashboardExecutivo() {
 
   return (
     <div className="flex flex-col gap-5 p-5 min-h-full">
+      <SyncWatcher
+        empresaId={empresaId}
+        pending={extratoResponse?.sync_pending}
+        onComplete={refetchExtrato}
+      />
       {/* ── KPI Strip ────────────────────────── */}
       <div className="grid grid-cols-6 gap-3">
         {kpis.map((kpi) => (
