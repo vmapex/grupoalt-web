@@ -1284,6 +1284,129 @@ Banco de prod entrou na linha do Alembic sem rodar a baseline (que recriaria tab
 
 Recomendação técnica: 3B primeiro porque destrava Fase 5 (DRE backend). 3C pode rodar paralelo. Ambas usam Alembic numbered files (`0002_*.py`, `0003_*.py`).
 
+---
+
+## Sessão 2026-05-16 → 2026-05-17 — Política de backup + Fase 3B (Numeric monetário)
+
+Dois entregáveis pré-requisito desbloqueando o caminho para Fase 5 (DRE backend, ADR-001).
+
+### Backup automatizado + drill validado (PR api #74)
+
+Resolve débito operacional V-A1 follow-up. Pré-requisito da Fase 3B (migration destrutiva exige backup recuperável testado).
+
+**Setup confirmado em prod (painel Railway):**
+- Plano: Pro
+- Projeto: `Grupo-ALT`, serviço `Postgres` (PostgreSQL 18.3)
+- Daily Schedule ativo (snapshot diário 24h)
+- Retenção conforme política Railway Pro
+- Snapshot manual de 301 MB pré-migration (2026-05-15 20:51 UTC)
+
+**Drill end-to-end (2026-05-16):**
+
+Setup local: Postgres 18 client + server instalado via EDB direto (winget tinha estado quebrado), `drill-helper.py` em Python pra evitar shell parsing da `DATABASE_PUBLIC_URL` (vide [Local DB tooling](memory:local-db-tooling)).
+
+Resultado: 8/8 contagens batem entre prod e restore local:
+
+| Tabela | Linhas |
+|---|---|
+| `alembic_version_count` | 1 |
+| `baixas_financeiras` | 10.619 |
+| `categorias_omie` | 378 |
+| `contas_pagar` | 10.941 |
+| `contas_receber` | 726 |
+| `empresas` | 4 |
+| `lancamentos_cc` | 18.885 |
+| `usuarios` | 4 |
+
+PR [api #74](https://github.com/vmapex/grupoalt-api/pull/74) documenta política completa em [`docs/operations/backup-policy.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/operations/backup-policy.md): frequência, RPO (~24h), RTO (~10-15 min), runbook de restore (in-place + paralelo), drill validado, calendário trimestral.
+
+**Achados operacionais documentados em memória:**
+- [Railway restore model](memory:railway-restore-model) — botão "Restore" no painel stages volume swap em prod, NÃO cria serviço novo
+- [Local DB tooling](memory:local-db-tooling) — máquina local não tem Docker/WSL; tem Railway CLI + Python; PG 18 client instalado
+- [Classifier railway prod](memory:classifier-railway-prod) — auto-mode bloqueia `railway run` em prod e `railway variables --kv`
+
+### Fase 3B — Numeric(15,2) em colunas monetárias (PR api #75)
+
+Resolve **P1-1**. 11 colunas em 4 tabelas migram de `Float` (DOUBLE PRECISION) para `Numeric(15, 2)`.
+
+**Tabelas e colunas:**
+
+| Tabela | Colunas |
+|---|---|
+| `lancamentos_cc` | `valor`, `saldo_banco` |
+| `contas_pagar` | `valor`, `valor_pago`, `valor_aberto` |
+| `contas_receber` | `valor`, `valor_recebido`, `valor_aberto` |
+| `baixas_financeiras` | `valor`, `desconto`, `juros`, `multa` |
+
+**Estratégia adotada:** migration única `ALTER COLUMN TYPE` com `USING ::numeric(15,2)` cast (não coluna paralela, overkill pras nossas table sizes). Maior tabela tem 18.885 linhas → lock por segundos. Dual-dialect via `batch_alter_table` (SQLite tests + PG prod).
+
+**Audit Python pré-mudança (grep):**
+- Zero arithmetic mixing `Float`-literal com colunas `valor*`
+- Pydantic schemas declaram `valor: float` → auto-converte `Decimal → float` na serialização JSON
+- `sync_service.py` ingere Omie como `float()` → SQLAlchemy converte `float → Decimal` no write
+- Mudança largamente transparente pro código existente
+
+**PRs encadeados:**
+
+| # | Repo | Conteúdo |
+|---|---|---|
+| [api #74](https://github.com/vmapex/grupoalt-api/pull/74) | api | Política de backup + drill validado |
+| [api #75](https://github.com/vmapex/grupoalt-api/pull/75) | api | Migration 0002 + 11 colunas migradas + 4 tests + fix CI workflow |
+| [web #109](https://github.com/vmapex/grupoalt-web/pull/109) | web | Audit-trail (review.md do audit-agent independente) |
+
+**Audit independente (worktree isolado, padrão Fase 3A):**
+
+- Score: **88/100**
+- Recomendação inicial: REQUEST_CHANGES (1 bloqueador trivial — CI assert stale herdado da 3A: `grep -q "0001"` em vez de checar head dinamicamente)
+- Fix aplicado em commit `fb2fda2`: compara `alembic current` vs `alembic heads` por ID numérico (funciona pra qualquer migration futura sem patch)
+- Migration em si: APPROVED (11/11 colunas certas, USING nos 2 sentidos, nullable correto, 4 testes verde)
+- Follow-up sugerido não-bloqueante: `sync_service.py` ainda ingere float; agendar `Decimal(str(...))` pra fase futura
+
+Review completo em [`docs/audit/fase-3b-numeric-monetary/review.md`](audit/fase-3b-numeric-monetary/review.md).
+
+**Tests novos (4 dedicados):**
+
+- `test_upgrade_head_coloca_colunas_em_numeric` — colunas viram NUMERIC pós-upgrade
+- `test_downgrade_para_0001_volta_para_float` — colunas voltam FLOAT/REAL pós-downgrade
+- `test_round_trip_upgrade_downgrade_upgrade_nao_quebra` — ciclo clássico de validação
+- `test_dados_existentes_sobrevivem_ao_upgrade` — insere valores antes do 0002, valida preservação
+
+Suite total: 155 verde local SQLite + step `Validate Alembic migrations (PostgreSQL)` do CI valida em PG fresh.
+
+**Smoke E2E pós-deploy (2026-05-17):**
+
+| Tabela | Linhas prod | SUM(valor) | vs drill 2026-05-16 |
+|---|---|---|---|
+| `baixas_financeiras` | 10.619 | R$ 153.124.674,01 | match |
+| `contas_pagar` | 10.942 | R$ 85.752.663,61 | +1 linha (Omie sync normal) |
+| `contas_receber` | 726 | R$ 81.353.484,62 | match |
+| `lancamentos_cc` | 18.885 | R$ 124.271,75 | match |
+
+**Evidência de Numeric funcionando:** TODOS os SUMs têm exatamente 2 casas decimais (`.01`, `.61`, `.62`, `.75`). Se fosse Float, veríamos ruído IEEE 754 (`.0099999998`, etc.) em pelo menos um. Contagens preservadas em 3 de 4 (a 4ª com +1 linha = atividade normal de Omie sync entre o drill e o smoke).
+
+### Estado consolidado pós-Fase 3B
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | Schema versionado em prod |
+| 5B — Backup policy + drill | ✅ | PR #74; daily schedule + restore validado 8/8 |
+| **5C — Fase 3B (Numeric monetário)** | **✅** | **PR #75; 11 colunas migradas; smoke 4/4 com .XX exato** |
+| 5D — Fase 3C (5 índices ausentes) | ⏭️ | Não-destrutiva; pode entrar a qualquer momento |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | **Destravado** pelos pré-requisitos satisfeitos (Numeric + oracle + Math.abs documentado) |
+
+### Risco residual pós-3B
+
+**Médio-baixo** (mantém o nível anterior).
+
+P0 fechados: 8/10 (P0-6 índices = Fase 3C, P0-7 cascade DELETE = pós-Fase 5).
+P1 fechados: ~19/30 (~63%). Restantes mais relevantes: P1-2 String→Date em colunas data, P1-17 DRE backend (Fase 5).
+
+### Pendências operacionais menores
+
+- `drill-helper.py`, `smoke-3b.ps1`, `restore-drill.ps1` ainda em `~/railway-backups/` (fora do repo). Promover pra `grupoalt-api/scripts/ops/` em PR futuro se quiser drills automatizáveis em CI.
+- `sync_service.py` float→Decimal no ingest (follow-up não-bloqueante apontado pelo auditor da 3B).
+
 
 
 
