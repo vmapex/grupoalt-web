@@ -1407,6 +1407,101 @@ P1 fechados: ~19/30 (~63%). Restantes mais relevantes: P1-2 String→Date em col
 - `drill-helper.py`, `smoke-3b.ps1`, `restore-drill.ps1` ainda em `~/railway-backups/` (fora do repo). Promover pra `grupoalt-api/scripts/ops/` em PR futuro se quiser drills automatizáveis em CI.
 - `sync_service.py` float→Decimal no ingest (follow-up não-bloqueante apontado pelo auditor da 3B).
 
+---
+
+## Sessão 2026-05-17 (parte 2) — Fase 3C (9 índices compostos)
+
+Mesmo dia da Fase 3B. Sequência contínua porque 3C é não-destrutiva e desbloqueia
+otimização de queries do BI antes do Fase 5 (DRE backend).
+
+### PR
+
+[api #76](https://github.com/vmapex/grupoalt-api/pull/76) — `feat(db): Fase 3C — 9 índices compostos em tabelas financeiras (P0-6)`
+
+### Escopo
+
+9 índices compostos em `(empresa_id, X)` cobrindo padrões de query reais dos routers de BI:
+
+| Tabela | Índice | Onde usado |
+|---|---|---|
+| `lancamentos_cc` | `(empresa_id, data_lancamento)` | extrato, conciliacao, dashboard, export PDF |
+| `lancamentos_cc` | `(empresa_id, conta_omie_id)` | filtro por conta bancária |
+| `lancamentos_cc` | `(empresa_id, projeto_omie_id)` | filtro por projeto/unidade |
+| `contas_pagar` | `(empresa_id, status)` | ABERTO/PAGO/VENCIDO |
+| `contas_pagar` | `(empresa_id, data_vencimento)` | aging, dashboard |
+| `contas_pagar` | `(empresa_id, projeto_omie_id)` | filtro |
+| `contas_receber` | `(empresa_id, status)` | filtro |
+| `contas_receber` | `(empresa_id, data_vencimento)` | aging, top clientes |
+| `contas_receber` | `(empresa_id, projeto_omie_id)` | filtro |
+
+### Estratégia
+
+`CREATE INDEX` regular (não CONCURRENTLY) — tabelas pequenas (~18.885 linhas max) → build <1s, lock window aceitável. CONCURRENTLY exigiria `transaction_per_migration` no Alembic, complica sem benefício real.
+
+### Nota sobre P1-2 (String→Date) ainda aberto
+
+`data_lancamento` e `data_vencimento` continuam `String(10)` DD/MM/YYYY. Ranges nessas colunas dão resultados errados (lexicográfico ≠ cronológico). **Adicionar índice agora é net positive:** PG usa em equality/prefix, e quando P1-2 migrar para `Date`, os índices ficam semanticamente corretos sem refactor adicional.
+
+### Audit independente
+
+- Score: **96/100** (maior da auditoria até agora)
+- Recomendação: **APPROVE** (zero bloqueadores)
+- Sincronização 1:1 entre models.py, migration e tests
+- CI verde (`lint-and-test` SUCCESS + step `Validate Alembic migrations (PostgreSQL)` exercitou 0001→0002→0003 em PG fresh)
+- Gap nice-to-have apontado: composto 3-col `(empresa_id, status, data_vencimento)` para aging combinado (bitmap-and dos 2 já mitiga)
+
+Review completo em [`docs/audit/fase-3c-indices/review.md`](audit/fase-3c-indices/review.md).
+
+### Testes novos
+
+`tests/test_alembic_0003_indices.py` (4 dedicados):
+- Upgrade head cria os 9 índices nas tabelas corretas
+- Downgrade 0002 remove os 9
+- Round-trip up→down→up sem erro
+- Sanity: índices únicos pré-existentes (baseline 0001) continuam intactos
+
+Suite total: 144 verde local SQLite.
+
+### Smoke E2E pós-deploy
+
+Script `smoke-3c.ps1` em `~/railway-backups/`:
+1. `SELECT FROM pg_indexes` → confirma os 9 existem em prod
+2. `EXPLAIN ANALYZE` em 2 queries típicas → confirma Index Scan vs Seq Scan
+
+Resultado esperado pra tabelas com volume atual (~10-19k linhas): planner pode escolher Seq Scan ainda — é normal. PG considera Seq Scan mais rápido que Index Scan quando a tabela cabe em poucos blocos. Benefício real dos índices vai aparecer naturalmente à medida que tabelas crescerem (50k+ linhas).
+
+### Estado consolidado pós-Fase 3C
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | Schema versionado em prod |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 — 11 colunas migradas, smoke 4/4 com `.XX` exato |
+| **5D — Fase 3C (9 índices)** | **✅** | **PR #76 — P0-6 fechado, queries do BI aceleradas** |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | **Pré-requisitos satisfeitos** — pode iniciar |
+| 7 — Outros P1 backlog | ⏭️ | P1-2 String→Date, P1-17 DRE backend, P0-7 cascade DELETE |
+
+### Risco residual pós-3C
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 9/10** (P0-7 cascade DELETE empresa pendente, encaixa pós-Fase 5)
+- **P1 fechados: ~20/30 (~67%)** — P1-1 (Numeric) ✅, P1-2 (String→Date) pendente, P1-17 (DRE backend) entra na Fase 5
+- **% executado por tempo: ~70%** (era ~62% antes da 3C)
+
+### Próxima big rock
+
+**Fase 5 — DRE no backend (ADR-001).**
+
+Pré-requisitos satisfeitos:
+- Oracle financeiro entregue antes (PR #92)
+- Math.abs documentado como defesa intencional (PR #93)
+- Numeric monetário evita drift de arredondamento entre client e server (Fase 3B)
+- Índices em `(empresa_id, projeto_omie_id)` e datas viabilizam queries DRE eficientes (Fase 3C)
+
+Esforço estimado: 7-10 dias. Maior valor de negócio do roadmap restante: fonte única de verdade contábil, elimina duplicação de regra entre frontend e backend, viabiliza auditoria contábil tradicional.
+
 
 
 
