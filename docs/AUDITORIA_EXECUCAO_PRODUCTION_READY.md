@@ -1502,6 +1502,116 @@ Pré-requisitos satisfeitos:
 
 Esforço estimado: 7-10 dias. Maior valor de negócio do roadmap restante: fonte única de verdade contábil, elimina duplicação de regra entre frontend e backend, viabiliza auditoria contábil tradicional.
 
+---
+
+## Sessão 2026-05-17 (parte 3) — P0-7 (soft delete empresa) — MARCO: P0 10/10
+
+Última fase do dia. Fecha o último P0 do handoff. Auditoria production-ready atinge **100% dos P0 pela primeira vez** desde 2026-05-12 quando foi escrito o handoff.
+
+### PRs
+
+| # | Repo | Conteúdo |
+|---|---|---|
+| [api #77](https://github.com/vmapex/grupoalt-api/pull/77) | api | P0-7: soft delete + restore + hard delete protegido (Score audit 94/100) |
+| [api #78](https://github.com/vmapex/grupoalt-api/pull/78) | api | Follow-ups do audit (2 fixes não-bloqueantes) |
+
+### Mudanças
+
+**Migration 0004:** `empresas.deleted_at` (nullable DateTime). Não-destrutiva, downgrade limpo.
+
+**3 endpoints em `app/routers/admin.py`:**
+- `DELETE /admin/empresas/{id}` — soft delete: body `{senha_admin, nome_empresa}`, bcrypt verify + matching exato do nome. Tentativas falhas (senha errada, nome errado) registram audit log.
+- `POST /admin/empresas/{id}/restore` — reverte (`deleted_at = NULL`).
+- `DELETE /admin/empresas/{id}/permanent` — hard delete REAL, exige soft-delete prévio + senha + nome (defesa em profundidade tripla).
+
+**Filtros `deleted_at IS NULL` em 8 queries user-facing** (admin queries propositalmente sem filtro pra admin ver soft-deletadas e poder restaurar):
+
+| Local | Comportamento |
+|---|---|
+| `core/deps.py::get_empresa_ctx` | 404 se soft-deletada |
+| `routers/auth.py:205` | admin fallback exclui soft |
+| `routers/gestao.py` | lista user-facing exclui |
+| `routers/grupo.py` (2 queries) | árvore + flat excluem |
+| `routers/orbit.py` | 404 no chat |
+| `services/orbit_chat.py` | early return "" |
+| `services/alertas.py` | skip (`return 0`) |
+| `main.py` scheduler | sync skipa |
+| `routers/notificacoes.py` (follow-up PR #78) | filtro preventivo na origem |
+
+### Audit independente
+
+- Score: **94/100**
+- Recomendação: APPROVE, zero bloqueadores
+- Follow-ups: 2 itens cosméticos aplicados em PR #78 (audit log no `/permanent` nome-errado + filtro preventivo em `notificacoes.py`)
+
+Review completo em [`docs/audit/p0-7-soft-delete-empresa/review.md`](audit/p0-7-soft-delete-empresa/review.md).
+
+### Tests novos (15)
+
+- `tests/test_alembic_0004_soft_delete.py` (4): migration upgrade + downgrade + round-trip + default NULL
+- `tests/test_admin_soft_delete_empresa.py` (11 E2E): happy paths (soft, restore, permanent), error paths (senha errada 403, nome errado 403, já deletada 409, sem soft prévio 409, inexistente 404), filtragem user-facing (gestao não lista soft-deletada)
+
+Suite total: 155 verde local SQLite + CI step Validate Alembic exercitou chain `0001→0002→0003→0004` em PG fresh.
+
+### Achado pós-merge: UI atual NÃO chama endpoint API
+
+Auditoria do frontend revelou que:
+- `/portal/admin` não tem botão delete pra empresa (só pra unidades — endpoint diferente)
+- `/bi/financeiro/admin` tem botão "Excluir" que chama `removeEmpresa` do Zustand store, que **só manipula estado local** (não faz API call)
+
+Implicação: a "mudança de contrato" do endpoint NÃO quebra nenhuma UI atual. Backend está mais seguro sem custo de UX imediata. **Débito de UX** (não bug) entra no backlog: admin que quiser deletar via interface precisa de PR futuro adicionando modal (senha + nome) e botão restore.
+
+### MARCO: Estado consolidado pós-P0-7
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 + drill 8/8 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 + smoke 4/4 com .XX exato |
+| 5D — Fase 3C (9 índices) | ✅ | PR #76 + smoke 9/9 Index Scan ativo |
+| **5E — P0-7 (soft delete empresa)** | **✅** | **PR #77 + #78 — P0 fechado** |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | **Destravado** — pré-requisitos satisfeitos |
+| 7 — UI admin de delete + restore | ⏭️ | Backlog — débito de UX, sem urgência |
+
+### Risco residual pós-P0-7
+
+**Médio-baixo** (sem mudança no nível).
+
+- **P0 fechados: 10/10 (100%)** 🎉 — primeira vez desde o handoff de 2026-05-12
+- **P1 fechados: ~20/30 (~67%)** — P1-2 (String→Date) pendente, P1-17 (DRE backend) entra na Fase 5
+- **% executado por tempo: ~75%** (era ~70% antes do P0-7)
+
+### Métricas da sessão de 2026-05-17
+
+**Recorde de produtividade da auditoria.** 12 PRs entre os 2 repos em 1 dia:
+
+| # | PR | Repo | Categoria |
+|---|---|---|---|
+| 1 | #108 | web | Cleanup audit-trail |
+| 2 | #74 | api | Backup policy + drill |
+| 3 | #75 | api | Fase 3B Numeric |
+| 4 | #109 | web | Audit-trail 3B |
+| 5 | #110 | web | Exec doc 3B |
+| 6 | #76 | api | Fase 3C Índices |
+| 7 | #111 | web | Audit-trail 3C + exec doc |
+| 8 | #77 | api | P0-7 soft delete |
+| 9 | #78 | api | P0-7 audit follow-ups |
+| 10 | (este PR) | web | Audit-trail P0-7 + exec doc marco |
+
+3 fases técnicas (3B, 3C, P0-7) + 1 débito operacional (backup) + 1 marco simbólico (P0 10/10).
+
+### Pendências operacionais menores (acumuladas hoje)
+
+- `drill-helper.py`, `smoke-3b.ps1`, `smoke-3c.ps1`, `restore-drill.ps1` em `~/railway-backups/` (fora do repo). Promover pra `grupoalt-api/scripts/ops/` quando convier.
+- `sync_service.py` float→Decimal no ingest (follow-up apontado pelo auditor da 3B).
+- UI admin de delete + restore (débito de UX, sem urgência — atual UI não chamava endpoint mesmo).
+- P1-2 (String→Date em colunas data) — ganha semântica de range nos índices da 3C.
+
+### Próxima big rock (próxima sessão)
+
+**Fase 5 — DRE no backend (ADR-001).** Todos os pré-requisitos satisfeitos. Maior valor de negócio do roadmap restante (~7-10 dias).
+
 
 
 
