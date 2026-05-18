@@ -7,6 +7,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
 
 /* ------------------------------------------------------------------ */
 /*  LogoUploadBox                                                      */
@@ -154,9 +155,12 @@ export default function PageAdmin() {
   const updateEmpresa = useEmpresaStore((s) => s.updateEmpresa)
   const addEmpresa = useEmpresaStore((s) => s.addEmpresa)
   const removeEmpresa = useEmpresaStore((s) => s.removeEmpresa)
+  // removeEmpresa do Zustand e usado APENAS no onSuccess do modal pra refletir
+  // imediatamente o soft delete no estado local. Backend ja persistiu via API.
 
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditFormData>({ nome: '', cnpj: '', cor: '' })
+  const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
 
   if (adminAccess === 'loading') {
     return (
@@ -479,7 +483,7 @@ export default function PageAdmin() {
                     </button>
                     {empresas.length > 1 && (
                       <button
-                        onClick={() => removeEmpresa(emp.id)}
+                        onClick={() => setDeletingEmpresa({ id: Number(emp.id), nome: emp.nome })}
                         aria-label={`Excluir ${emp.nome}`}
                         style={{
                           background: t.redDim,
@@ -534,8 +538,25 @@ export default function PageAdmin() {
           <li>Caso apenas uma variante seja enviada, ela será usada em ambos os temas como fallback.</li>
           <li>A cor da empresa e usada como acento visual na navbar e em indicadores.</li>
           <li>E necessario manter pelo menos uma empresa cadastrada.</li>
+          <li>
+            Empresas excluidas podem ser restauradas na pagina{' '}
+            <Link href="/portal/admin" style={{ color: t.blue }}>Portal &gt; Administracao &gt; Empresas</Link>.
+          </li>
         </ul>
       </div>
+
+      {/* Modal de soft delete (P0-7) */}
+      <DeleteEmpresaModal
+        empresa={deletingEmpresa}
+        onClose={() => setDeletingEmpresa(null)}
+        onSuccess={() => {
+          if (deletingEmpresa) {
+            // Reflete imediatamente no store local. Proximo /auth/me confirma
+            // (backend filtra soft-deletadas pra users user-facing).
+            removeEmpresa(String(deletingEmpresa.id))
+          }
+        }}
+      />
     </div>
   )
 }
