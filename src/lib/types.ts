@@ -27,7 +27,9 @@ export interface SyncPendingFields {
 
 export interface ExtratoAPI {
   id: number
-  data_lancamento: string | null  // DD/MM/YYYY
+  // P1-2 Camada 2.2b.2: ISO 8601 "YYYY-MM-DD" (era DD/MM/YYYY).
+  // Use formatIsoToBr() pra exibir como DD/MM/YYYY no UI.
+  data_lancamento: string | null
   data_conciliacao: string | null
   descricao: string
   favorecido: string | null
@@ -71,6 +73,7 @@ export interface SaldoAPI {
 // ── CP/CR (GET /empresas/{id}/cp ou /cr) ──────────────────────
 
 export interface PagamentoDetalheAPI {
+  // P1-2 Camada 2.2b.2: ISO 8601 (era DD/MM/YYYY).
   data: string | null
   valor: number
   desconto: number
@@ -82,6 +85,7 @@ export interface LancamentoAPI {
   codigo: number
   favorecido: string
   categoria: string
+  // P1-2 Camada 2.2b.2: ISO 8601 (era DD/MM/YYYY).
   data_emissao: string | null
   data_vcto: string | null
   data_previsao: string | null

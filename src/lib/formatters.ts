@@ -27,6 +27,31 @@ export function parseDMY(s: string): Date {
   return new Date(Number(y), Number(m) - 1, Number(d))
 }
 
+/** P1-2 Camada 2.2b.2: formata ISO "YYYY-MM-DD" (do backend) para
+ *  "DD/MM/YYYY" (display BR). Defensivo para null/undefined/formato invalido.
+ *
+ *  Exemplos:
+ *    formatIsoToBr("2026-03-15") === "15/03/2026"
+ *    formatIsoToBr(null) === ""
+ *    formatIsoToBr("") === ""
+ *    formatIsoToBr("foo") === "foo"  // fallback: devolve raw se nao bate ISO
+ */
+export function formatIsoToBr(iso: string | null | undefined): string {
+  if (!iso) return ''
+  // Match exato YYYY-MM-DD (ignora time se vier ISO completo)
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+  if (!m) return iso  // devolve raw se nao for ISO (compat com legados/erros)
+  return `${m[3]}/${m[2]}/${m[1]}`
+}
+
+/** Parse ISO "YYYY-MM-DD" to Date object. Defensive: returns null on invalid input. */
+export function parseIso(iso: string | null | undefined): Date | null {
+  if (!iso) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+  if (!m) return null
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+}
+
 /** Generic sort toggle */
 export function toggleSort(prev: SortState, field: string): SortState {
   if (prev.field === field) return { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' }

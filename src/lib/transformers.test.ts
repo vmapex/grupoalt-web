@@ -23,7 +23,7 @@ import type {
 function mockExtrato(overrides: Partial<ExtratoAPI> = {}): ExtratoAPI {
   return {
     id: 1,
-    data_lancamento: '15/04/2026',
+    data_lancamento: '2026-04-15',
     data_conciliacao: null,
     descricao: 'PAGAMENTO X',
     favorecido: 'FORNEC Y',
@@ -46,7 +46,7 @@ function mockLanc(overrides: Partial<LancamentoAPI> = {}): LancamentoAPI {
     favorecido: 'FORNEC',
     categoria: '2.03.01',
     data_emissao: null,
-    data_vcto: '15/04/2026',
+    data_vcto: '2026-04-15',
     data_previsao: null,
     data_pagamento: null,
     valor: 100,
@@ -200,13 +200,14 @@ describe('transformCPCR', () => {
       [
         mockLanc({
           pagamentos: [
-            { data: '01/04/2026', valor: 100, desconto: 5, juros: 2, multa: 1 },
-            { data: '15/04/2026', valor: 50, desconto: 0, juros: 0, multa: 0 },
+            { data: '2026-04-01', valor: 100, desconto: 5, juros: 2, multa: 1 },
+            { data: '2026-04-15', valor: 50, desconto: 0, juros: 0, multa: 0 },
           ],
         }),
       ],
       'CR',
     )
+    // P1-2 Camada 2.2b.2: API devolve ISO, transformer converte para DD/MM/YYYY.
     expect(result[0].pagamentos).toEqual([
       { data: '01/04/2026', valor: 100, desconto: 5, juros: 2, multa: 1 },
       { data: '15/04/2026', valor: 50, desconto: 0, juros: 0, multa: 0 },
