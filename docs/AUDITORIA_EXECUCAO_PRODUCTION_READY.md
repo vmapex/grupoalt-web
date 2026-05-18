@@ -1612,6 +1612,135 @@ Implicação: a "mudança de contrato" do endpoint NÃO quebra nenhuma UI atual.
 
 **Fase 5 — DRE no backend (ADR-001).** Todos os pré-requisitos satisfeitos. Maior valor de negócio do roadmap restante (~7-10 dias).
 
+---
+
+## Sessão 2026-05-18 — P0-7 UI completo + P1-2 Camadas 2.1 e 2.2a
+
+Sessão "longa" (~10h) começou consolidando débito de UX do P0-7 e
+avançou pra P1-2 (String→Date) em 2 camadas das 3 planejadas
+(2.2b + 2.3 ficam pra próxima).
+
+### Etapa 1 — P0-7 UI delete + restore (~3h)
+
+Backend do P0-7 (PRs #77 + #78) tinha mudado o contrato para soft delete
+com confirmação dupla (senha admin + nome empresa), mas **nenhuma UI**
+chamava o endpoint atualizado. Antes deste PR, deletar empresa exigia
+Postman/curl.
+
+**2 PRs encadeados:**
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 1 | api | [#79](https://github.com/vmapex/grupoalt-api/pull/79) | Expor `deleted_at` em `EmpresaResponse` + 3 sites + teste de contrato |
+| 2 | web | [#113](https://github.com/vmapex/grupoalt-web/pull/113) | `<DeleteEmpresaModal />` + hooks `deleteEmpresa`/`restoreEmpresa` + wire em /portal/admin (badge "DELETADA" + botão Restaurar) e /bi/financeiro/admin (substitui Zustand removeEmpresa por API real) |
+
+- **Web**: 5 arquivos, +635/-22 LOC. 10 testes Vitest novos (suite 200→210 verde).
+- **Audit**: Score **93/100 APPROVE**, sem bloqueadores. Review em
+  [`docs/audit/p0-7-ui-delete-restore/review.md`](audit/p0-7-ui-delete-restore/review.md).
+- **Follow-ups não-bloqueantes**: distinção visual senha vs nome errado (~5min),
+  toast "Desfazer" no restore, testes RTL pra /portal/admin, hint CTA pós-delete.
+- **Decisão de escopo**: `/bi/financeiro/admin` (branding) **não** mostra
+  soft-deletadas — restore só via `/portal/admin` (CRUD admin oficial). UX coerente.
+
+### Etapa 2 — P1-2 String→Date em camadas
+
+Migração de **11 colunas** em **4 tabelas** de `String(10)` DD/MM/YYYY para
+`Date` nativo. Em 3 camadas pra minimizar risco.
+
+#### Camada 2.1 — Backend non-destructive (~3-4h)
+
+**Pré-requisito da Fase 5.** Resolve **P1-2** do handoff.
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 3 | api | [#80](https://github.com/vmapex/grupoalt-api/pull/80) | Migration 0005 ADD COLUMN nullable `data_*_date` + backfill PG-only (`TO_DATE` com regex POSIX exato + idempotência via `AND col_new IS NULL`) + helper central `app/core/dates.py::parse_br_date` + `sync_service.py` popula AMBAS colunas (string + date) em 4 sites |
+
+- **6 arquivos** (3 novos + 3 modificados): +436/-9 LOC
+- **17 testes novos** (12 parse_br_date + 5 migration). Suite 156→173 verde.
+- **Audit**: Score **94/100 APPROVE_WITH_FOLLOWUPS**, sem bloqueadores. Review em
+  [`docs/audit/p1-2-camada-2-1-data-dates/review.md`](audit/p1-2-camada-2-1-data-dates/review.md).
+- **Smoke pós-deploy**: 0 inconsistências em todas as 4 tabelas.
+- **Backup**: Daily Schedule Railway 2h atrás (291 MB) — RPO 2h aceito pra mudança aditiva.
+
+#### Camada 2.2a — Filtros internos (~3h)
+
+Switch das **leituras** em 8 consumidores para as colunas Date.
+**JSON response shape inalterado** — Camada 2.2b cuida disso na próxima sessão.
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 4 | api | [#81](https://github.com/vmapex/grupoalt-api/pull/81) | Migrar filtros + order_by em 8 arquivos (`dashboard.py`, `conciliacao.py`, `extrato.py`, `cp_cr.py`, `fluxo_caixa.py`, `export.py`, `alertas.py`, `orbit_chat.py`). Helpers `_parse_date`/`_parse_dmy` duplicados em 7 lugares consolidados em `app.core.dates.parse_br_date`. **BUG FIX REAL** em `export.py` (`c.data_vencimento < hoje` em strings → date vs date). |
+
+- **9 arquivos** modificados/criados: +185/-115 LOC
+- **6 testes novos** documentando lex vs cronológico. Suite 173→179 verde.
+- **Audit**: Score **91/100 APPROVE_WITH_FOLLOWUPS**, sem bloqueadores. Review em
+  [`docs/audit/p1-2-camada-2-2a-filtros-internos/review.md`](audit/p1-2-camada-2-2a-filtros-internos/review.md).
+- **Bug fix observável em prod**: `qtd_atrasado` em PDFs CP/CR estava silenciosamente
+  subestimado (títulos com vencimento ex: 19/01 e hoje = 18/05 eram excluídos porque
+  `'19/01/2026'` lex > `'18/05/2026'`).
+
+### Follow-up crítico P1 (audit Camada 2.2a)
+
+**Índices da Fase 3C não cobrem `data_*_date`**:
+
+- `ix_lancamento_empresa_data` está em `data_lancamento` (string)
+- `ix_cp_empresa_vencimento` está em `data_vencimento` (string)
+- `ix_cr_empresa_vencimento` idem
+
+Queries com `ORDER BY data_*_date DESC NULLS LAST` **provavelmente fazem table scan + sort** em prod. Monitorar P95 de `/extrato`, `/conciliacao/movimentacao`, exports PDF imediatamente pós-deploy. Se latência subir >50% baseline, criar índices `_date` paralelos antes de 2.2b. **Ação obrigatória**: incluir criação de índices `_date` no escopo da Camada 2.2b ou 2.3.
+
+### Métricas da sessão de 2026-05-18
+
+**4 PRs entregues + 3 audits + 1 PR de docs (este).**
+
+| # | PR | Repo | Estado | Tema |
+|---|---|---|---|---|
+| 1 | [#79](https://github.com/vmapex/grupoalt-api/pull/79) | api | ✅ MERGED | EmpresaResponse.deleted_at (P0-7 UI) |
+| 2 | [#113](https://github.com/vmapex/grupoalt-web/pull/113) | web | ✅ MERGED | UI delete+restore (P0-7 UI) |
+| 3 | [#80](https://github.com/vmapex/grupoalt-api/pull/80) | api | ✅ MERGED | Camada 2.1 — ADD COLUMN + backfill |
+| 4 | [#81](https://github.com/vmapex/grupoalt-api/pull/81) | api | 🟡 OPEN | Camada 2.2a — filtros internos |
+| 5 | (este) | web | 🟡 OPEN | Audit-trail + exec doc dos PRs acima |
+
+LOC líquidas: api +1170, web +800. Suites: pytest 156→179 (+23), vitest 200→210 (+10).
+
+### Estado consolidado pós-sessão 2026-05-18
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 |
+| 5D — Fase 3C (9 índices) | ✅ | PR #76 |
+| 5E — P0-7 (soft delete empresa) | ✅ | PR #77 + #78 |
+| **5F — P0-7 UI (delete + restore na interface)** | **✅** | **PR #79 + #113** |
+| **5G — P1-2 Camada 2.1 (ADD COLUMN paralela + backfill)** | **✅** | **PR #80** |
+| **5H — P1-2 Camada 2.2a (filtros internos com Date)** | **🟡** | **PR #81 aguardando merge** |
+| 5I — P1-2 Camada 2.2b (JSON response ISO + front) | ⏭️ | Próxima sessão. **Inclui criação de índices `_date`** (follow-up P1 do audit 2.2a) |
+| 5J — P1-2 Camada 2.3 (DROP COLUMN destrutivo + RENAME) | ⏭️ | Após 24-48h de 2.2b estável. Backup manual obrigatório. |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | Próxima big rock; depende de P1-2 completo |
+
+### Risco residual pós-2.2a
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~21/30 (~70%)** — P1-2 70% completo (2.1 + 2.2a; falta 2.2b + 2.3 + Fase 5)
+- **% executado por tempo: ~80%** (era ~75% pré-sessão)
+
+### Pendências operacionais menores (sessão 2026-05-18)
+
+- 4 follow-ups documentados pós-audit web #113 (P0-7 UI): distinção visual senha/nome, toast "Desfazer" no restore, testes RTL `/portal/admin`, CTA pós-delete
+- 4 follow-ups documentados pós-audit api #80 (Camada 2.1): `isinstance(s, str)` em parse_br_date, telemetria de backfill, refs cosméticas a "0006", índice 3C precisa migrar
+- 4 follow-ups documentados pós-audit api #81 (Camada 2.2a): **P1 índices `_date`** (crítico, vai pra 2.2b), log warning de NULL no extrato, rename `hoje` → `hoje_str` em export, smoke SQL nas outras 2 tabelas
+
+### Próxima sessão sugerida
+
+1. **PR pequeno**: criar índices `_date` paralelos (`ix_lancamento_empresa_data_date`, etc) — ~1h. Pré-requisito de 2.2b se queries estiverem lentas.
+2. **Camada 2.2b**: migrar JSON response para ISO 8601 (Pydantic auto-serializa `date` como ISO) + front consome ISO + DateRangePicker manda ISO. **PRs SEPARADOS api e web** com janela curta entre merges. ~6-8h.
+3. **Camada 2.3**: DROP COLUMN string + RENAME `_date` → `*` + recriar índices nomes originais. Destrutivo, backup manual obrigatório. ~1-2h. Aguardar 24-48h de 2.2b estável.
+4. **Fase 5**: DRE backend (ADR-001) — quando P1-2 estiver 100%. ~7-10 dias dedicados.
+
 
 
 
