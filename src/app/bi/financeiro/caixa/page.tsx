@@ -13,10 +13,13 @@ import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
 import { useExtrato } from '@/hooks/useAPI'
+import { useDRE } from '@/hooks/useDRE'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
+import { useBackendDRE } from '@/lib/featureFlags'
+import { ComparativoDRE } from '@/components/caixa/ComparativoDRE'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -44,6 +47,16 @@ export default function PageCaixa() {
   // Plano de contas dinâmico (com overrides da empresa)
   const { map: categoriaMap } = useCategoriasMap(empresaId)
 
+  // Fase 5.F (ADR-001): backend assume o motor DRE quando flag ligada.
+  // Datas para o endpoint sao ISO YYYY-MM-DD (dateFrom/dateTo ja sao ISO no store).
+  const useBackend = useBackendDRE()
+  const { data: dreBackend } = useDRE(
+    useBackend ? empresaId : null,
+    useBackend
+      ? { dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds }
+      : undefined,
+  )
+
   const lancamentos = extratoRaw?.lancamentos ?? []
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
 
@@ -69,7 +82,10 @@ export default function PageCaixa() {
     return { entradas, saidas, saldoFinal }
   }, [lancamentos, saldoInicial])
 
-  const dreData = useMemo(() => {
+  // DRE local (calculado no front via `calcularDRE`). Sempre computado
+  // quando ha lancamentos -- ate com flag ligada -- pois o ComparativoDRE
+  // (dev-only) precisa dele pra mostrar diff lado a lado durante o soak.
+  const dreLocal = useMemo(() => {
     if (!lancamentos.length) return null
     const dre = calcularDRE(
       (lancamentos as any[]).map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
@@ -80,6 +96,31 @@ export default function PageCaixa() {
       rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
     }
   }, [lancamentos, categoriaMap])
+
+  // dreData efetivo consumido pela UI. Quando flag ON e backend respondeu,
+  // usa o backend (shim do shape Pydantic para o shape local que a UI ja
+  // espera). Caso contrario cai no calculo local.
+  const dreData = useMemo(() => {
+    if (useBackend && dreBackend) {
+      const s = dreBackend.subtotais
+      return {
+        rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF, mc: s.MC,
+        rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
+      }
+    }
+    return dreLocal
+  }, [useBackend, dreBackend, dreLocal])
+
+  // Mesmo shim em formato DRESubtotais para o componente Comparativo.
+  const dreBackendSubtotais = dreBackend?.subtotais ?? null
+  const dreLocalForComparativo = useMemo(() => {
+    if (!dreLocal) return null
+    return {
+      RoB: dreLocal.rob, TDCF: dreLocal.tdcf, CV: dreLocal.cv,
+      MC: dreLocal.mc, CF: dreLocal.cf, EBT1: dreLocal.ebt1,
+      RNOP: dreLocal.rnop, DNOP: dreLocal.dnop, EBT2: dreLocal.ebt2,
+    }
+  }, [dreLocal])
 
   // Breakdowns para DetailPanel
   const breakdowns = useMemo(
@@ -229,6 +270,8 @@ export default function PageCaixa() {
         </>
       )}
 
+      {/* Fase 5.F: comparativo DRE local vs backend (dev/staging only) */}
+      <ComparativoDRE local={dreLocalForComparativo} backend={dreBackendSubtotais} />
     </div>
   )
 }
