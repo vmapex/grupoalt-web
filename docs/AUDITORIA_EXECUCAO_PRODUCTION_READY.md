@@ -2189,5 +2189,249 @@ curl -H "Cookie: ..." https://api.grupoalt.agr.br/v1/empresas/1/extrato \
 gestor; mitigação via oracle + comparativo paralelo). Múltiplos PRs com
 audit independente.
 
+---
 
+## Sessão 2026-05-19 — Fase 5 iniciada (5.A + 5.B + 5.C entregues)
+
+Continuação direta da sessão de 2026-05-18 (que entregou Camada 2.3 P1-2).
+Agora **a Fase 5 (DRE backend, ADR-001) entrou em execução**: motor puro
++ oracle homologado + endpoint público, tudo em um único dia.
+
+### Fases 5.A + 5.B — Motor puro + oracle (PR api #90, MERGED)
+
+Motor de cálculo do DRE portado fielmente do TypeScript
+(`grupoalt-web/src/lib/planoContas.ts`) para Python isolado, sem I/O.
+Validado contra as 11 fixtures do oracle financeiro (4 synthetic S01-S04
++ 7 verdade-contábil S05-S11 homologadas em 2026-05-13).
+
+**Arquivos novos no backend:**
+
+```
+app/domain/                              # camada nova: dominio puro
+├── __init__.py
+└── financeiro/
+    ├── __init__.py
+    ├── categorias.py    # CATEGORIAS (81 entradas) + get_grupo_dre
+    └── dre.py            # calcular_dre + calcular_neutros + ESTRUTURA_DRE
+
+scripts/
+└── sync_oracle_fixtures.py   # sincroniza fixtures web→api
+
+tests/
+├── domain/
+│   ├── __init__.py
+│   └── test_dre_domain.py     # 46 testes unitarios
+└── oracle/
+    ├── __init__.py
+    ├── README.md
+    ├── test_oracle.py          # runner parametrizado
+    └── fixtures/               # 33 JSONs espelhados de grupoalt-web
+        ├── synthetic/          # S01..S04
+        └── verdade-contabil/   # S05..S11
+```
+
+**Decisões importantes:**
+
+1. **Domain layer puro**: `app/domain/` separado de `app/services/`
+   (orquestração com I/O) e `app/routers/` (HTTP). Determinístico,
+   testável sem mock de DB.
+2. **`Math.abs` defensivo preservado** conforme Step 13 Parte B + PR web
+   #93 (estornos via categoria própria, não por sinal contrário).
+3. **Fixtures versionadas** com exceção explícita `!tests/oracle/fixtures/**/*.json`
+   no `.gitignore` global do api (que filtra `*.json`).
+4. **Script de sync** (`--dry-run` default, `--apply` para escrever)
+   com check de drift entre repos. Source of truth fica em
+   `grupoalt-web/tests/oracle/fixtures/`.
+5. **`FixtureKind`-aware runner**: verdade-contábil/regression-baseline
+   checam todos 14 campos; synthetic só checa campos preenchidos;
+   known-divergence vira xfail.
+
+**Métricas 5.A + 5.B (PR #90):**
+
+- 44 arquivos novos, +2028 LOC
+- Suite: 191 → **252** testes (+61)
+  - 46 unit em `tests/domain/test_dre_domain.py`
+  - 15 oracle em `tests/oracle/test_oracle.py`
+- **15/15 oracle PASS** — motor backend produz números idênticos ao
+  contrato homologado pelo financeiro
+
+**Audit dispensado** para 5.A+5.B: código novo, sem alteração em
+rotas/contratos, sem deploy visível. Oracle (15/15 PASS) atua como
+contrato real validando regra contábil.
+
+**PR #90 estado:** MERGED 2026-05-19 01:51 UTC, CI 1m49s.
+
+### Fase 5.C — Endpoint público (PR api #91, audit Score 94/100 APPROVE)
+
+Primeiro endpoint backend do DRE consumindo o motor puro da 5.A:
+
+```
+GET /v1/empresas/{empresa_id}/dre
+    ?dt_inicio=YYYY-MM-DD                       (opcional, inclusive)
+    &dt_fim=YYYY-MM-DD                          (opcional, inclusive)
+    &projeto_omie_ids=A&projeto_omie_ids=B      (multi-value opcional)
+```
+
+**Response shape:**
+
+```json
+{
+  "subtotais": {
+    "RoB": 150000.0, "TDCF": 20000.0, "RL": 130000.0,
+    "CV": 50000.0, "MC": 80000.0, "CF": 45000.0, "EBT1": 35000.0,
+    "RNOP": 0, "DNOP": 0, "SNOP": 0, "EBT2": 35000.0,
+    "IRPJ": 1000.0, "CSLL": 500.0, "RES_LIQ": 33500.0
+  },
+  "neutros": [
+    { "codigo": "...", "nome": "...", "total": ..., "count": ... }
+  ],
+  "meta": {
+    "empresa_id": 1, "dt_inicio": "2026-04-01", "dt_fim": "2026-04-30",
+    "projeto_omie_ids": null, "total_lancamentos": 19
+  }
+}
+```
+
+**Arquivos novos:**
+
+- `app/routers/dre.py` (+245 LOC) — router + 4 DTOs Pydantic + helper
+  `_carregar_categoria_map` + endpoint `get_dre`
+- `tests/test_dre_endpoint.py` (+489 LOC) — 13 testes de integração
+- `app/main.py` (+7 LOC) — registrar `include(dre_router, "DRE")`
+
+**Highlights técnicos:**
+
+1. **RBAC defesa em profundidade**: `get_empresa_ctx` valida vínculo;
+   além disso `_carregar_categoria_map` filtra por `empresa_id` no SQL;
+   além disso query de `LancamentoCC` filtra por `empresa_id`. Três
+   barreiras.
+2. **`grupo_dre_override or get_grupo_dre(codigo)`** reproduz fielmente
+   o front (`buildCategoriasFromAPI` do `planoContas.ts`).
+3. **Decimal → float seguro**: `Numeric(15,2)` cobre até R$
+   9.999.999.999.999,99 (abaixo do limite de precisão do float64).
+   Motor só faz `abs + soma`, sem mul/div.
+4. **Performance**: query usa `ix_lancamento_empresa_data` (Fase 3C)
+   para o filtro de período + `ix_lancamento_empresa_projeto` para o
+   filtro de projeto.
+5. **Lançamentos com `data_lancamento NULL`** são excluídos quando
+   algum filtro de data está setado (NULL não está em nenhum range).
+
+**Bate exato com oracle S06**: o teste
+`test_dre_filtro_periodo_abril_bate_com_oracle_S06_exato` planta no DB
+SQLite os mesmos 19 lançamentos da fixture S06 (verdade-contábil) e
+valida que o endpoint retorna o DRE idêntico:
+
+| Subtotal | Esperado | Atual |
+|---|---|---|
+| RoB | 150.000 | 150.000 ✅ |
+| TDCF | 20.000 | 20.000 ✅ |
+| RL | 130.000 | 130.000 ✅ |
+| CV | 50.000 | 50.000 ✅ |
+| MC | 80.000 | 80.000 ✅ |
+| CF | 45.000 | 45.000 ✅ |
+| EBT1 | 35.000 | 35.000 ✅ |
+| RES_LIQ | 33.500 | 33.500 ✅ |
+
+Garantia E2E de que a integração (query SQL → motor puro → serialização
+JSON) não introduziu drift contra o oracle homologado.
+
+**Audit Fase 5.C** (worktree isolado, padrão "seq + 1 auditor"):
+
+- **Score**: **94/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/23**
+- Review em
+  [`docs/audit/fase-5c-dre-endpoint/review.md`](audit/fase-5c-dre-endpoint/review.md)
+
+Validações cruzadas pelo auditor:
+- 13/13 endpoint tests verde
+- 265/265 suite full verde
+- 280/283 com integration (3 fails pré-existentes do `xhtml2pdf`,
+  alheios à PR)
+- CI `lint-and-test pass 1m54s`
+- Ruff `app/` clean
+- Sanity: endpoint registrado em `/v1/empresas/{empresa_id}/dre`
+- DTOs Pydantic batem 1:1 com `DRESubtotais.as_dict()` do motor puro
+
+**Follow-ups não-bloqueantes** documentados no review:
+
+- **F-1 [LOW]**: faltou teste 403 cross-tenant via HTTP no endpoint
+  (apenas no helper). `get_empresa_ctx` tem cobertura compartilhada em
+  10+ routers — gap menor.
+- **F-2 [NIT]**: `?projeto_omie_ids=` (string vazia) vira `[""]` →
+  `IN ('')` retorna 0 rows. Defensivo, mas sanitizar é opcional.
+- **F-3 [NIT]**: faltou teste explícito de `data_lancamento NULL`
+  (comportamento correto por inspeção, mas sem cobertura direta).
+
+Triagem em PR dedicado se vierem a ser priorizados.
+
+**Métricas 5.C (PR #91):** 3 arquivos, +741 LOC. Suite 252 → **265** (+13
+testes do endpoint). PR aguardando merge.
+
+### Estado consolidado pós-sessão 2026-05-19
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A-5I (Camada 2.3 + sub-fases) | ✅ | PR #73..#89 |
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| **6.C — Fase 5.C (endpoint GET /v1/empresas/{id}/dre)** | **🟡** | **PR api #91 aguardando merge** |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ⏭️ | Próxima |
+| 6.E — Fase 5.E (agregadores por granularity) | ⏭️ | Paralelo com 5.D |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Após 5.D + 5.E |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak da 5.F |
+
+### Risco residual pós-sessão 2026-05-19
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~24/30 (~80%)** — Fase 5 desbloqueia P1-17 (DRE no front)
+  quando 5.G fechar
+- **Fase 5: 3/7 sub-fases entregues** (5.A, 5.B, 5.C; faltam 5.D..5.G)
+- **% executado por tempo: ~92%** (era ~88% pré-sessão)
+
+### Smoke pós-deploy do PR #91 (5 min)
+
+```bash
+# 1. Sanity: endpoint registrado em prod
+curl -I https://api.grupoalt.agr.br/v1/empresas/1/dre
+# Esperado: 401 (sem auth) -- confirma rota existe
+
+# 2. Com auth: comparar DRE backend vs DRE front
+# Usuario logado no portal: copiar Cookie do navegador
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30" \
+  | jq '.subtotais'
+
+# Comparar com o que aparece em /bi/financeiro/caixa (que ainda usa
+# calcularDRE do front). Devem ser IDENTICOS exceto se a empresa tem
+# overrides especiais que ainda nao foram alinhados.
+```
+
+### Pendências operacionais pós-sessão 2026-05-19
+
+- **PR #91 aguardando merge** (CI verde, audit APPROVE)
+- **Audits dispensados em 5.A+5.B**: documentado como trade-off (oracle =
+  contrato real, código sem alteração de prod)
+- **Follow-ups acumulados de audits anteriores** (não-bloqueantes): 12
+  da sessão 2026-05-18 + 3 da 5.C = 15 itens menores. Triagem dedicada
+  se priorizados.
+
+### Próxima sessão sugerida
+
+**Continuar com Fase 5.D** (cache Redis):
+
+- Cache read-aside na resposta do endpoint
+- TTL 30min (configurável)
+- Invalidação automática quando `sync_service` atualiza
+  `lancamentos_cc` ou `categorias_omie` da empresa
+- Estimativa: 0.5 dia
+
+**Paralelizável: Fase 5.E** (agregadores por granularity):
+
+- `?granularity=total|mensal|trimestral|semanal`
+- SQL `GROUP BY date_trunc(...)` para evitar carregar tudo em Python
+- Estimativa: 1 dia
 
