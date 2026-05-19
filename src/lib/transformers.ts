@@ -6,6 +6,7 @@ import type { ExtratoAPI, SaldoAPI, LancamentoAPI, ConcilMovimentoAPI } from './
 import type { ExtratoLancamento, ContaSaldo } from './mocks/extratoData'
 import type { ContaPagarReceber } from './mocks/cpcrData'
 import type { ConcilEntry } from './mocks/concilData'
+import { formatIsoToBr } from './formatters'
 
 const BANK_COLORS: Record<string, string> = {
   'itau': '#38BDF8',
@@ -51,9 +52,13 @@ function bankName(descricao: string, banco: string | null): string {
 
 // ── Extrato ───────────────────────────────────────────────────
 
+/** P1-2 Camada 2.2b.2: API agora devolve ISO "YYYY-MM-DD" em data_lancamento.
+ *  Convertemos para DD/MM/YYYY no boundary para manter o resto do front
+ *  inalterado (componentes, parseDMY, caixaBuilder, etc).
+ */
 export function transformExtrato(items: ExtratoAPI[], contas: Map<number, string>): ExtratoLancamento[] {
   return items.map((r) => ({
-    data: r.data_lancamento || '',
+    data: formatIsoToBr(r.data_lancamento),
     descricao: r.descricao || '',
     favorecido: r.favorecido || r.descricao || '',
     valor: r.valor,
@@ -80,6 +85,9 @@ export function transformSaldos(items: SaldoAPI[]): ContaSaldo[] {
 
 // ── CP/CR → ContaPagarReceber ─────────────────────────────────
 
+/** P1-2 Camada 2.2b.2: API devolve ISO "YYYY-MM-DD" em data_vcto e
+ *  pagamentos[].data. Convertemos para DD/MM/YYYY no boundary.
+ */
 export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaPagarReceber[] {
   return items.map((l) => ({
     codigo: l.codigo,
@@ -87,14 +95,14 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     valor: l.valor,
     valor_pago: l.valor_pago ?? 0,
     valor_aberto: l.valor_aberto ?? l.saldo,
-    vcto: l.data_vcto || '',
+    vcto: formatIsoToBr(l.data_vcto),
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
     banco: '',
     nf: l.numero_documento || '',
     pa: l.numero_parcela || '',
     pagamentos: (l.pagamentos || []).map((p) => ({
-      data: p.data,
+      data: p.data ? formatIsoToBr(p.data) : null,
       valor: p.valor,
       desconto: p.desconto,
       juros: p.juros,
@@ -105,11 +113,15 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
 
 // ── Conciliação movimentação → ConcilEntry ────────────────────
 
+/** P1-2 Camada 2.2b.2: m.data agora vem como ISO "YYYY-MM-DD" do backend
+ *  (era DD/MM/YYYY). Convertemos para manter shape interno do front.
+ */
 export function transformConcilMovimento(items: ConcilMovimentoAPI[]): Record<string, ConcilEntry> {
   const data: Record<string, ConcilEntry> = {}
   for (const m of items) {
-    data[m.data] = {
-      date: m.data,
+    const dataBr = formatIsoToBr(m.data)
+    data[dataBr] = {
+      date: dataBr,
       extrato: m.extrato,
       saldoBanco: m.saldo_banco,
       dif: m.diferenca,

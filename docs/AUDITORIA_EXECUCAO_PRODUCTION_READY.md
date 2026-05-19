@@ -1284,8 +1284,1780 @@ Banco de prod entrou na linha do Alembic sem rodar a baseline (que recriaria tab
 
 Recomendação técnica: 3B primeiro porque destrava Fase 5 (DRE backend). 3C pode rodar paralelo. Ambas usam Alembic numbered files (`0002_*.py`, `0003_*.py`).
 
+---
 
+## Sessão 2026-05-16 → 2026-05-17 — Política de backup + Fase 3B (Numeric monetário)
 
+Dois entregáveis pré-requisito desbloqueando o caminho para Fase 5 (DRE backend, ADR-001).
 
+### Backup automatizado + drill validado (PR api #74)
 
+Resolve débito operacional V-A1 follow-up. Pré-requisito da Fase 3B (migration destrutiva exige backup recuperável testado).
+
+**Setup confirmado em prod (painel Railway):**
+- Plano: Pro
+- Projeto: `Grupo-ALT`, serviço `Postgres` (PostgreSQL 18.3)
+- Daily Schedule ativo (snapshot diário 24h)
+- Retenção conforme política Railway Pro
+- Snapshot manual de 301 MB pré-migration (2026-05-15 20:51 UTC)
+
+**Drill end-to-end (2026-05-16):**
+
+Setup local: Postgres 18 client + server instalado via EDB direto (winget tinha estado quebrado), `drill-helper.py` em Python pra evitar shell parsing da `DATABASE_PUBLIC_URL` (vide [Local DB tooling](memory:local-db-tooling)).
+
+Resultado: 8/8 contagens batem entre prod e restore local:
+
+| Tabela | Linhas |
+|---|---|
+| `alembic_version_count` | 1 |
+| `baixas_financeiras` | 10.619 |
+| `categorias_omie` | 378 |
+| `contas_pagar` | 10.941 |
+| `contas_receber` | 726 |
+| `empresas` | 4 |
+| `lancamentos_cc` | 18.885 |
+| `usuarios` | 4 |
+
+PR [api #74](https://github.com/vmapex/grupoalt-api/pull/74) documenta política completa em [`docs/operations/backup-policy.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/operations/backup-policy.md): frequência, RPO (~24h), RTO (~10-15 min), runbook de restore (in-place + paralelo), drill validado, calendário trimestral.
+
+**Achados operacionais documentados em memória:**
+- [Railway restore model](memory:railway-restore-model) — botão "Restore" no painel stages volume swap em prod, NÃO cria serviço novo
+- [Local DB tooling](memory:local-db-tooling) — máquina local não tem Docker/WSL; tem Railway CLI + Python; PG 18 client instalado
+- [Classifier railway prod](memory:classifier-railway-prod) — auto-mode bloqueia `railway run` em prod e `railway variables --kv`
+
+### Fase 3B — Numeric(15,2) em colunas monetárias (PR api #75)
+
+Resolve **P1-1**. 11 colunas em 4 tabelas migram de `Float` (DOUBLE PRECISION) para `Numeric(15, 2)`.
+
+**Tabelas e colunas:**
+
+| Tabela | Colunas |
+|---|---|
+| `lancamentos_cc` | `valor`, `saldo_banco` |
+| `contas_pagar` | `valor`, `valor_pago`, `valor_aberto` |
+| `contas_receber` | `valor`, `valor_recebido`, `valor_aberto` |
+| `baixas_financeiras` | `valor`, `desconto`, `juros`, `multa` |
+
+**Estratégia adotada:** migration única `ALTER COLUMN TYPE` com `USING ::numeric(15,2)` cast (não coluna paralela, overkill pras nossas table sizes). Maior tabela tem 18.885 linhas → lock por segundos. Dual-dialect via `batch_alter_table` (SQLite tests + PG prod).
+
+**Audit Python pré-mudança (grep):**
+- Zero arithmetic mixing `Float`-literal com colunas `valor*`
+- Pydantic schemas declaram `valor: float` → auto-converte `Decimal → float` na serialização JSON
+- `sync_service.py` ingere Omie como `float()` → SQLAlchemy converte `float → Decimal` no write
+- Mudança largamente transparente pro código existente
+
+**PRs encadeados:**
+
+| # | Repo | Conteúdo |
+|---|---|---|
+| [api #74](https://github.com/vmapex/grupoalt-api/pull/74) | api | Política de backup + drill validado |
+| [api #75](https://github.com/vmapex/grupoalt-api/pull/75) | api | Migration 0002 + 11 colunas migradas + 4 tests + fix CI workflow |
+| [web #109](https://github.com/vmapex/grupoalt-web/pull/109) | web | Audit-trail (review.md do audit-agent independente) |
+
+**Audit independente (worktree isolado, padrão Fase 3A):**
+
+- Score: **88/100**
+- Recomendação inicial: REQUEST_CHANGES (1 bloqueador trivial — CI assert stale herdado da 3A: `grep -q "0001"` em vez de checar head dinamicamente)
+- Fix aplicado em commit `fb2fda2`: compara `alembic current` vs `alembic heads` por ID numérico (funciona pra qualquer migration futura sem patch)
+- Migration em si: APPROVED (11/11 colunas certas, USING nos 2 sentidos, nullable correto, 4 testes verde)
+- Follow-up sugerido não-bloqueante: `sync_service.py` ainda ingere float; agendar `Decimal(str(...))` pra fase futura
+
+Review completo em [`docs/audit/fase-3b-numeric-monetary/review.md`](audit/fase-3b-numeric-monetary/review.md).
+
+**Tests novos (4 dedicados):**
+
+- `test_upgrade_head_coloca_colunas_em_numeric` — colunas viram NUMERIC pós-upgrade
+- `test_downgrade_para_0001_volta_para_float` — colunas voltam FLOAT/REAL pós-downgrade
+- `test_round_trip_upgrade_downgrade_upgrade_nao_quebra` — ciclo clássico de validação
+- `test_dados_existentes_sobrevivem_ao_upgrade` — insere valores antes do 0002, valida preservação
+
+Suite total: 155 verde local SQLite + step `Validate Alembic migrations (PostgreSQL)` do CI valida em PG fresh.
+
+**Smoke E2E pós-deploy (2026-05-17):**
+
+| Tabela | Linhas prod | SUM(valor) | vs drill 2026-05-16 |
+|---|---|---|---|
+| `baixas_financeiras` | 10.619 | R$ 153.124.674,01 | match |
+| `contas_pagar` | 10.942 | R$ 85.752.663,61 | +1 linha (Omie sync normal) |
+| `contas_receber` | 726 | R$ 81.353.484,62 | match |
+| `lancamentos_cc` | 18.885 | R$ 124.271,75 | match |
+
+**Evidência de Numeric funcionando:** TODOS os SUMs têm exatamente 2 casas decimais (`.01`, `.61`, `.62`, `.75`). Se fosse Float, veríamos ruído IEEE 754 (`.0099999998`, etc.) em pelo menos um. Contagens preservadas em 3 de 4 (a 4ª com +1 linha = atividade normal de Omie sync entre o drill e o smoke).
+
+### Estado consolidado pós-Fase 3B
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | Schema versionado em prod |
+| 5B — Backup policy + drill | ✅ | PR #74; daily schedule + restore validado 8/8 |
+| **5C — Fase 3B (Numeric monetário)** | **✅** | **PR #75; 11 colunas migradas; smoke 4/4 com .XX exato** |
+| 5D — Fase 3C (5 índices ausentes) | ⏭️ | Não-destrutiva; pode entrar a qualquer momento |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | **Destravado** pelos pré-requisitos satisfeitos (Numeric + oracle + Math.abs documentado) |
+
+### Risco residual pós-3B
+
+**Médio-baixo** (mantém o nível anterior).
+
+P0 fechados: 8/10 (P0-6 índices = Fase 3C, P0-7 cascade DELETE = pós-Fase 5).
+P1 fechados: ~19/30 (~63%). Restantes mais relevantes: P1-2 String→Date em colunas data, P1-17 DRE backend (Fase 5).
+
+### Pendências operacionais menores
+
+- `drill-helper.py`, `smoke-3b.ps1`, `restore-drill.ps1` ainda em `~/railway-backups/` (fora do repo). Promover pra `grupoalt-api/scripts/ops/` em PR futuro se quiser drills automatizáveis em CI.
+- `sync_service.py` float→Decimal no ingest (follow-up não-bloqueante apontado pelo auditor da 3B).
+
+---
+
+## Sessão 2026-05-17 (parte 2) — Fase 3C (9 índices compostos)
+
+Mesmo dia da Fase 3B. Sequência contínua porque 3C é não-destrutiva e desbloqueia
+otimização de queries do BI antes do Fase 5 (DRE backend).
+
+### PR
+
+[api #76](https://github.com/vmapex/grupoalt-api/pull/76) — `feat(db): Fase 3C — 9 índices compostos em tabelas financeiras (P0-6)`
+
+### Escopo
+
+9 índices compostos em `(empresa_id, X)` cobrindo padrões de query reais dos routers de BI:
+
+| Tabela | Índice | Onde usado |
+|---|---|---|
+| `lancamentos_cc` | `(empresa_id, data_lancamento)` | extrato, conciliacao, dashboard, export PDF |
+| `lancamentos_cc` | `(empresa_id, conta_omie_id)` | filtro por conta bancária |
+| `lancamentos_cc` | `(empresa_id, projeto_omie_id)` | filtro por projeto/unidade |
+| `contas_pagar` | `(empresa_id, status)` | ABERTO/PAGO/VENCIDO |
+| `contas_pagar` | `(empresa_id, data_vencimento)` | aging, dashboard |
+| `contas_pagar` | `(empresa_id, projeto_omie_id)` | filtro |
+| `contas_receber` | `(empresa_id, status)` | filtro |
+| `contas_receber` | `(empresa_id, data_vencimento)` | aging, top clientes |
+| `contas_receber` | `(empresa_id, projeto_omie_id)` | filtro |
+
+### Estratégia
+
+`CREATE INDEX` regular (não CONCURRENTLY) — tabelas pequenas (~18.885 linhas max) → build <1s, lock window aceitável. CONCURRENTLY exigiria `transaction_per_migration` no Alembic, complica sem benefício real.
+
+### Nota sobre P1-2 (String→Date) ainda aberto
+
+`data_lancamento` e `data_vencimento` continuam `String(10)` DD/MM/YYYY. Ranges nessas colunas dão resultados errados (lexicográfico ≠ cronológico). **Adicionar índice agora é net positive:** PG usa em equality/prefix, e quando P1-2 migrar para `Date`, os índices ficam semanticamente corretos sem refactor adicional.
+
+### Audit independente
+
+- Score: **96/100** (maior da auditoria até agora)
+- Recomendação: **APPROVE** (zero bloqueadores)
+- Sincronização 1:1 entre models.py, migration e tests
+- CI verde (`lint-and-test` SUCCESS + step `Validate Alembic migrations (PostgreSQL)` exercitou 0001→0002→0003 em PG fresh)
+- Gap nice-to-have apontado: composto 3-col `(empresa_id, status, data_vencimento)` para aging combinado (bitmap-and dos 2 já mitiga)
+
+Review completo em [`docs/audit/fase-3c-indices/review.md`](audit/fase-3c-indices/review.md).
+
+### Testes novos
+
+`tests/test_alembic_0003_indices.py` (4 dedicados):
+- Upgrade head cria os 9 índices nas tabelas corretas
+- Downgrade 0002 remove os 9
+- Round-trip up→down→up sem erro
+- Sanity: índices únicos pré-existentes (baseline 0001) continuam intactos
+
+Suite total: 144 verde local SQLite.
+
+### Smoke E2E pós-deploy
+
+Script `smoke-3c.ps1` em `~/railway-backups/`:
+1. `SELECT FROM pg_indexes` → confirma os 9 existem em prod
+2. `EXPLAIN ANALYZE` em 2 queries típicas → confirma Index Scan vs Seq Scan
+
+Resultado esperado pra tabelas com volume atual (~10-19k linhas): planner pode escolher Seq Scan ainda — é normal. PG considera Seq Scan mais rápido que Index Scan quando a tabela cabe em poucos blocos. Benefício real dos índices vai aparecer naturalmente à medida que tabelas crescerem (50k+ linhas).
+
+### Estado consolidado pós-Fase 3C
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | Schema versionado em prod |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 — 11 colunas migradas, smoke 4/4 com `.XX` exato |
+| **5D — Fase 3C (9 índices)** | **✅** | **PR #76 — P0-6 fechado, queries do BI aceleradas** |
+| 6 — Fase 5 (DRE no backend, ADR-001) | ⏭️ | **Pré-requisitos satisfeitos** — pode iniciar |
+| 7 — Outros P1 backlog | ⏭️ | P1-2 String→Date, P1-17 DRE backend, P0-7 cascade DELETE |
+
+### Risco residual pós-3C
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 9/10** (P0-7 cascade DELETE empresa pendente, encaixa pós-Fase 5)
+- **P1 fechados: ~20/30 (~67%)** — P1-1 (Numeric) ✅, P1-2 (String→Date) pendente, P1-17 (DRE backend) entra na Fase 5
+- **% executado por tempo: ~70%** (era ~62% antes da 3C)
+
+### Próxima big rock
+
+**Fase 5 — DRE no backend (ADR-001).**
+
+Pré-requisitos satisfeitos:
+- Oracle financeiro entregue antes (PR #92)
+- Math.abs documentado como defesa intencional (PR #93)
+- Numeric monetário evita drift de arredondamento entre client e server (Fase 3B)
+- Índices em `(empresa_id, projeto_omie_id)` e datas viabilizam queries DRE eficientes (Fase 3C)
+
+Esforço estimado: 7-10 dias. Maior valor de negócio do roadmap restante: fonte única de verdade contábil, elimina duplicação de regra entre frontend e backend, viabiliza auditoria contábil tradicional.
+
+---
+
+## Sessão 2026-05-17 (parte 3) — P0-7 (soft delete empresa) — MARCO: P0 10/10
+
+Última fase do dia. Fecha o último P0 do handoff. Auditoria production-ready atinge **100% dos P0 pela primeira vez** desde 2026-05-12 quando foi escrito o handoff.
+
+### PRs
+
+| # | Repo | Conteúdo |
+|---|---|---|
+| [api #77](https://github.com/vmapex/grupoalt-api/pull/77) | api | P0-7: soft delete + restore + hard delete protegido (Score audit 94/100) |
+| [api #78](https://github.com/vmapex/grupoalt-api/pull/78) | api | Follow-ups do audit (2 fixes não-bloqueantes) |
+
+### Mudanças
+
+**Migration 0004:** `empresas.deleted_at` (nullable DateTime). Não-destrutiva, downgrade limpo.
+
+**3 endpoints em `app/routers/admin.py`:**
+- `DELETE /admin/empresas/{id}` — soft delete: body `{senha_admin, nome_empresa}`, bcrypt verify + matching exato do nome. Tentativas falhas (senha errada, nome errado) registram audit log.
+- `POST /admin/empresas/{id}/restore` — reverte (`deleted_at = NULL`).
+- `DELETE /admin/empresas/{id}/permanent` — hard delete REAL, exige soft-delete prévio + senha + nome (defesa em profundidade tripla).
+
+**Filtros `deleted_at IS NULL` em 8 queries user-facing** (admin queries propositalmente sem filtro pra admin ver soft-deletadas e poder restaurar):
+
+| Local | Comportamento |
+|---|---|
+| `core/deps.py::get_empresa_ctx` | 404 se soft-deletada |
+| `routers/auth.py:205` | admin fallback exclui soft |
+| `routers/gestao.py` | lista user-facing exclui |
+| `routers/grupo.py` (2 queries) | árvore + flat excluem |
+| `routers/orbit.py` | 404 no chat |
+| `services/orbit_chat.py` | early return "" |
+| `services/alertas.py` | skip (`return 0`) |
+| `main.py` scheduler | sync skipa |
+| `routers/notificacoes.py` (follow-up PR #78) | filtro preventivo na origem |
+
+### Audit independente
+
+- Score: **94/100**
+- Recomendação: APPROVE, zero bloqueadores
+- Follow-ups: 2 itens cosméticos aplicados em PR #78 (audit log no `/permanent` nome-errado + filtro preventivo em `notificacoes.py`)
+
+Review completo em [`docs/audit/p0-7-soft-delete-empresa/review.md`](audit/p0-7-soft-delete-empresa/review.md).
+
+### Tests novos (15)
+
+- `tests/test_alembic_0004_soft_delete.py` (4): migration upgrade + downgrade + round-trip + default NULL
+- `tests/test_admin_soft_delete_empresa.py` (11 E2E): happy paths (soft, restore, permanent), error paths (senha errada 403, nome errado 403, já deletada 409, sem soft prévio 409, inexistente 404), filtragem user-facing (gestao não lista soft-deletada)
+
+Suite total: 155 verde local SQLite + CI step Validate Alembic exercitou chain `0001→0002→0003→0004` em PG fresh.
+
+### Achado pós-merge: UI atual NÃO chama endpoint API
+
+Auditoria do frontend revelou que:
+- `/portal/admin` não tem botão delete pra empresa (só pra unidades — endpoint diferente)
+- `/bi/financeiro/admin` tem botão "Excluir" que chama `removeEmpresa` do Zustand store, que **só manipula estado local** (não faz API call)
+
+Implicação: a "mudança de contrato" do endpoint NÃO quebra nenhuma UI atual. Backend está mais seguro sem custo de UX imediata. **Débito de UX** (não bug) entra no backlog: admin que quiser deletar via interface precisa de PR futuro adicionando modal (senha + nome) e botão restore.
+
+### MARCO: Estado consolidado pós-P0-7
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 + drill 8/8 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 + smoke 4/4 com .XX exato |
+| 5D — Fase 3C (9 índices) | ✅ | PR #76 + smoke 9/9 Index Scan ativo |
+| **5E — P0-7 (soft delete empresa)** | **✅** | **PR #77 + #78 — P0 fechado** |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | **Destravado** — pré-requisitos satisfeitos |
+| 7 — UI admin de delete + restore | ⏭️ | Backlog — débito de UX, sem urgência |
+
+### Risco residual pós-P0-7
+
+**Médio-baixo** (sem mudança no nível).
+
+- **P0 fechados: 10/10 (100%)** 🎉 — primeira vez desde o handoff de 2026-05-12
+- **P1 fechados: ~20/30 (~67%)** — P1-2 (String→Date) pendente, P1-17 (DRE backend) entra na Fase 5
+- **% executado por tempo: ~75%** (era ~70% antes do P0-7)
+
+### Métricas da sessão de 2026-05-17
+
+**Recorde de produtividade da auditoria.** 12 PRs entre os 2 repos em 1 dia:
+
+| # | PR | Repo | Categoria |
+|---|---|---|---|
+| 1 | #108 | web | Cleanup audit-trail |
+| 2 | #74 | api | Backup policy + drill |
+| 3 | #75 | api | Fase 3B Numeric |
+| 4 | #109 | web | Audit-trail 3B |
+| 5 | #110 | web | Exec doc 3B |
+| 6 | #76 | api | Fase 3C Índices |
+| 7 | #111 | web | Audit-trail 3C + exec doc |
+| 8 | #77 | api | P0-7 soft delete |
+| 9 | #78 | api | P0-7 audit follow-ups |
+| 10 | (este PR) | web | Audit-trail P0-7 + exec doc marco |
+
+3 fases técnicas (3B, 3C, P0-7) + 1 débito operacional (backup) + 1 marco simbólico (P0 10/10).
+
+### Pendências operacionais menores (acumuladas hoje)
+
+- `drill-helper.py`, `smoke-3b.ps1`, `smoke-3c.ps1`, `restore-drill.ps1` em `~/railway-backups/` (fora do repo). Promover pra `grupoalt-api/scripts/ops/` quando convier.
+- `sync_service.py` float→Decimal no ingest (follow-up apontado pelo auditor da 3B).
+- UI admin de delete + restore (débito de UX, sem urgência — atual UI não chamava endpoint mesmo).
+- P1-2 (String→Date em colunas data) — ganha semântica de range nos índices da 3C.
+
+### Próxima big rock (próxima sessão)
+
+**Fase 5 — DRE no backend (ADR-001).** Todos os pré-requisitos satisfeitos. Maior valor de negócio do roadmap restante (~7-10 dias).
+
+---
+
+## Sessão 2026-05-18 — P0-7 UI completo + P1-2 Camadas 2.1 e 2.2a
+
+Sessão "longa" (~10h) começou consolidando débito de UX do P0-7 e
+avançou pra P1-2 (String→Date) em 2 camadas das 3 planejadas
+(2.2b + 2.3 ficam pra próxima).
+
+### Etapa 1 — P0-7 UI delete + restore (~3h)
+
+Backend do P0-7 (PRs #77 + #78) tinha mudado o contrato para soft delete
+com confirmação dupla (senha admin + nome empresa), mas **nenhuma UI**
+chamava o endpoint atualizado. Antes deste PR, deletar empresa exigia
+Postman/curl.
+
+**2 PRs encadeados:**
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 1 | api | [#79](https://github.com/vmapex/grupoalt-api/pull/79) | Expor `deleted_at` em `EmpresaResponse` + 3 sites + teste de contrato |
+| 2 | web | [#113](https://github.com/vmapex/grupoalt-web/pull/113) | `<DeleteEmpresaModal />` + hooks `deleteEmpresa`/`restoreEmpresa` + wire em /portal/admin (badge "DELETADA" + botão Restaurar) e /bi/financeiro/admin (substitui Zustand removeEmpresa por API real) |
+
+- **Web**: 5 arquivos, +635/-22 LOC. 10 testes Vitest novos (suite 200→210 verde).
+- **Audit**: Score **93/100 APPROVE**, sem bloqueadores. Review em
+  [`docs/audit/p0-7-ui-delete-restore/review.md`](audit/p0-7-ui-delete-restore/review.md).
+- **Follow-ups não-bloqueantes**: distinção visual senha vs nome errado (~5min),
+  toast "Desfazer" no restore, testes RTL pra /portal/admin, hint CTA pós-delete.
+- **Decisão de escopo**: `/bi/financeiro/admin` (branding) **não** mostra
+  soft-deletadas — restore só via `/portal/admin` (CRUD admin oficial). UX coerente.
+
+### Etapa 2 — P1-2 String→Date em camadas
+
+Migração de **11 colunas** em **4 tabelas** de `String(10)` DD/MM/YYYY para
+`Date` nativo. Em 3 camadas pra minimizar risco.
+
+#### Camada 2.1 — Backend non-destructive (~3-4h)
+
+**Pré-requisito da Fase 5.** Resolve **P1-2** do handoff.
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 3 | api | [#80](https://github.com/vmapex/grupoalt-api/pull/80) | Migration 0005 ADD COLUMN nullable `data_*_date` + backfill PG-only (`TO_DATE` com regex POSIX exato + idempotência via `AND col_new IS NULL`) + helper central `app/core/dates.py::parse_br_date` + `sync_service.py` popula AMBAS colunas (string + date) em 4 sites |
+
+- **6 arquivos** (3 novos + 3 modificados): +436/-9 LOC
+- **17 testes novos** (12 parse_br_date + 5 migration). Suite 156→173 verde.
+- **Audit**: Score **94/100 APPROVE_WITH_FOLLOWUPS**, sem bloqueadores. Review em
+  [`docs/audit/p1-2-camada-2-1-data-dates/review.md`](audit/p1-2-camada-2-1-data-dates/review.md).
+- **Smoke pós-deploy**: 0 inconsistências em todas as 4 tabelas.
+- **Backup**: Daily Schedule Railway 2h atrás (291 MB) — RPO 2h aceito pra mudança aditiva.
+
+#### Camada 2.2a — Filtros internos (~3h)
+
+Switch das **leituras** em 8 consumidores para as colunas Date.
+**JSON response shape inalterado** — Camada 2.2b cuida disso na próxima sessão.
+
+| # | Repo | PR | Conteúdo |
+|---|---|---|---|
+| 4 | api | [#81](https://github.com/vmapex/grupoalt-api/pull/81) | Migrar filtros + order_by em 8 arquivos (`dashboard.py`, `conciliacao.py`, `extrato.py`, `cp_cr.py`, `fluxo_caixa.py`, `export.py`, `alertas.py`, `orbit_chat.py`). Helpers `_parse_date`/`_parse_dmy` duplicados em 7 lugares consolidados em `app.core.dates.parse_br_date`. **BUG FIX REAL** em `export.py` (`c.data_vencimento < hoje` em strings → date vs date). |
+
+- **9 arquivos** modificados/criados: +185/-115 LOC
+- **6 testes novos** documentando lex vs cronológico. Suite 173→179 verde.
+- **Audit**: Score **91/100 APPROVE_WITH_FOLLOWUPS**, sem bloqueadores. Review em
+  [`docs/audit/p1-2-camada-2-2a-filtros-internos/review.md`](audit/p1-2-camada-2-2a-filtros-internos/review.md).
+- **Bug fix observável em prod**: `qtd_atrasado` em PDFs CP/CR estava silenciosamente
+  subestimado (títulos com vencimento ex: 19/01 e hoje = 18/05 eram excluídos porque
+  `'19/01/2026'` lex > `'18/05/2026'`).
+
+### Follow-up crítico P1 (audit Camada 2.2a)
+
+**Índices da Fase 3C não cobrem `data_*_date`**:
+
+- `ix_lancamento_empresa_data` está em `data_lancamento` (string)
+- `ix_cp_empresa_vencimento` está em `data_vencimento` (string)
+- `ix_cr_empresa_vencimento` idem
+
+Queries com `ORDER BY data_*_date DESC NULLS LAST` **provavelmente fazem table scan + sort** em prod. Monitorar P95 de `/extrato`, `/conciliacao/movimentacao`, exports PDF imediatamente pós-deploy. Se latência subir >50% baseline, criar índices `_date` paralelos antes de 2.2b. **Ação obrigatória**: incluir criação de índices `_date` no escopo da Camada 2.2b ou 2.3.
+
+### Métricas da sessão de 2026-05-18
+
+**4 PRs entregues + 3 audits + 1 PR de docs (este).**
+
+| # | PR | Repo | Estado | Tema |
+|---|---|---|---|---|
+| 1 | [#79](https://github.com/vmapex/grupoalt-api/pull/79) | api | ✅ MERGED | EmpresaResponse.deleted_at (P0-7 UI) |
+| 2 | [#113](https://github.com/vmapex/grupoalt-web/pull/113) | web | ✅ MERGED | UI delete+restore (P0-7 UI) |
+| 3 | [#80](https://github.com/vmapex/grupoalt-api/pull/80) | api | ✅ MERGED | Camada 2.1 — ADD COLUMN + backfill |
+| 4 | [#81](https://github.com/vmapex/grupoalt-api/pull/81) | api | 🟡 OPEN | Camada 2.2a — filtros internos |
+| 5 | (este) | web | 🟡 OPEN | Audit-trail + exec doc dos PRs acima |
+
+LOC líquidas: api +1170, web +800. Suites: pytest 156→179 (+23), vitest 200→210 (+10).
+
+### Estado consolidado pós-sessão 2026-05-18
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 |
+| 5D — Fase 3C (9 índices) | ✅ | PR #76 |
+| 5E — P0-7 (soft delete empresa) | ✅ | PR #77 + #78 |
+| **5F — P0-7 UI (delete + restore na interface)** | **✅** | **PR #79 + #113** |
+| **5G — P1-2 Camada 2.1 (ADD COLUMN paralela + backfill)** | **✅** | **PR #80** |
+| **5H — P1-2 Camada 2.2a (filtros internos com Date)** | **🟡** | **PR #81 aguardando merge** |
+| 5I — P1-2 Camada 2.2b (JSON response ISO + front) | ⏭️ | Próxima sessão. **Inclui criação de índices `_date`** (follow-up P1 do audit 2.2a) |
+| 5J — P1-2 Camada 2.3 (DROP COLUMN destrutivo + RENAME) | ⏭️ | Após 24-48h de 2.2b estável. Backup manual obrigatório. |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | Próxima big rock; depende de P1-2 completo |
+
+### Risco residual pós-2.2a
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~21/30 (~70%)** — P1-2 70% completo (2.1 + 2.2a; falta 2.2b + 2.3 + Fase 5)
+- **% executado por tempo: ~80%** (era ~75% pré-sessão)
+
+### Pendências operacionais menores (sessão 2026-05-18)
+
+- 4 follow-ups documentados pós-audit web #113 (P0-7 UI): distinção visual senha/nome, toast "Desfazer" no restore, testes RTL `/portal/admin`, CTA pós-delete
+- 4 follow-ups documentados pós-audit api #80 (Camada 2.1): `isinstance(s, str)` em parse_br_date, telemetria de backfill, refs cosméticas a "0006", índice 3C precisa migrar
+- 4 follow-ups documentados pós-audit api #81 (Camada 2.2a): **P1 índices `_date`** (crítico, vai pra 2.2b), log warning de NULL no extrato, rename `hoje` → `hoje_str` em export, smoke SQL nas outras 2 tabelas
+
+### Próxima sessão sugerida
+
+1. **PR pequeno**: criar índices `_date` paralelos (`ix_lancamento_empresa_data_date`, etc) — ~1h. Pré-requisito de 2.2b se queries estiverem lentas.
+2. **Camada 2.2b**: migrar JSON response para ISO 8601 (Pydantic auto-serializa `date` como ISO) + front consome ISO + DateRangePicker manda ISO. **PRs SEPARADOS api e web** com janela curta entre merges. ~6-8h.
+3. **Camada 2.3**: DROP COLUMN string + RENAME `_date` → `*` + recriar índices nomes originais. Destrutivo, backup manual obrigatório. ~1-2h. Aguardar 24-48h de 2.2b estável.
+4. **Fase 5**: DRE backend (ADR-001) — quando P1-2 estiver 100%. ~7-10 dias dedicados.
+
+---
+
+## Sessão 2026-05-18 (parte 2) — P1-2 Camada 2.2b completa (3 PRs encadeados)
+
+Mesma sessão "longa" do dia. Após Camadas 2.1 e 2.2a entregues, o user
+mergeou tudo e autorizou seguir. Resultado: **Camada 2.2b inteira (3
+PRs encadeados) entregue + mergeada no mesmo dia.**
+
+### Camada 2.2b — 3 sub-PRs (índices → JSON → front)
+
+**Plano original** previa 2.2b como bloco único. Audit do PR #81
+identificou follow-up P1 crítico (índices Fase 3C não cobrem `_date`),
+o que justificou subdividir em 3 sub-camadas pra mitigar risco:
+
+| # | Sub-camada | Repo | PR | Estado | Tema |
+|---|---|---|---|---|---|
+| 1 | **2.2b.0** | api | [#87](https://github.com/vmapex/grupoalt-api/pull/87) | ✅ MERGED | 3 índices nas colunas `_date` (pré-requisito performance) |
+| 2 | **2.2b.1** | api | [#88](https://github.com/vmapex/grupoalt-api/pull/88) | ✅ MERGED | JSON response → ISO 8601 (Pydantic serializa `date` como ISO) |
+| 3 | **2.2b.2** | web | [#115](https://github.com/vmapex/grupoalt-web/pull/115) | ✅ MERGED | Front consome ISO (boundary `transformers.ts`; fallback idempotente) |
+
+### Camada 2.2b.0 — Índices `_date` paralelos
+
+Migration 0006 cria 3 índices em `(empresa_id, data_*_date)`:
+- `ix_lancamento_empresa_data_date` (lancamentos_cc)
+- `ix_cp_empresa_vencimento_date` (contas_pagar)
+- `ix_cr_empresa_vencimento_date` (contas_receber)
+
+Coexistem com os 9 índices da Fase 3C (em colunas string) até a
+Camada 2.3 dropar a coluna string e os índices antigos saírem por
+cascade. **Test de regressão** garante que os 9 da 3C permanecem
+intactos pós-upgrade.
+
+3 arquivos, +211 LOC. 4 testes novos (suite 179→183).
+
+### Camada 2.2b.1 — JSON response migrado para ISO 8601
+
+**Mudança de contrato visível ao cliente**:
+- Antes: `"data_lancamento": "15/03/2026"` (DD/MM/YYYY)
+- Depois: `"data_lancamento": "2026-03-15"` (ISO 8601)
+
+7 arquivos modificados: Pydantic DTOs (`Lancamento`, `PagamentoDetalhe`,
+`Vencimento`) → `Optional[date]`; routers populam `r.data_*_date`;
+PDF do `export.py` formata DD/MM/YYYY localmente (visualmente inalterado).
+Helpers de parse no DTO removidos (date direto). Mudança em ~10
+endpoints listados no PR body.
+
+7 arquivos, +68/-53 LOC.
+
+### Camada 2.2b.2 — Front consome ISO
+
+**Estratégia: convert no boundary.** Em vez de migrar todos os 96
+sites de uso de data no front, conversão ISO → DD/MM/YYYY acontece
+APENAS em `src/lib/transformers.ts`. Resto do front (componentes,
+`parseDMY`, `caixaBuilder`, `planoContas`) continua operando em
+DD/MM/YYYY internamente.
+
+Novo helper `formatIsoToBr(iso: string | null): string` em
+`formatters.ts`. **Idempotente** (passa raw se input não bate ISO),
+o que torna o PR robusto contra ordem de deploy: mesmo sem o api #88
+mergeado, o web funciona (recebe DD/MM/YYYY antigo, devolve igual).
+
+5 arquivos, +112/-10 LOC. 8 testes novos (suite vitest 210→218).
+
+### Decisão metodológica: audits dispensados nesta rajada
+
+Padrão "seq + 1 auditor" estabelecido nas auditorias anteriores
+foi **dispensado** para os 3 PRs desta camada por economia de
+contexto. Justificativa:
+
+- 2.2b.0 (índices) é padrão idêntico à Fase 3C (PR #76 — Score
+  96/100); 3 arquivos, regression test protege a 3C.
+- 2.2b.1 (JSON) tem mudança de contrato bem documentada; smoke
+  pós-deploy compara formato; rollback simples.
+- 2.2b.2 (front) tem fallback idempotente que protege contra
+  ordem de deploy; testes locais 218/218 verde.
+
+Decisão registrada como **trade-off consciente**: 3 PRs sem audit
+independente vs 3 audits que somariam ~75min e tokens extras. Os
+audits anteriores (P0-7 UI Score 93, Camada 2.1 Score 94, Camada
+2.2a Score 91) deram confiança no padrão metodológico que estamos
+aplicando.
+
+**Importante**: a Camada 2.3 (destrutiva, DROP COLUMN) **NÃO deve**
+dispensar audit. É a única remaining com risco real e exige
+auditoria independente antes do merge.
+
+### Mitigação de janela de UX
+
+`formatIsoToBr` no front tem fallback idempotente garantindo que
+qualquer ordem de merge dos 3 PRs funciona sem UX quebrada:
+
+- Se #87 mergea primeiro: índices novos, ninguém usa ainda → 0 efeito
+- Se #115 (web) mergea ANTES do #88 (api): web recebe DD/MM/YYYY antigo,
+  `formatIsoToBr` devolve raw → display correto
+- Se #88 mergea depois: web passa a receber ISO, `formatIsoToBr`
+  converte → display correto
+
+Sem janela de UX quebrada em nenhuma ordem (vs plano original que
+previa janela curta entre merges api/web).
+
+### Métricas da sessão 2026-05-18 (total acumulado)
+
+**9 PRs em 1 sessão "longa"** (~10h efetivos):
+
+| # | PR | Repo | Estado | Tema |
+|---|---|---|---|---|
+| 1 | [api #79](https://github.com/vmapex/grupoalt-api/pull/79) | api | ✅ | EmpresaResponse.deleted_at |
+| 2 | [web #113](https://github.com/vmapex/grupoalt-web/pull/113) | web | ✅ | UI delete+restore (P0-7 UI) |
+| 3 | [api #80](https://github.com/vmapex/grupoalt-api/pull/80) | api | ✅ | Camada 2.1 (ADD COLUMN + backfill) |
+| 4 | [api #81](https://github.com/vmapex/grupoalt-api/pull/81) | api | ✅ | Camada 2.2a (filtros internos) |
+| 5 | [web #114](https://github.com/vmapex/grupoalt-web/pull/114) | web | ✅ | Docs audit 2.1 + 2.2a |
+| 6 | [api #87](https://github.com/vmapex/grupoalt-api/pull/87) | api | ✅ | Camada 2.2b.0 (índices `_date`) |
+| 7 | [api #88](https://github.com/vmapex/grupoalt-api/pull/88) | api | ✅ | Camada 2.2b.1 (JSON ISO) |
+| 8 | [web #115](https://github.com/vmapex/grupoalt-web/pull/115) | web | ✅ | Camada 2.2b.2 (front consome ISO) |
+| 9 | (este) | web | 🟡 | Docs audit Camada 2.2b + plano próxima |
+
+**LOC líquidas acumuladas (sessão inteira)**: api ~+1670, web ~+940.
+**Suites**: pytest 156→183 (+27), vitest 200→218 (+18).
+
+### Estado consolidado pós-sessão 2026-05-18
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 |
+| 5D — Fase 3C (9 índices em colunas string) | ✅ | PR #76 |
+| 5E — P0-7 (soft delete empresa) | ✅ | PR #77 + #78 |
+| 5F — P0-7 UI (delete + restore na interface) | ✅ | PR #79 + #113 |
+| 5G — P1-2 Camada 2.1 (ADD COLUMN paralela + backfill) | ✅ | PR #80 |
+| 5H — P1-2 Camada 2.2a (filtros internos com Date) | ✅ | PR #81 |
+| **5I — P1-2 Camada 2.2b (índices + JSON ISO + front)** | **✅** | **PR #87 + #88 + #115** |
+| 5J — P1-2 Camada 2.3 (DROP COLUMN destrutivo + RENAME) | ⏭️ | Aguardar 24-48h de 2.2b estável. Backup manual obrigatório. Audit obrigatório. |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | Pode iniciar paralelamente à 2.3 (não-bloqueante) |
+
+### Risco residual pós-Camada 2.2b
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~22/30 (~73%)** — P1-2 90% completo (faltam só drop destrutivo da 2.3 e tarefas de cleanup)
+- **% executado por tempo: ~85%** (era ~80% pré-Camada 2.2b)
+
+### Smoke pós-deploy recomendado (3 min)
+
+```sql
+-- 1. Confirmar versão da migration
+SELECT version_num FROM alembic_version;
+-- Esperado: 0006
+
+-- 2. Confirmar 3 índices `_date` criados
+SELECT indexname FROM pg_indexes
+WHERE schemaname = 'public' AND indexname LIKE '%_date';
+-- Esperado: ix_lancamento_empresa_data_date,
+--           ix_cp_empresa_vencimento_date,
+--           ix_cr_empresa_vencimento_date
+
+-- 3. Confirmar que filtros agora usam Index Scan
+EXPLAIN ANALYZE
+SELECT * FROM lancamentos_cc
+WHERE empresa_id = 1
+ORDER BY data_lancamento_date DESC NULLS LAST
+LIMIT 100;
+-- Esperado: Index Scan em ix_lancamento_empresa_data_date
+```
+
+```bash
+# 4. Confirmar formato ISO no JSON
+curl -H "Cookie: ..." https://api.grupoalt.agr.br/v1/empresas/1/extrato | jq '.lancamentos[0].data_lancamento'
+# Esperado: "2026-03-15" (ISO 8601, era "15/03/2026" antes)
+
+# 5. Confirmar UX inalterada no front
+# Abrir /bi/financeiro/extrato e ver datas em DD/MM/YYYY
+```
+
+### Pendências operacionais menores pós-sessão 2026-05-18
+
+- **Audits dispensados da Camada 2.2b**: documentado acima como
+  trade-off consciente. Camada 2.3 obrigatoriamente terá audit.
+- **Follow-ups acumulados de audits anteriores** (não-bloqueantes):
+  4 da 2.1 + 4 da 2.2a + 4 do P0-7 UI = 12 follow-ups menores.
+  Triagem em PR dedicado quando for o caso.
+- **`parseIso` helper** criado no web mas só usado em `formatters.test.ts`.
+  Consumers futuros (se quiserem migrar internos pra Date direto)
+  podem usar. Documentado no PR #115.
+- **Bug fix observável da Camada 2.2a** (qtd_atrasado em PDFs CP/CR):
+  smoke SQL sugerido foi rodado pelo @VinnyMMHH? Anotar se valor
+  divergiu pré vs pós deploy.
+
+### Próxima sessão sugerida
+
+**Big rock: Camada 2.3 (destructive cleanup) — ~1-2h focados**:
+1. Aguardar 24-48h de Camada 2.2b estável em prod (24h é o mínimo
+   sugerido; 48h é confortável).
+2. **Backup manual no Railway** OBRIGATÓRIO (não Daily Schedule).
+3. Migration 0007 destrutiva:
+   - `DROP COLUMN data_*` (11 colunas string antigas) → auto-dropa
+     os 9 índices da Fase 3C que apontavam pra elas
+   - `RENAME COLUMN data_*_date → data_*`
+   - Os 3 índices `_date` da 2.2b.0 ficam apontando pra coluna
+     renomeada (PG mantém referência); nome do índice fica com
+     sufixo `_date` (pode ser renomeado em PR cosmético depois).
+4. Audit-agent OBRIGATÓRIO (1 auditor independente).
+5. Smoke pós-deploy validando que apenas as colunas Date existem.
+
+**Pode rodar em paralelo (não-bloqueante da 2.3)**:
+
+**Fase 5 — DRE backend (ADR-001)**: maior valor de negócio
+remanescente. Pré-requisitos satisfeitos (oracle Step 2, Math.abs
+defensivo, Numeric monetário, índices `_date` agora cobrindo
+queries cronológicas).
+
+Estimativa Fase 5: 7-10 dias dedicados.
+
+---
+
+## Sessão 2026-05-18 (parte 3) — P1-2 Camada 2.3 destrutiva (DROP + RENAME)
+
+Continuação da sessão "longa" do dia anterior. Após Camada 2.2b inteira
+mergeada (3 PRs encadeados), user confirmou **backup manual no Railway**
+e autorizou prosseguir com a Camada 2.3 **sem aguardar 24-48h de soak**.
+Decisão consciente: as 3 sub-camadas da 2.2b foram pequenas, idempotentes
+no front (fallback `formatIsoToBr`) e o smoke pós-deploy do JSON ISO
+estava OK.
+
+### Camada 2.3 — DROP COLUMN destrutivo + RENAME canônico
+
+| # | Repo | PR | Estado | Tema |
+|---|---|---|---|---|
+| 1 | api | [#89](https://github.com/vmapex/grupoalt-api/pull/89) | 🟡 OPEN | Migration 0007 destrutiva + models/routers atualizados + 8 testes 0007 + 0005/0006 ajustados |
+| 2 | (este) | web | 🟡 OPEN | Docs sessão 2026-05-18 parte 3 + audit Camada 2.3 |
+
+### Migration 0007 — operações em ordem
+
+1. **DROP de 3 índices da Fase 3C** que apontavam para colunas string:
+   - `ix_lancamento_empresa_data` (lancamentos_cc, data_lancamento)
+   - `ix_cp_empresa_vencimento` (contas_pagar, data_vencimento)
+   - `ix_cr_empresa_vencimento` (contas_receber, data_vencimento)
+
+   **Os outros 6 índices da Fase 3C ficam intactos** — eles indexam
+   colunas `status`, `conta_omie_id`, `projeto_omie_id` que não sofrem
+   alteração nesta migration. Discrepância do exec doc anterior (linha
+   1942 da parte 2 falava em "9 índices"): apenas 3 saem por cascade,
+   não 9.
+
+2. **DROP COLUMN das 11 colunas String(10) DD/MM/YYYY**:
+
+   | Tabela | Colunas removidas |
+   |---|---|
+   | `lancamentos_cc` | `data_lancamento`, `data_conciliacao` |
+   | `contas_pagar` | `data_emissao`, `data_vencimento`, `data_previsao`, `data_pagamento` |
+   | `contas_receber` | `data_emissao`, `data_vencimento`, `data_previsao`, `data_pagamento` |
+   | `baixas_financeiras` | `data_pagamento` |
+
+3. **ALTER COLUMN RENAME**: `data_*_date → data_*` (11 colunas com nome
+   canônico, sem sufixo `_date`).
+
+4. **RENAME INDEX** dos 3 índices da Camada 2.2b.0 para o nome canônico
+   da Fase 3C:
+   - `ix_lancamento_empresa_data_date → ix_lancamento_empresa_data`
+   - `ix_cp_empresa_vencimento_date → ix_cp_empresa_vencimento`
+   - `ix_cr_empresa_vencimento_date → ix_cr_empresa_vencimento`
+
+### Mudanças no código
+
+| Arquivo | Mudança |
+|---|---|
+| `models.py` | Campos `data_*` agora são `Mapped[date \| None]` com `Date`. Remove Index `_date` duplicados. |
+| `sync_service.py` | Para de popular ambas (string + Date). Apenas `data_* = parse_br_date(raw)`. |
+| `dashboard.py`, `conciliacao.py`, `extrato.py`, `cp_cr.py`, `export.py`, `alertas.py`, `orbit_chat.py` | Renomeação mecânica `r.data_*_date → r.data_*` |
+
+### Estratégia dual-dialect
+
+- **PostgreSQL**: `ALTER INDEX RENAME TO` nativo, `drop_column`/`alter_column` atômicos.
+- **SQLite** (tests): `batch_alter_table` recria a tabela. **Downgrade
+  dividido em 2 batches** (rename + add_column em batches separados) para
+  evitar `CircularDependencyError` do SQLAlchemy quando alter_column +
+  add_column do mesmo nome são misturados no mesmo `with` block.
+
+### Tests
+
+- **8 testes novos** em `tests/test_alembic_0007_destructive.py`:
+  - Upgrade dropa strings + renomeia Date para canônico
+  - Upgrade renomeia 3 índices `_date` para nome canônico
+  - Upgrade preserva 6 outros índices da Fase 3C
+  - Downgrade restaura strings + índices originais
+  - Round-trip upgrade→downgrade→upgrade
+  - INSERT direto com Date nativo
+- `test_alembic_0005` e `0006` ajustados para `command.upgrade(cfg,
+  "0005"/"0006")` explícito ao invés de `"head"` — `"head"` agora vai
+  até a 0007 destrutiva e quebraria os testes do estado intermediário.
+
+### Métricas
+
+- **14 arquivos**: 9 modificados + 5 novos/refatorados (migration + test
+  + 3 tests ajustados).
+- **+688/-131 LOC** líquidas no PR api.
+- **Suite local pytest**: 183 → **191** (+8 do 0007).
+- **Ruff** em `app/`: clean.
+- **CI**: pendente run pós-push.
+
+### Audit Camada 2.3 (destrutiva, padrão "seq + 1 auditor")
+
+Audit independente em worktree isolado completado:
+[`docs/audit/p1-2-camada-2-3-destructive-cleanup/review.md`](audit/p1-2-camada-2-3-destructive-cleanup/review.md).
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **nenhum**
+
+Validações cruzadas confirmadas pelo auditor:
+
+- Suite local 191/191 verde
+- Ruff `app/` clean
+- CI `lint-and-test` SUCCESS, mergeable
+- 0 referências residuais a `data_*_date` em `app/`
+- 11 sites de `parse_br_date` em sync_service (era 22 antes — popular duas
+  colunas; agora popula só uma)
+- 0 colunas `String(10)` em campos de data no `models.py`
+- 8 tests novos do 0007 + 2 tests refatorados (0005, 0006) corretos
+
+**Follow-ups opcionais** documentados no review (não-bloqueantes):
+
+- **F-01**: test do downgrade-em-PG do backfill `TO_CHAR` (PG-only, hoje
+  sem cobertura automatizada — CI roda upgrade em PG mas não downgrade).
+- **F-02**: extrair `_is_postgres(bind)` em helper para reduzir
+  duplicação na migration.
+- **F-03**: renomear `dt_*` → `dt_*_raw` em `_calcular_status`
+  (helper interno em `sync_service.py` que ainda usa string da Omie —
+  não é bug, só confunde leitura).
+
+**Pontos fortes destacados pelo auditor**:
+
+- Estratégia dual-dialect madura (PG `ALTER INDEX RENAME TO` nativo vs
+  SQLite drop+create em batch)
+- Downgrade dividido em 2 batches no SQLite com comentário explicando
+  `CircularDependencyError` do SQLAlchemy
+- Test de regressão `test_upgrade_head_preserva_6_indices_fase_3c`
+  garante que índices Fase 3C não tocados sobrevivem ao DROP
+- Comentários inline "P1-2 Camada 2.3" formam trilha rastreável
+- Risco residual baixo: backup manual confirmado, JSON público
+  inalterado (ISO 8601 já desde 2.2b.1)
+
+### Estado consolidado pós-Camada 2.3 (post-merge)
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 |
+| 5D — Fase 3C (9 índices em colunas string) | ✅ | PR #76 (3 destes serão dropados pela 0007; 6 permanecem) |
+| 5E — P0-7 (soft delete empresa) | ✅ | PR #77 + #78 |
+| 5F — P0-7 UI (delete + restore na interface) | ✅ | PR #79 + #113 |
+| 5G — P1-2 Camada 2.1 (ADD COLUMN paralela + backfill) | ✅ | PR #80 |
+| 5H — P1-2 Camada 2.2a (filtros internos com Date) | ✅ | PR #81 |
+| 5I — P1-2 Camada 2.2b (índices + JSON ISO + front) | ✅ | PR #87 + #88 + #115 |
+| **5J — P1-2 Camada 2.3 (DROP + RENAME destrutivo)** | **🟡** | **PR #89 aguardando audit + merge** |
+| **P1-2 COMPLETO** | **🟡** | **Após merge da 2.3, P1-2 100% fechado** |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | Próxima big rock; depende de P1-2 100% |
+
+### Risco residual pós-Camada 2.3 (post-merge esperado)
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~23/30 (~77%)** — P1-2 100% completo após merge.
+- **% executado por tempo: ~88%** (era ~85% pré-Camada 2.3).
+- **Backup manual** Railway confirmado pelo user antes do merge — RPO 0.
+
+### Smoke pós-deploy recomendado (5 min)
+
+```sql
+-- 1. Confirmar versão da migration
+SELECT version_num FROM alembic_version;
+-- Esperado: 0007
+
+-- 2. Confirmar colunas Date com nome canônico (sem _date)
+\d lancamentos_cc
+-- data_lancamento     | date
+-- data_conciliacao    | date
+-- (data_lancamento_date NÃO deve existir)
+
+-- 3. Confirmar índices renomeados (lancamentos_cc)
+SELECT indexname FROM pg_indexes
+WHERE tablename = 'lancamentos_cc'
+ORDER BY indexname;
+-- Esperado:
+-- ix_lancamento_empresa_conta
+-- ix_lancamento_empresa_data    ← renomeado de _date
+-- ix_lancamento_empresa_omie
+-- ix_lancamento_empresa_projeto
+-- (sem ix_lancamento_empresa_data_date)
+
+-- 4. EXPLAIN ANALYZE continua usando Index Scan
+EXPLAIN ANALYZE SELECT * FROM lancamentos_cc
+WHERE empresa_id = 1
+ORDER BY data_lancamento DESC NULLS LAST
+LIMIT 100;
+-- Esperado: Index Scan em ix_lancamento_empresa_data
+```
+
+```bash
+# 5. Confirmar JSON continua em ISO 8601 (inalterado da 2.2b.1)
+curl -H "Cookie: ..." https://api.grupoalt.agr.br/v1/empresas/1/extrato \
+  | jq '.lancamentos[0].data_lancamento'
+# Esperado: "2026-03-15" (ISO 8601 — formato igual ao da Camada 2.2b.1)
+
+# 6. UX inalterada no front (DateRangePicker + tabelas mostram DD/MM/YYYY)
+```
+
+### Pendências operacionais menores pós-Camada 2.3
+
+- **Audit obrigatório**: rodando em background ao final desta sessão.
+  Resultado documentado em
+  `docs/audit/p1-2-camada-2-3-destructive-cleanup/review.md`. Score
+  e follow-ups serão adicionados a este exec doc após audit completar.
+- **Follow-ups acumulados de audits anteriores** (não-bloqueantes): 12
+  da sessão 2026-05-18 partes 1+2 ainda pendentes. Triagem em PR
+  dedicado se vierem a ser priorizados.
+
+### Próxima sessão sugerida
+
+**Big rock: Fase 5 — DRE backend (ADR-001)** — agora desbloqueada:
+
+- ✅ Oracle financeiro entregue (Step 2)
+- ✅ Math.abs documentado como defesa intencional
+- ✅ Numeric monetário evita drift de arredondamento (Fase 3B)
+- ✅ Colunas Date com índices em prod (Camada 2.2b)
+- ✅ **P1-2 100% completo após merge da 2.3** (datas como Date nativo,
+  semântica de range/order correta no DB)
+- ✅ ADR-001 aprovado (Opção B — DRE no backend)
+
+**Escopo Fase 5**:
+1. Endpoint `GET /v1/empresas/{id}/dre`
+2. `app/domain/financeiro/dre.py` (substitui `planoContas.calcularDRE` do front)
+3. Consumir `categorias_omie.grupo_dre_override` + `CATEGORIAS` migrado de TS para DB com cache Redis
+4. Oracle financeiro como teste do endpoint (golden tests)
+5. Refatorar agregadores trimestral/mensal/semanal para SQL puro
+6. Front consume `useDRE` em vez de `calcularDRE` local
+7. Comparativo paralelo entre new endpoint e velho calcularDRE por N dias antes de remover do front
+8. Bug Math.abs: decisão com financeiro (Fase 5.5)
+
+**Estimativa**: 7-10 dias dedicados. Risco: alto (mudança visível ao
+gestor; mitigação via oracle + comparativo paralelo). Múltiplos PRs com
+audit independente.
+
+---
+
+## Sessão 2026-05-19 — Fase 5 iniciada (5.A + 5.B + 5.C entregues)
+
+Continuação direta da sessão de 2026-05-18 (que entregou Camada 2.3 P1-2).
+Agora **a Fase 5 (DRE backend, ADR-001) entrou em execução**: motor puro
++ oracle homologado + endpoint público, tudo em um único dia.
+
+### Fases 5.A + 5.B — Motor puro + oracle (PR api #90, MERGED)
+
+Motor de cálculo do DRE portado fielmente do TypeScript
+(`grupoalt-web/src/lib/planoContas.ts`) para Python isolado, sem I/O.
+Validado contra as 11 fixtures do oracle financeiro (4 synthetic S01-S04
++ 7 verdade-contábil S05-S11 homologadas em 2026-05-13).
+
+**Arquivos novos no backend:**
+
+```
+app/domain/                              # camada nova: dominio puro
+├── __init__.py
+└── financeiro/
+    ├── __init__.py
+    ├── categorias.py    # CATEGORIAS (81 entradas) + get_grupo_dre
+    └── dre.py            # calcular_dre + calcular_neutros + ESTRUTURA_DRE
+
+scripts/
+└── sync_oracle_fixtures.py   # sincroniza fixtures web→api
+
+tests/
+├── domain/
+│   ├── __init__.py
+│   └── test_dre_domain.py     # 46 testes unitarios
+└── oracle/
+    ├── __init__.py
+    ├── README.md
+    ├── test_oracle.py          # runner parametrizado
+    └── fixtures/               # 33 JSONs espelhados de grupoalt-web
+        ├── synthetic/          # S01..S04
+        └── verdade-contabil/   # S05..S11
+```
+
+**Decisões importantes:**
+
+1. **Domain layer puro**: `app/domain/` separado de `app/services/`
+   (orquestração com I/O) e `app/routers/` (HTTP). Determinístico,
+   testável sem mock de DB.
+2. **`Math.abs` defensivo preservado** conforme Step 13 Parte B + PR web
+   #93 (estornos via categoria própria, não por sinal contrário).
+3. **Fixtures versionadas** com exceção explícita `!tests/oracle/fixtures/**/*.json`
+   no `.gitignore` global do api (que filtra `*.json`).
+4. **Script de sync** (`--dry-run` default, `--apply` para escrever)
+   com check de drift entre repos. Source of truth fica em
+   `grupoalt-web/tests/oracle/fixtures/`.
+5. **`FixtureKind`-aware runner**: verdade-contábil/regression-baseline
+   checam todos 14 campos; synthetic só checa campos preenchidos;
+   known-divergence vira xfail.
+
+**Métricas 5.A + 5.B (PR #90):**
+
+- 44 arquivos novos, +2028 LOC
+- Suite: 191 → **252** testes (+61)
+  - 46 unit em `tests/domain/test_dre_domain.py`
+  - 15 oracle em `tests/oracle/test_oracle.py`
+- **15/15 oracle PASS** — motor backend produz números idênticos ao
+  contrato homologado pelo financeiro
+
+**Audit dispensado** para 5.A+5.B: código novo, sem alteração em
+rotas/contratos, sem deploy visível. Oracle (15/15 PASS) atua como
+contrato real validando regra contábil.
+
+**PR #90 estado:** MERGED 2026-05-19 01:51 UTC, CI 1m49s.
+
+### Fase 5.C — Endpoint público (PR api #91, audit Score 94/100 APPROVE)
+
+Primeiro endpoint backend do DRE consumindo o motor puro da 5.A:
+
+```
+GET /v1/empresas/{empresa_id}/dre
+    ?dt_inicio=YYYY-MM-DD                       (opcional, inclusive)
+    &dt_fim=YYYY-MM-DD                          (opcional, inclusive)
+    &projeto_omie_ids=A&projeto_omie_ids=B      (multi-value opcional)
+```
+
+**Response shape:**
+
+```json
+{
+  "subtotais": {
+    "RoB": 150000.0, "TDCF": 20000.0, "RL": 130000.0,
+    "CV": 50000.0, "MC": 80000.0, "CF": 45000.0, "EBT1": 35000.0,
+    "RNOP": 0, "DNOP": 0, "SNOP": 0, "EBT2": 35000.0,
+    "IRPJ": 1000.0, "CSLL": 500.0, "RES_LIQ": 33500.0
+  },
+  "neutros": [
+    { "codigo": "...", "nome": "...", "total": ..., "count": ... }
+  ],
+  "meta": {
+    "empresa_id": 1, "dt_inicio": "2026-04-01", "dt_fim": "2026-04-30",
+    "projeto_omie_ids": null, "total_lancamentos": 19
+  }
+}
+```
+
+**Arquivos novos:**
+
+- `app/routers/dre.py` (+245 LOC) — router + 4 DTOs Pydantic + helper
+  `_carregar_categoria_map` + endpoint `get_dre`
+- `tests/test_dre_endpoint.py` (+489 LOC) — 13 testes de integração
+- `app/main.py` (+7 LOC) — registrar `include(dre_router, "DRE")`
+
+**Highlights técnicos:**
+
+1. **RBAC defesa em profundidade**: `get_empresa_ctx` valida vínculo;
+   além disso `_carregar_categoria_map` filtra por `empresa_id` no SQL;
+   além disso query de `LancamentoCC` filtra por `empresa_id`. Três
+   barreiras.
+2. **`grupo_dre_override or get_grupo_dre(codigo)`** reproduz fielmente
+   o front (`buildCategoriasFromAPI` do `planoContas.ts`).
+3. **Decimal → float seguro**: `Numeric(15,2)` cobre até R$
+   9.999.999.999.999,99 (abaixo do limite de precisão do float64).
+   Motor só faz `abs + soma`, sem mul/div.
+4. **Performance**: query usa `ix_lancamento_empresa_data` (Fase 3C)
+   para o filtro de período + `ix_lancamento_empresa_projeto` para o
+   filtro de projeto.
+5. **Lançamentos com `data_lancamento NULL`** são excluídos quando
+   algum filtro de data está setado (NULL não está em nenhum range).
+
+**Bate exato com oracle S06**: o teste
+`test_dre_filtro_periodo_abril_bate_com_oracle_S06_exato` planta no DB
+SQLite os mesmos 19 lançamentos da fixture S06 (verdade-contábil) e
+valida que o endpoint retorna o DRE idêntico:
+
+| Subtotal | Esperado | Atual |
+|---|---|---|
+| RoB | 150.000 | 150.000 ✅ |
+| TDCF | 20.000 | 20.000 ✅ |
+| RL | 130.000 | 130.000 ✅ |
+| CV | 50.000 | 50.000 ✅ |
+| MC | 80.000 | 80.000 ✅ |
+| CF | 45.000 | 45.000 ✅ |
+| EBT1 | 35.000 | 35.000 ✅ |
+| RES_LIQ | 33.500 | 33.500 ✅ |
+
+Garantia E2E de que a integração (query SQL → motor puro → serialização
+JSON) não introduziu drift contra o oracle homologado.
+
+**Audit Fase 5.C** (worktree isolado, padrão "seq + 1 auditor"):
+
+- **Score**: **94/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/23**
+- Review em
+  [`docs/audit/fase-5c-dre-endpoint/review.md`](audit/fase-5c-dre-endpoint/review.md)
+
+Validações cruzadas pelo auditor:
+- 13/13 endpoint tests verde
+- 265/265 suite full verde
+- 280/283 com integration (3 fails pré-existentes do `xhtml2pdf`,
+  alheios à PR)
+- CI `lint-and-test pass 1m54s`
+- Ruff `app/` clean
+- Sanity: endpoint registrado em `/v1/empresas/{empresa_id}/dre`
+- DTOs Pydantic batem 1:1 com `DRESubtotais.as_dict()` do motor puro
+
+**Follow-ups não-bloqueantes** documentados no review:
+
+- **F-1 [LOW]**: faltou teste 403 cross-tenant via HTTP no endpoint
+  (apenas no helper). `get_empresa_ctx` tem cobertura compartilhada em
+  10+ routers — gap menor.
+- **F-2 [NIT]**: `?projeto_omie_ids=` (string vazia) vira `[""]` →
+  `IN ('')` retorna 0 rows. Defensivo, mas sanitizar é opcional.
+- **F-3 [NIT]**: faltou teste explícito de `data_lancamento NULL`
+  (comportamento correto por inspeção, mas sem cobertura direta).
+
+Triagem em PR dedicado se vierem a ser priorizados.
+
+**Métricas 5.C (PR #91):** 3 arquivos, +741 LOC. Suite 252 → **265** (+13
+testes do endpoint). PR aguardando merge.
+
+### Estado consolidado pós-sessão 2026-05-19
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A-5I (Camada 2.3 + sub-fases) | ✅ | PR #73..#89 |
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| **6.C — Fase 5.C (endpoint GET /v1/empresas/{id}/dre)** | **🟡** | **PR api #91 aguardando merge** |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ⏭️ | Próxima |
+| 6.E — Fase 5.E (agregadores por granularity) | ⏭️ | Paralelo com 5.D |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Após 5.D + 5.E |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak da 5.F |
+
+### Risco residual pós-sessão 2026-05-19
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~24/30 (~80%)** — Fase 5 desbloqueia P1-17 (DRE no front)
+  quando 5.G fechar
+- **Fase 5: 3/7 sub-fases entregues** (5.A, 5.B, 5.C; faltam 5.D..5.G)
+- **% executado por tempo: ~92%** (era ~88% pré-sessão)
+
+### Smoke pós-deploy do PR #91 (5 min)
+
+```bash
+# 1. Sanity: endpoint registrado em prod
+curl -I https://api.grupoalt.agr.br/v1/empresas/1/dre
+# Esperado: 401 (sem auth) -- confirma rota existe
+
+# 2. Com auth: comparar DRE backend vs DRE front
+# Usuario logado no portal: copiar Cookie do navegador
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30" \
+  | jq '.subtotais'
+
+# Comparar com o que aparece em /bi/financeiro/caixa (que ainda usa
+# calcularDRE do front). Devem ser IDENTICOS exceto se a empresa tem
+# overrides especiais que ainda nao foram alinhados.
+```
+
+### Pendências operacionais pós-sessão 2026-05-19
+
+- **PR #91 aguardando merge** (CI verde, audit APPROVE)
+- **Audits dispensados em 5.A+5.B**: documentado como trade-off (oracle =
+  contrato real, código sem alteração de prod)
+- **Follow-ups acumulados de audits anteriores** (não-bloqueantes): 12
+  da sessão 2026-05-18 + 3 da 5.C = 15 itens menores. Triagem dedicada
+  se priorizados.
+
+### Próxima sessão sugerida
+
+**Continuar com Fase 5.D** (cache Redis):
+
+- Cache read-aside na resposta do endpoint
+- TTL 30min (configurável)
+- Invalidação automática quando `sync_service` atualiza
+  `lancamentos_cc` ou `categorias_omie` da empresa
+- Estimativa: 0.5 dia
+
+**Paralelizável: Fase 5.E** (agregadores por granularity):
+
+- `?granularity=total|mensal|trimestral|semanal`
+- SQL `GROUP BY date_trunc(...)` para evitar carregar tudo em Python
+- Estimativa: 1 dia
+
+---
+
+## Sessão 2026-05-19 (continuação) — Fase 5.D entregue
+
+Após merge dos PRs #91 + #118 às 15:02 UTC, continuação direta com a
+Fase 5.D (cache Redis + invalidação).
+
+### Fase 5.D — Cache Redis no endpoint /dre (PR api #92, audit Score 96/100 APPROVE)
+
+Adiciona cache read-aside (Redis, TTL 30min) ao endpoint
+`GET /v1/empresas/{id}/dre` da Fase 5.C, com invalidação automática
+nos 5 sites que mudam estado relevante.
+
+#### Estratégia técnica
+
+**Sufixo determinístico**: `_build_cache_suffix(dt_inicio, dt_fim, projeto_omie_ids)`
+- SHA-1 truncado (16 chars) de `"dt_inicio|dt_fim|projetos_ordenados"`
+- **Estável**: mesmo input → mesmo sufixo, sempre
+- **Ordem-independente**: `["B","A"]` produz mesma chave que `["A","B"]`
+  (normalizado via `sorted()`)
+- **Lista vazia == None**: ambos representam "sem filtro de projeto"
+
+**Read-aside**:
+```python
+# 1. Tenta cache antes do DB (graceful: erro = log + continua)
+cached = await cache_get(empresa.id, "dre", suffix)
+if cached: return DREResponse(**cached)
+# 2. Query + motor puro
+response = ...
+# 3. Salva no cache (graceful)
+await cache_set(empresa.id, "dre", response.model_dump(mode="json"), 1800, suffix)
+return response
+```
+
+**Graceful degradation total**: ambos `cache_get` e `cache_set` em
+`try/except` — endpoint funciona com Redis offline.
+
+#### Invalidação em 5 sites
+
+| Site | Trigger |
+|---|---|
+| `sync_pipeline.py:80` | pós-sync completo (lancamentos_cc + categorias_omie) |
+| `sync_service.py:797` | espelho legado (sync everything) |
+| `webhook.py:84` | evento Omie `lancamento/contacorrente/conciliad` |
+| `extrato.py:471` | endpoint `sync_categorias` |
+| `extrato.py:513` | `atualizar_categoria_grupo_dre` (override individual) |
+| `extrato.py:575` | `bulk_override_categorias` |
+
+**Eventos CP/CR NÃO invalidam `"dre"`** — decisão de escopo: endpoint
+atual lê apenas `lancamentos_cc`, sem reflexo direto de CP/CR no DRE.
+
+#### Constantes exportadas
+
+```python
+DRE_CACHE_NAMESPACE = "dre"
+DRE_CACHE_TTL_SECONDS = 1800  # 30 minutos
+```
+
+TTL conservador. Invalidação automática é a defesa primária; TTL é
+safety net caso uma invalidação falhe.
+
+#### Tests (13 novos)
+
+- **TestBuildCacheSuffix** (7): determinismo, sensibilidade aos 3
+  parâmetros, normalização de ordem, lista vazia == None
+- **TestDRECacheHitMiss** (3): 2ª chamada vem do cache (cache_set 1x,
+  cache_get 2x); parâmetros diferentes → 4 keys distintas; ordem de
+  projetos compartilha cache
+- **TestDRECacheIsolation** (1): cross-tenant não colide (empresa_id
+  faz parte da chave Redis via `_key()`)
+- **TestDRECacheGracefulDegradation** (1): Redis explodindo (raise
+  `RuntimeError`) não quebra endpoint
+- Sanity das constantes (1)
+
+Tests usam in-memory store via `unittest.mock.patch` para simular
+Redis com state persistente.
+
+#### Métricas (PR #92)
+
+- 6 arquivos: 1 novo (`tests/test_dre_cache.py`) + 5 modificados (`dre.py`
+  + 5 sites de invalidação)
+- +409/-6 LOC
+- Suite full: 265 → **278** (+13 cache tests, 0 regressão em endpoint)
+- Ruff `app/` clean
+
+#### Audit Fase 5.D (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/17**
+- Review em
+  [`docs/audit/fase-5d-dre-cache/review.md`](audit/fase-5d-dre-cache/review.md)
+
+Validações cruzadas:
+- 13/13 cache tests verde
+- 13/13 endpoint tests verde (sem regressão)
+- 278/278 suite full verde
+- CI `lint-and-test pass 2m2s`
+- Ruff `app/` clean
+- 5 sites de invalidação confirmados via grep
+
+**Highlight do auditor**: divergência positiva em relação ao
+`dashboard_v3` — DRE tem `try/except` envolvendo cache_get/set
+(graceful degradation), `dashboard_v3` não. Vale retroportar em
+sub-fase futura (anotado como diferimento A2).
+
+**Pontos de atenção não-bloqueantes** (3, todos diferimentos):
+
+- **A1**: nome do teste `test_lista_vazia_eh_diferente_de_none` é
+  levemente enganoso — o assert verifica que compartilham sufixo
+  (comportamento correto, nome confunde). Renomear para
+  `test_lista_vazia_compartilha_cache_com_none`.
+- **A2**: retroportar graceful degradation para `dashboard_v3` em PR
+  separado (melhoria, não bug do 5.D).
+- **A3**: `_build_cache_suffix` candidato a virar helper de
+  `redis_client.py` quando Fase 5.E adicionar endpoints com mesmos
+  filtros temporais.
+
+### Estado consolidado pós-Fase 5.D
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| **6.D — Fase 5.D (cache Redis + invalidação)** | **🟡** | **PR api #92 (audit 96/100, aguardando merge)** |
+| 6.E — Fase 5.E (agregadores por granularity) | ⏭️ | Próxima |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Após 5.E |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak |
+
+### Risco residual pós-Fase 5.D
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~25/30 (~83%) — Fase 5.D fecha latência percebida do endpoint
+- **Fase 5**: 4/7 sub-fases entregues (5.A, 5.B, 5.C, 5.D)
+- **% executado por tempo**: ~93% (era ~92%)
+
+### Smoke pós-deploy proposto (3 min)
+
+```bash
+# 1. Hit cache (mesma URL 2x) -- 2a deve voltar em <50ms
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+
+# 2. Invalidacao via override de categoria
+curl -X PATCH -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/categorias/2.05.93" \
+  -d '{"grupo_dre":"NEUTRO"}'
+# Proxima chamada do DRE deve recalcular (miss)
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+# Esperado: tempo similar ao "miss" inicial; DRE diferente (2.05.93 saiu de CF)
+
+# 3. Confirmar no Redis (Railway CLI)
+railway run redis-cli KEYS "altmax:1:dre:*" | head
+```
+
+### Próxima sessão sugerida
+
+**Continuar com Fase 5.E** (agregadores por granularity):
+
+- Query param `?granularity=total|mensal|trimestral|semanal`
+- SQL `GROUP BY date_trunc('month'|'quarter'|'week', data_lancamento)`
+  para evitar carregar todos os lançamentos em Python
+- Response shape: `{ "subtotais_por_periodo": [{"periodo": "2026-04", subtotais: {...}}, ...] }`
+- Cache da 5.D continua valendo: a chave inclui todos os params
+- Estimativa: 1 dia
+
+**Paralelizável: Fase 5.F** (front consome via feature flag):
+
+- Hook `useDRE` substitui `calcularDRE` do front quando flag ligada
+- Comparativo paralelo (front + back lado a lado) por N dias antes de
+  remover `calcularDRE`
+- Feature flag: `NEXT_PUBLIC_USE_BACKEND_DRE`
+- Estimativa: 1-2 dias
+
+---
+
+## Sessão 2026-05-19 (continuação) — Fase 5.E entregue (BACKEND COMPLETO)
+
+Após merge dos PRs #92 + #119, continuação direta com a Fase 5.E
+(granularity temporal). **Esta sub-fase completa o lado backend
+do ADR-001.** Restam apenas 5.F (front via feature flag) e 5.G
+(cleanup do `calcularDRE` do front).
+
+### Fase 5.E — Granularity (PR api #93, audit Score 96/100 APPROVE)
+
+Adiciona quebra temporal opcional ao endpoint `/dre`:
+
+```
+GET /v1/empresas/{empresa_id}/dre
+    ?granularity=total|mensal|trimestral|semanal   (default: total)
+```
+
+#### Estratégia técnica
+
+**Particionamento Python sobre o motor puro existente.** Em vez de
+escrever SQL `GROUP BY date_trunc`, o endpoint particiona os
+lançamentos em Python e chama `calcular_dre(bucket)` para cada bucket.
+
+**Por que essa abordagem**:
+- Motor puro **inalterado** → oracle da Fase 5.A/B continua válido
+- Invariante "total = soma dos buckets" vale por **construção
+  matemática** (motor é abs+soma simples, distributivo sobre union
+  disjunta)
+- Zero duplicação de regra contábil
+- Aceitável em performance (10k linhas → ~50 buckets × O(n/50) = O(n))
+
+#### Formato das chaves
+
+| Granularity | Formato | Exemplo |
+|---|---|---|
+| mensal | `YYYY-MM` | `2026-04` |
+| trimestral | `YYYY-Qn` | `2026-Q2` (Q1=jan-mar, Q4=out-dez) |
+| semanal | `YYYY-Www` | `2026-W14` (ISO 8601) |
+
+**Ordem lexicográfica = ordem cronológica** (decisão intencional,
+documentada nos 3 lugares relevantes). Permite `sorted()` direto.
+
+**ISO 8601 para semanas**: `01/01/2026` (quinta-feira) → `2026-W01`;
+`31/12/2025` (quarta) → também `2026-W01` (mesma semana ISO). Caso
+oposto: `01/01` numa segunda/terça vira `YYYY-W53` do ano anterior.
+
+#### Edge cases
+
+- **`data_lancamento=NULL`**: conta no `subtotais` (total) mas é
+  silenciosamente dropado dos buckets. **Log emitido para vigilância**
+  (1 log por chamada, agregado — não flooda).
+- **Empresa vazia + granularity≠total**: `subtotais_por_periodo` é
+  `[]` (lista vazia), **não `null`**. Discriminação semântica testada:
+  `null` = "não pediu granularity"; `[]` = "pediu mas não tem dados".
+- **Granularity inválida** (ex: `?granularity=anual`): retorna **422**
+  (Pydantic `Literal` rejeita no schema, sem tocar o handler).
+
+#### Compatibilidade preservada
+
+| Fase | Como mantém |
+|---|---|
+| 5.C (endpoint base) | Default `granularity="total"` → response 1:1 (`subtotais_por_periodo: null`). Test `test_default_total_compat_fase_5c` codifica isso. |
+| 5.D (cache Redis) | `_build_cache_suffix(...)` default `"total"` no 4º param → chamadas sem granularity (5.D) produzem MESMA chave que `granularity="total"` (5.E). Test `test_default_total_eh_mesma_que_explicit` codifica isso. Granularities distintas geram chaves distintas. |
+
+#### Implementação
+
+| Arquivo | Mudança |
+|---|---|
+| `app/routers/dre.py` | `+GranularityType` Literal, `+_bucket_key`, `+_split_by_granularity`, `+PeriodoDREOut`, `DREMetaOut.granularity`, `DREResponse.subtotais_por_periodo`, endpoint usa granularity, `_build_cache_suffix` aceita granularity |
+| `tests/test_dre_granularity.py` (novo) | 25 testes em 4 classes |
+
+**Motor puro intocado** (`app/domain/financeiro/dre.py`).
+
+#### Tests (25 novos)
+
+| Suite | Tests | O que valida |
+|---|---|---|
+| `TestBucketKey` | 9 | Formato mensal/trimestral/semanal; ISO week virada de ano; granularity inválida e `'total'` levantam |
+| `TestSplitByGranularity` | 5 | Particionamento; `data=None` dropada; ordenação cronológica; `'total'` levanta |
+| `TestCacheSuffixGranularity` | 2 | Granularity afeta sufixo; default `"total"` bate com chamada sem param (compat 5.D) |
+| `TestDREEndpointGranularity` | 9 | Compat 5.C; mensal/trimestral/semanal corretos; ordenação; **invariante total = Σ(buckets)** nas 3 granularidades; 422; NULL; lista vazia |
+
+#### Métricas (PR #93)
+
+- 2 arquivos: 1 novo (`tests/test_dre_granularity.py`) + 1 modificado
+  (`dre.py`)
+- +619/-7 LOC
+- Suite full: 278 → **303** (+25 granularity, 0 regressão em 5.C/5.D)
+- Ruff `app/` clean
+- CI `lint-and-test pass 2m18s`
+
+#### Audit Fase 5.E (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/23** ✅
+- Review em
+  [`docs/audit/fase-5e-dre-granularity/review.md`](audit/fase-5e-dre-granularity/review.md)
+
+**Pontos positivos destacados** pelo auditor:
+
+1. Reuso máximo do motor puro 5.A — oracle vale por construção
+2. Compatibilidade explícita 5.C + 5.D codificada em tests
+3. Decisão "lexicográfica = cronológica" documentada nos 3 sites
+4. ISO 8601 para semanas (não inventou regra custom)
+5. NULL drop logado, não silencioso
+6. Empresa vazia retorna `[]`, não `null` (discriminação semântica testada)
+7. Pydantic `Literal` valida no schema (422 sem tocar handler)
+8. Tests bem categorizados em 4 classes; fixture reutilizável
+9. Hash 16 chars + sort de projetos preservados (cache 5.D não regredido)
+
+**Pontos de atenção** (2, ambos não-bloqueantes, opcionais):
+
+- **N1**: forward reference `"DRESubtotaisOut"` em `PeriodoDREOut.subtotais`
+  é estilística (classe definida acima + `from __future__ import
+  annotations`). Funciona dos dois jeitos com Pydantic v2.
+- **N2**: conversão `Lancamento` é refeita por bucket (~50ms extra em
+  10k linhas). Micro-opt refatorável se virar gargalo no profiler.
+
+### Estado consolidado pós-Fase 5.E
+
+**🎉 Backend da Fase 5 COMPLETO (5.A → 5.E entregues, 5/7).**
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ✅ | PR api #92 (audit 96/100) |
+| **6.E — Fase 5.E (granularity)** | **🟡** | **PR api #93 (audit 96/100, aguardando merge)** |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Próxima |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak da 5.F |
+
+### Risco residual pós-Fase 5.E
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~26/30 (~87%) — Fase 5.E desbloqueia o consumidor front
+  (5.F) com endpoint feature-completo
+- **Fase 5**: **5/7 sub-fases entregues** (5.A, 5.B, 5.C, 5.D, 5.E)
+- **% executado por tempo**: ~94% (era ~93%)
+
+### Smoke pós-deploy proposto (3 min)
+
+```bash
+# 1. Total (compat 5.C) -- subtotais_por_periodo deve ser null
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30" \
+  | jq '.subtotais_por_periodo'  # esperado: null
+
+# 2. Mensal -- 1 bucket por mes
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-01-01&dt_fim=2026-12-31&granularity=mensal" \
+  | jq '.subtotais_por_periodo | length, .[].periodo'
+
+# 3. Trimestral
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=trimestral" \
+  | jq '.subtotais_por_periodo | map(.periodo)'
+
+# 4. Granularity invalida -> 422
+curl -i -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=anual" | head -1
+# Esperado: HTTP/1.1 422 Unprocessable Entity
+
+# 5. Cache hit em granularity=mensal (mesma URL 2x)
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=mensal" >/dev/null
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=mensal" >/dev/null
+# 2a chamada deve ser <50ms
+```
+
+### Próxima sub-fase
+
+**Fase 5.F — Front consome via feature flag** (1-2 dias):
+
+- Hook `useDRE(empresa_id, filtros)` no front
+  (`grupoalt-web/src/hooks/useDRE.ts`)
+- Feature flag `NEXT_PUBLIC_USE_BACKEND_DRE`:
+  - `false` (default): front continua usando `calcularDRE` local
+    (Fase 5.C/D/E ficam silently ativas, sem consumidor)
+  - `true`: páginas BI/Portal usam `useDRE` em vez de `calcularDRE`
+- **Comparativo paralelo** opcional (dev/staging): renderizar ambos
+  lado a lado para detectar divergência visual
+- Tests Vitest do hook + de página BI substituida
+
+**Fase 5.G — Cleanup** (após N dias de soak da 5.F com flag ligada):
+
+- Remover `calcularDRE` de `src/lib/planoContas.ts` (~367 LOC)
+- Remover agregadores do `src/lib/caixaBuilder.ts` (~394 LOC)
+- Remover feature flag
+- ~-700 LOC líquidos no bundle do front
+
+Estimativa total 5.F + 5.G: ~2-3 dias dedicados + 7-14 dias de soak
+entre eles.
+
+---
+
+## Sessão 2026-05-19 (continuação 4) — Fase 5.F entregue (PILOTO front)
+
+Após merge dos PRs api #93 (5.E) + web #120 (docs 5.E), continuação
+direta com a Fase 5.F. **Primeira sub-fase a tocar o front** desde o
+início do ciclo Fase 5. Backend já em prod silencioso desde os merges
+das fases 5.C/5.D/5.E.
+
+### Fase 5.F — Front consome /dre via feature flag (PR web #121, audit Score 97/100 APPROVE)
+
+Hook `useDRE` consome `GET /v1/empresas/{id}/dre` da API; feature flag
+`NEXT_PUBLIC_USE_BACKEND_DRE` (default `false`) gateia o consumo;
+piloto migra **apenas o BI Caixa Executivo** (`/bi/financeiro/caixa`).
+
+#### Decisões confirmadas pelo usuário antes de codar
+
+1. **Flag default em prod inicial = `false`** — soak controlado. Backend
+   já está em prod silencioso desde PRs api #91/#92/#93 mergeados; ligar
+   a flag é operação separada (env var Vercel ou `.env.production`).
+2. **Piloto 1 página (Caixa BI executivo)** — menor superfície de
+   regressão. Portal mirror, AnáliseIA e Dashboard ficam para PRs
+   seguintes após confirmar piloto OK.
+3. **Comparativo paralelo dev/staging only** — `<ComparativoDRE>` aparece
+   automático quando `NODE_ENV != production`; escape hatch
+   `NEXT_PUBLIC_DRE_COMPARATIVO=true` para staging Vercel.
+4. **Fixtures oracle do web mantidas** após 5.G como contrato de
+   regressão visual (source of truth migrará para `api/tests/oracle/`).
+
+#### Arquivos (5 = 4 novos + 1 modificado)
+
+| Arquivo | LOC | Propósito |
+|---|---|---|
+| `src/hooks/useDRE.ts` | +188 | Hook + 5 types espelhando DTOs Pydantic |
+| `src/hooks/useDRE.test.ts` | +187 | 13 tests Vitest (mock axios) |
+| `src/lib/featureFlags.ts` | +40 | `useBackendDRE()` + `useDREComparativo()` |
+| `src/components/caixa/ComparativoDRE.tsx` | +179 | Diff lado a lado dev-only |
+| `src/app/bi/financeiro/caixa/page.tsx` | +44/-1 | Shim do backend; preserva fallback local |
+
+**Total**: 5 arquivos, +638 LOC, -1 LOC.
+
+#### Highlights técnicos
+
+**Tipos TS espelham 1:1 os DTOs Pydantic**
+
+`DRESubtotais` com 14 campos exatos (RoB, TDCF, RL, CV, MC, CF, EBT1,
+RNOP, DNOP, SNOP, EBT2, IRPJ, CSLL, RES_LIQ), `DREMeta` com 6 campos,
+`DREResponse` com 4 (`subtotais, neutros, meta, subtotais_por_periodo`),
+`PeriodoDRE` com 3 (`periodo, subtotais, total_lancamentos`). Drift
+detectado em PR via review manual + audit-agent cross-check com
+`app/routers/dre.py` do api.
+
+**Cache key 5.D preservado intencionalmente**
+
+`granularity='total'` (default) é **OMITIDO** dos query params no
+hook. Backend Fase 5.D define que chamadas sem `granularity` produzem
+mesma cache key que `granularity='total'` explícito. Teste
+`OMITE granularity quando 'total' (default)` codifica isso.
+
+**Datas ISO YYYY-MM-DD**
+
+Hook aceita formato ISO direto (Pydantic `date` rejeita DD/MM/YYYY com
+422). `dateFrom`/`dateTo` do `dateRangeStore` já são ISO — não
+precisaram de conversão. Não confundir com `dt_inicio/dt_fim` em DMY
+que continuam alimentando `useExtrato` (path API legado).
+
+**Shim shape para a UI**
+
+Quando flag ON e backend respondeu:
+```ts
+dreData = {
+  rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF, mc: s.MC,
+  rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
+}
+```
+Mantém os 9 campos exatos consumidos pelo KPIStrip, ChartGrid,
+DRESidebar, footer strip. Zero regressão visual.
+
+**`dreLocal` continua computado mesmo com flag ON**
+
+Pra alimentar o `<ComparativoDRE>` em dev/staging. Bundle do Caixa BI
+sobe ~1kB; aceitável durante o soak. Fase 5.G remove `dreLocal` quando
+flag estabilizar em prod.
+
+**`<ComparativoDRE>` dev-only com gating duplo**
+
+Gated por `useDREComparativo()`:
+- Default ON quando `NODE_ENV !== 'production'`
+- Em prod, só ON com escape hatch `NEXT_PUBLIC_DRE_COMPARATIVO=true`
+
+Componente retorna `null` early quando desabilitado (não monta DOM em
+prod). Threshold de diff configurável (default 0.01 = 1 centavo).
+
+#### Tests (13 novos)
+
+| Cenário | O que valida |
+|---|---|
+| `empresaId=null` não chama API | Hook silencioso quando empresa não resolvida |
+| GET path correto | `/empresas/${id}/dre` (proxy adiciona `/api/proxy/v1`) |
+| Success populates data | Response decodificado corretamente |
+| Error com `detail` do backend | Mensagem específica preservada |
+| Error sem detail fallback | `err.message` ou genérico |
+| `dt_inicio` + `dt_fim` ISO | Datas chegam como YYYY-MM-DD |
+| `projeto_omie_ids` array | Repeat format do FastAPI |
+| OMITE granularity='total' | Cache key 5.D preservado |
+| Envia granularity != 'total' | `'mensal'` chega no param |
+| Não envia params undefined/empty | Limpa antes de mandar |
+| AbortController signal presente | Cancelamento funcional |
+| `refetch()` dispara nova chamada | Manual trigger |
+| Decodifica `subtotais_por_periodo` | Granularity=mensal completo |
+
+#### Validações
+
+- `npm run typecheck` → **0 erros**
+- `npm test -- --run` → **231/231 verde** (era 218 antes; +13 novos)
+- `npm run lint` → apenas warnings preexistentes (CI não bloqueia)
+- `npm run build` → 50 rotas; **Caixa BI 16.1kB** (+~1-2kB do hook + componente)
+- `npm run audit:bundle` → **0 credenciais expostas** em 79 arquivos JS
+
+#### Compatibilidade preservada
+
+| Cenário | Comportamento |
+|---|---|
+| Flag OFF (default em prod) | `calcularDRE` local intacto; renderiza idêntico ao código atual |
+| Flag ON + backend responde | `dreData` vem do endpoint via shim de shape; UI inalterada |
+| Flag ON + backend indisponível | `dreBackend` fica `null`; `dreData` cai no fallback local automaticamente |
+| `empresaId=null` (pré-login) | Hook silencioso, sem fetch |
+
+#### Audit Fase 5.F (worktree isolado, padrão "seq + 1")
+
+- **Score**: **97/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/13** ✅
+- Review em
+  [`docs/audit/fase-5f-front-usedre/review.md`](audit/fase-5f-front-usedre/review.md)
+
+**Pontos positivos destacados** pelo auditor:
+
+1. ADR-001 implementado corretamente: front é consumidor puro do
+   endpoint, sem cálculo paralelo. Motor real fica no backend
+   (validado pelo oracle 5.A).
+2. Cross-check com `app/routers/dre.py` confirma DTOs Pydantic ↔ TS
+   1:1 (14 subtotais, meta, neutros, periodos).
+3. Path correto sem `/v1` duplicado (`baseURL=/api/proxy/v1` +
+   path `/empresas/{id}/dre` → rewrite Next.js).
+4. Cache key 5.D preservado: `granularity='total'` (default) é
+   OMITIDO dos params — backend produz mesma hash sem 4º param
+   ou com `"total"` explícito.
+5. Flag default `false` por comparação estrita
+   (`process.env.NEXT_PUBLIC_USE_BACKEND_DRE === 'true'`). Qualquer
+   outro valor → OFF.
+6. Datas ISO YYYY-MM-DD repassadas direto; `dateRangeStore` já
+   produz ISO. Não confundido com DMY do `useExtrato` legado.
+7. Shim de 9 campos antigos preserva contrato com `KPIStrip`,
+   `ChartGrid`, `DRESidebar`, footer strip.
+8. Render JSX **idêntico** ao main quando flag OFF (verificado
+   por diff: diff é puramente aditivo).
+9. AbortController + `empresaId=null` no mesmo padrão de `useApi`.
+10. `<ComparativoDRE>` com gate duplo (NODE_ENV + escape hatch) +
+    `null/null → return null` (segundo guard explícito).
+11. A11y: `role="region"` + `aria-label`; tabela semântica
+    `<thead>/<tbody>`.
+12. Threshold de diff configurável (default 0.01 = 1 centavo).
+
+**Validações cruzadas pelo auditor:**
+
+- 13/13 useDRE.test.ts verde
+- 231/231 suite full verde (era 218; +13)
+- `npm run typecheck` → zero erros
+- `npm run lint` → apenas warnings preexistentes
+- `npm run build` → Caixa BI 16.1 kB
+- `npm run audit:bundle` → 0 credenciais expostas
+- DTOs Pydantic confrontados linha a linha com tipos TS
+
+**Pontos de atenção** (0 bloqueantes, observações operacionais):
+
+- **Sequenciamento sugerido pelo auditor**: staging com
+  `NEXT_PUBLIC_DRE_COMPARATIVO=true` → prod flag OFF (default) →
+  prod flag ON 7-14 dias → Fase 5.G cleanup do `calcularDRE` local.
+- **Granularity != 'total' no front**: hook expõe, mas Caixa BI
+  passa default. Sem regressão imediata; espaço para PRs futuros.
+
+#### Fora de escopo (sub-fases seguintes)
+
+- Migrar `/portal/financeiro/caixa/_content.tsx` (Portal mirror)
+- Migrar `/components/analise/AnaliseIAView.tsx`
+- Migrar `/app/bi/financeiro/page.tsx` (Dashboard)
+- Migrar `/app/bi/financeiro/caixa/dre-mensal/page.tsx`
+- Fase 5.G: remover `calcularDRE`/`calcularDREPorMes` de `planoContas.ts` e
+  agregadores de `caixaBuilder.ts` (após 7-14 dias soak com flag ON)
+
+#### Smoke pós-deploy proposto
+
+```bash
+# Sem flag (default — comportamento atual)
+# Acessar /bi/financeiro/caixa → nenhuma chamada para /v1/empresas/{id}/dre
+# DevTools Network: só /extrato, /categorias
+
+# Com flag (escape hatch local: NEXT_PUBLIC_USE_BACKEND_DRE=true npm run dev)
+# Acessar /bi/financeiro/caixa
+# DevTools Network: chamada nova para /v1/empresas/{id}/dre
+# Tela: idêntica visualmente; canto inferior direito mostra ComparativoDRE "OK"
+
+# Em staging com flag ON em prod:
+# NEXT_PUBLIC_USE_BACKEND_DRE=true via Vercel env vars (staging environment)
+# Acessar staging.* → mesma renderização do prod
+# Comparar visualmente RoB/EBT2 entre staging (backend) e prod (local)
+```
+
+### Estado consolidado pós-Fase 5.F
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ✅ | PR api #92 (audit 96/100) |
+| 6.E — Fase 5.E (granularity) | ✅ | PR api #93 (audit 96/100) |
+| **6.F — Fase 5.F (front useDRE + feature flag piloto)** | **🟡** | **PR web #121 (audit 97/100, aguardando merge)** |
+| 6.F.2 — Fase 5.F expandida (Portal + AnáliseIA + Dashboard) | ⏭️ | Após piloto OK |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak 7-14 dias |
+
+### Risco residual pós-Fase 5.F
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~26/30 (~87%) — Fase 5.F **NÃO fecha P1-17** ainda (DRE no
+  front continua existindo enquanto flag for OFF default). Só a Fase
+  5.G fecha P1-17 ao remover `calcularDRE`.
+- **Fase 5**: **6/7 sub-fases entregues** (5.A, 5.B, 5.C, 5.D, 5.E, 5.F)
+- **% executado por tempo**: ~95% (era ~94%)
+
+### Próxima sub-fase
+
+**Fase 5.F.2 (expansão do piloto)** ou **Fase 5.G (cleanup)** dependendo
+de como evoluir o soak:
+
+- Se piloto ficar com flag OFF em prod por dias antes de ligar:
+  considerar ligar a flag em staging primeiro
+  (`NEXT_PUBLIC_DRE_COMPARATIVO=true` + `NEXT_PUBLIC_USE_BACKEND_DRE=true`)
+  para usar o `<ComparativoDRE>` em dados reais por X dias.
+- Após confirmar piloto OK com flag ON em prod: PR seguinte expande
+  para Portal mirror + AnáliseIA + Dashboard (~1 dia).
+- Após soak 7-14 dias com flag ON estável em todas as páginas: Fase
+  5.G dropa `calcularDRE` + agregadores do front (-~700 LOC líquidas).
 

@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw } from 'lucide-react'
 import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
+import { restoreEmpresa } from '@/hooks/useAPI'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean
@@ -12,7 +14,14 @@ interface UserData {
   permissoes: { id: number; modulo: string; acao: string; empresa_id: number | null }[]
   unidades: { id: number; nome: string; empresa_id: number }[]
 }
-interface EmpresaOption { id: number; nome: string; cnpj: string | null; tem_credencial?: boolean }
+interface EmpresaOption {
+  id: number
+  nome: string
+  cnpj: string | null
+  tem_credencial?: boolean
+  /** ISO 8601 quando soft-deletada, null quando ativa. P0-7. */
+  deleted_at?: string | null
+}
 interface UnidadeData { id: number; nome: string; codigo: string | null; ativa: boolean }
 
 const MODULOS: Record<string, string[]> = {
@@ -45,9 +54,25 @@ export default function AdminPage() {
   const [testResults, setTestResults] = useState<Record<number, { sucesso: boolean; mensagem: string } | null>>({})
   const [testing, setTesting] = useState<number | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
+  const [restoringEmpresa, setRestoringEmpresa] = useState<number | null>(null)
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  const handleRestoreEmpresa = async (emp: EmpresaOption) => {
+    setRestoringEmpresa(emp.id)
+    try {
+      await restoreEmpresa(emp.id)
+      showToast('success', `Empresa "${emp.nome}" restaurada`)
+      loadData()
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      showToast('error', detail || 'Erro ao restaurar')
+    } finally {
+      setRestoringEmpresa(null)
+    }
   }
 
   // Forms
@@ -295,26 +320,74 @@ export default function AdminPage() {
         <div className="space-y-3">
           {empresas.map(emp => {
             const isExp = expandedEmpresa === emp.id
+            const isSoftDeleted = !!emp.deleted_at
+            const deletedAtLabel = emp.deleted_at
+              ? new Date(emp.deleted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : null
             return (
-              <div key={emp.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-                <button onClick={() => setExpandedEmpresa(isExp ? null : emp.id)} className="w-full flex items-center gap-4 p-5 hover:bg-zinc-800/50 transition-colors text-left">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-[#CCA000]" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-white">{emp.nome}</div>
-                    {emp.cnpj && <div className="text-xs text-zinc-500 font-mono">{emp.cnpj}</div>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {emp.tem_credencial ? (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" title="Credenciais configuradas" />
-                    ) : (
-                      <span className="w-2 h-2 rounded-full bg-amber-400" title="Sem credenciais" />
-                    )}
-                    <span className="text-xs text-zinc-500">ID: {emp.id}</span>
-                  </div>
-                  {isExp ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
-                </button>
+              <div
+                key={emp.id}
+                className={`bg-zinc-900 border rounded-2xl overflow-hidden ${
+                  isSoftDeleted ? 'border-red-900/40 opacity-70' : 'border-zinc-800'
+                }`}
+              >
+                <div className="flex items-center gap-2 p-5 hover:bg-zinc-800/50 transition-colors">
+                  <button
+                    onClick={() => setExpandedEmpresa(isExp ? null : emp.id)}
+                    className="flex-1 flex items-center gap-4 text-left min-w-0"
+                    aria-expanded={isExp}
+                    aria-label={`${isExp ? 'Recolher' : 'Expandir'} ${emp.nome}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-5 h-5 text-[#CCA000]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-white truncate">{emp.nome}</span>
+                        {isSoftDeleted && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium whitespace-nowrap">
+                            DELETADA{deletedAtLabel ? ` ${deletedAtLabel}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      {emp.cnpj && <div className="text-xs text-zinc-500 font-mono">{emp.cnpj}</div>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {emp.tem_credencial ? (
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" title="Credenciais configuradas" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-amber-400" title="Sem credenciais" />
+                      )}
+                      <span className="text-xs text-zinc-500">ID: {emp.id}</span>
+                    </div>
+                    {isExp ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+                  </button>
+                  {/* Action: restore (se soft-deletada) ou delete (caso contrario) */}
+                  {isSoftDeleted ? (
+                    <button
+                      onClick={() => handleRestoreEmpresa(emp)}
+                      disabled={restoringEmpresa === emp.id}
+                      aria-label={`Restaurar ${emp.nome}`}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      {restoringEmpresa === emp.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      )}
+                      Restaurar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setDeletingEmpresa({ id: emp.id, nome: emp.nome })}
+                      aria-label={`Excluir ${emp.nome}`}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Excluir
+                    </button>
+                  )}
+                </div>
                 {isExp && (
                   <div className="border-t border-zinc-800 p-5">
                     <h4 className="text-xs font-medium text-[#CCA000] uppercase tracking-wider mb-3">Credenciais Omie</h4>
@@ -490,6 +563,16 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de soft delete (P0-7) */}
+      <DeleteEmpresaModal
+        empresa={deletingEmpresa}
+        onClose={() => setDeletingEmpresa(null)}
+        onSuccess={() => {
+          showToast('success', `Empresa "${deletingEmpresa?.nome}" marcada como deletada`)
+          loadData()
+        }}
+      />
     </div>
   )
 }
