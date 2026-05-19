@@ -4,8 +4,10 @@ import { useThemeStore } from '@/store/themeStore'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useExtrato, useCPAll, useCRAll, useFluxoCaixa } from '@/hooks/useAPI'
+import { useDRE } from '@/hooks/useDRE'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { calcularDRE, calcularNeutros } from '@/lib/planoContas'
+import { useBackendDRE } from '@/lib/featureFlags'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { transformCPCR } from '@/lib/transformers'
 import { GlowLine } from '@/components/ui/GlowLine'
@@ -57,11 +59,24 @@ export function AnaliseIAView() {
   const lancamentos = extratoResponse?.lancamentos ?? []
   const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
-  // Compute DRE using the proper function with the empresa-specific map
-  const dre = useMemo(() => calcularDRE(
+  // Fase 5.F.2 (ADR-001): backend assume o motor DRE quando flag ligada.
+  const useBackend = useBackendDRE()
+  const { data: dreBackend } = useDRE(
+    useBackend ? empresaId : null,
+    useBackend ? { dt_inicio: dateFrom, dt_fim: dateTo } : undefined,
+  )
+
+  // DRE local (sempre computado pro fallback). Shape ja eh maiusculo,
+  // identico ao backend -- nao precisa de shim.
+  const dreLocal = useMemo(() => calcularDRE(
     lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
     categoriaMap,
   ), [lancamentos, categoriaMap])
+
+  // DRE efetivo: backend quando flag ON e respondeu; senao local. Como
+  // o response backend tem o mesmo shape (`subtotais` com RoB/TDCF/...),
+  // basta plugar `dreBackend.subtotais` no lugar.
+  const dre = useBackend && dreBackend ? dreBackend.subtotais : dreLocal
 
   // CP/CR data for context
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
@@ -120,14 +135,17 @@ export function AnaliseIAView() {
     }))
   }, [dre])
 
-  // Categorias marcadas como NEUTRO (excluídas do DRE) — para exibir no contexto
-  const neutros = useMemo(
+  // Categorias marcadas como NEUTRO (excluídas do DRE) — para exibir no contexto.
+  // Local: via `calcularNeutros`. Backend: vem direto em `dreBackend.neutros`
+  // (mesmo shape: { codigo, nome, total, count }).
+  const neutrosLocal = useMemo(
     () => calcularNeutros(
       lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria })),
       categoriaMap,
     ),
     [lancamentos, categoriaMap],
   )
+  const neutros = useBackend && dreBackend ? dreBackend.neutros : neutrosLocal
   const totalNeutro = useMemo(() => neutros.reduce((s, n) => s + n.total, 0), [neutros])
 
   // Build financial context for the AI chat

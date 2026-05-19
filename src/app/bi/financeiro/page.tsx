@@ -14,10 +14,12 @@ import { calcularDRE } from '@/lib/planoContas'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato, useCPAll, useCRAll, useConcilResumo, useFluxoCaixa } from '@/hooks/useAPI'
+import { useDRE } from '@/hooks/useDRE'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
+import { useBackendDRE } from '@/lib/featureFlags'
 import { transformCPCR } from '@/lib/transformers'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 
@@ -94,8 +96,17 @@ function DashboardExecutivo() {
   /* ── Computed values ──────────────────────── */
   const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
-  // Calcular DRE real do extrato usando planoContas dinâmico
-  const dreData = useMemo(() => {
+  // Fase 5.F.2 (ADR-001): backend assume o motor DRE quando flag ligada.
+  const useBackend = useBackendDRE()
+  const { data: dreBackend } = useDRE(
+    useBackend ? empresaId : null,
+    useBackend
+      ? { dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds }
+      : undefined,
+  )
+
+  // Calcular DRE local (fallback). Shape: lowercase ('rob/tdcf/...').
+  const dreLocal = useMemo(() => {
     if (!lancamentos.length) return null
     const dre = calcularDRE(
       lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
@@ -106,6 +117,18 @@ function DashboardExecutivo() {
       rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
     }
   }, [lancamentos, categoriaMap])
+
+  // dreData efetivo: backend quando flag ON e respondeu; senao local.
+  const dreData = useMemo(() => {
+    if (useBackend && dreBackend) {
+      const s = dreBackend.subtotais
+      return {
+        rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF,
+        rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
+      }
+    }
+    return dreLocal
+  }, [useBackend, dreBackend, dreLocal])
 
   const ebt2 = dreData?.ebt2 ?? 0
 
