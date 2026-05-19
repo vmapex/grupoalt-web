@@ -2814,6 +2814,250 @@ time curl -H "Cookie: ..." \
 Estimativa total 5.F + 5.G: ~2-3 dias dedicados + 7-14 dias de soak
 entre eles.
 
+---
 
+## Sessão 2026-05-19 (continuação 4) — Fase 5.F entregue (PILOTO front)
 
+Após merge dos PRs api #93 (5.E) + web #120 (docs 5.E), continuação
+direta com a Fase 5.F. **Primeira sub-fase a tocar o front** desde o
+início do ciclo Fase 5. Backend já em prod silencioso desde os merges
+das fases 5.C/5.D/5.E.
+
+### Fase 5.F — Front consome /dre via feature flag (PR web #121, audit Score 97/100 APPROVE)
+
+Hook `useDRE` consome `GET /v1/empresas/{id}/dre` da API; feature flag
+`NEXT_PUBLIC_USE_BACKEND_DRE` (default `false`) gateia o consumo;
+piloto migra **apenas o BI Caixa Executivo** (`/bi/financeiro/caixa`).
+
+#### Decisões confirmadas pelo usuário antes de codar
+
+1. **Flag default em prod inicial = `false`** — soak controlado. Backend
+   já está em prod silencioso desde PRs api #91/#92/#93 mergeados; ligar
+   a flag é operação separada (env var Vercel ou `.env.production`).
+2. **Piloto 1 página (Caixa BI executivo)** — menor superfície de
+   regressão. Portal mirror, AnáliseIA e Dashboard ficam para PRs
+   seguintes após confirmar piloto OK.
+3. **Comparativo paralelo dev/staging only** — `<ComparativoDRE>` aparece
+   automático quando `NODE_ENV != production`; escape hatch
+   `NEXT_PUBLIC_DRE_COMPARATIVO=true` para staging Vercel.
+4. **Fixtures oracle do web mantidas** após 5.G como contrato de
+   regressão visual (source of truth migrará para `api/tests/oracle/`).
+
+#### Arquivos (5 = 4 novos + 1 modificado)
+
+| Arquivo | LOC | Propósito |
+|---|---|---|
+| `src/hooks/useDRE.ts` | +188 | Hook + 5 types espelhando DTOs Pydantic |
+| `src/hooks/useDRE.test.ts` | +187 | 13 tests Vitest (mock axios) |
+| `src/lib/featureFlags.ts` | +40 | `useBackendDRE()` + `useDREComparativo()` |
+| `src/components/caixa/ComparativoDRE.tsx` | +179 | Diff lado a lado dev-only |
+| `src/app/bi/financeiro/caixa/page.tsx` | +44/-1 | Shim do backend; preserva fallback local |
+
+**Total**: 5 arquivos, +638 LOC, -1 LOC.
+
+#### Highlights técnicos
+
+**Tipos TS espelham 1:1 os DTOs Pydantic**
+
+`DRESubtotais` com 14 campos exatos (RoB, TDCF, RL, CV, MC, CF, EBT1,
+RNOP, DNOP, SNOP, EBT2, IRPJ, CSLL, RES_LIQ), `DREMeta` com 6 campos,
+`DREResponse` com 4 (`subtotais, neutros, meta, subtotais_por_periodo`),
+`PeriodoDRE` com 3 (`periodo, subtotais, total_lancamentos`). Drift
+detectado em PR via review manual + audit-agent cross-check com
+`app/routers/dre.py` do api.
+
+**Cache key 5.D preservado intencionalmente**
+
+`granularity='total'` (default) é **OMITIDO** dos query params no
+hook. Backend Fase 5.D define que chamadas sem `granularity` produzem
+mesma cache key que `granularity='total'` explícito. Teste
+`OMITE granularity quando 'total' (default)` codifica isso.
+
+**Datas ISO YYYY-MM-DD**
+
+Hook aceita formato ISO direto (Pydantic `date` rejeita DD/MM/YYYY com
+422). `dateFrom`/`dateTo` do `dateRangeStore` já são ISO — não
+precisaram de conversão. Não confundir com `dt_inicio/dt_fim` em DMY
+que continuam alimentando `useExtrato` (path API legado).
+
+**Shim shape para a UI**
+
+Quando flag ON e backend respondeu:
+```ts
+dreData = {
+  rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF, mc: s.MC,
+  rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
+}
+```
+Mantém os 9 campos exatos consumidos pelo KPIStrip, ChartGrid,
+DRESidebar, footer strip. Zero regressão visual.
+
+**`dreLocal` continua computado mesmo com flag ON**
+
+Pra alimentar o `<ComparativoDRE>` em dev/staging. Bundle do Caixa BI
+sobe ~1kB; aceitável durante o soak. Fase 5.G remove `dreLocal` quando
+flag estabilizar em prod.
+
+**`<ComparativoDRE>` dev-only com gating duplo**
+
+Gated por `useDREComparativo()`:
+- Default ON quando `NODE_ENV !== 'production'`
+- Em prod, só ON com escape hatch `NEXT_PUBLIC_DRE_COMPARATIVO=true`
+
+Componente retorna `null` early quando desabilitado (não monta DOM em
+prod). Threshold de diff configurável (default 0.01 = 1 centavo).
+
+#### Tests (13 novos)
+
+| Cenário | O que valida |
+|---|---|
+| `empresaId=null` não chama API | Hook silencioso quando empresa não resolvida |
+| GET path correto | `/empresas/${id}/dre` (proxy adiciona `/api/proxy/v1`) |
+| Success populates data | Response decodificado corretamente |
+| Error com `detail` do backend | Mensagem específica preservada |
+| Error sem detail fallback | `err.message` ou genérico |
+| `dt_inicio` + `dt_fim` ISO | Datas chegam como YYYY-MM-DD |
+| `projeto_omie_ids` array | Repeat format do FastAPI |
+| OMITE granularity='total' | Cache key 5.D preservado |
+| Envia granularity != 'total' | `'mensal'` chega no param |
+| Não envia params undefined/empty | Limpa antes de mandar |
+| AbortController signal presente | Cancelamento funcional |
+| `refetch()` dispara nova chamada | Manual trigger |
+| Decodifica `subtotais_por_periodo` | Granularity=mensal completo |
+
+#### Validações
+
+- `npm run typecheck` → **0 erros**
+- `npm test -- --run` → **231/231 verde** (era 218 antes; +13 novos)
+- `npm run lint` → apenas warnings preexistentes (CI não bloqueia)
+- `npm run build` → 50 rotas; **Caixa BI 16.1kB** (+~1-2kB do hook + componente)
+- `npm run audit:bundle` → **0 credenciais expostas** em 79 arquivos JS
+
+#### Compatibilidade preservada
+
+| Cenário | Comportamento |
+|---|---|
+| Flag OFF (default em prod) | `calcularDRE` local intacto; renderiza idêntico ao código atual |
+| Flag ON + backend responde | `dreData` vem do endpoint via shim de shape; UI inalterada |
+| Flag ON + backend indisponível | `dreBackend` fica `null`; `dreData` cai no fallback local automaticamente |
+| `empresaId=null` (pré-login) | Hook silencioso, sem fetch |
+
+#### Audit Fase 5.F (worktree isolado, padrão "seq + 1")
+
+- **Score**: **97/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/13** ✅
+- Review em
+  [`docs/audit/fase-5f-front-usedre/review.md`](audit/fase-5f-front-usedre/review.md)
+
+**Pontos positivos destacados** pelo auditor:
+
+1. ADR-001 implementado corretamente: front é consumidor puro do
+   endpoint, sem cálculo paralelo. Motor real fica no backend
+   (validado pelo oracle 5.A).
+2. Cross-check com `app/routers/dre.py` confirma DTOs Pydantic ↔ TS
+   1:1 (14 subtotais, meta, neutros, periodos).
+3. Path correto sem `/v1` duplicado (`baseURL=/api/proxy/v1` +
+   path `/empresas/{id}/dre` → rewrite Next.js).
+4. Cache key 5.D preservado: `granularity='total'` (default) é
+   OMITIDO dos params — backend produz mesma hash sem 4º param
+   ou com `"total"` explícito.
+5. Flag default `false` por comparação estrita
+   (`process.env.NEXT_PUBLIC_USE_BACKEND_DRE === 'true'`). Qualquer
+   outro valor → OFF.
+6. Datas ISO YYYY-MM-DD repassadas direto; `dateRangeStore` já
+   produz ISO. Não confundido com DMY do `useExtrato` legado.
+7. Shim de 9 campos antigos preserva contrato com `KPIStrip`,
+   `ChartGrid`, `DRESidebar`, footer strip.
+8. Render JSX **idêntico** ao main quando flag OFF (verificado
+   por diff: diff é puramente aditivo).
+9. AbortController + `empresaId=null` no mesmo padrão de `useApi`.
+10. `<ComparativoDRE>` com gate duplo (NODE_ENV + escape hatch) +
+    `null/null → return null` (segundo guard explícito).
+11. A11y: `role="region"` + `aria-label`; tabela semântica
+    `<thead>/<tbody>`.
+12. Threshold de diff configurável (default 0.01 = 1 centavo).
+
+**Validações cruzadas pelo auditor:**
+
+- 13/13 useDRE.test.ts verde
+- 231/231 suite full verde (era 218; +13)
+- `npm run typecheck` → zero erros
+- `npm run lint` → apenas warnings preexistentes
+- `npm run build` → Caixa BI 16.1 kB
+- `npm run audit:bundle` → 0 credenciais expostas
+- DTOs Pydantic confrontados linha a linha com tipos TS
+
+**Pontos de atenção** (0 bloqueantes, observações operacionais):
+
+- **Sequenciamento sugerido pelo auditor**: staging com
+  `NEXT_PUBLIC_DRE_COMPARATIVO=true` → prod flag OFF (default) →
+  prod flag ON 7-14 dias → Fase 5.G cleanup do `calcularDRE` local.
+- **Granularity != 'total' no front**: hook expõe, mas Caixa BI
+  passa default. Sem regressão imediata; espaço para PRs futuros.
+
+#### Fora de escopo (sub-fases seguintes)
+
+- Migrar `/portal/financeiro/caixa/_content.tsx` (Portal mirror)
+- Migrar `/components/analise/AnaliseIAView.tsx`
+- Migrar `/app/bi/financeiro/page.tsx` (Dashboard)
+- Migrar `/app/bi/financeiro/caixa/dre-mensal/page.tsx`
+- Fase 5.G: remover `calcularDRE`/`calcularDREPorMes` de `planoContas.ts` e
+  agregadores de `caixaBuilder.ts` (após 7-14 dias soak com flag ON)
+
+#### Smoke pós-deploy proposto
+
+```bash
+# Sem flag (default — comportamento atual)
+# Acessar /bi/financeiro/caixa → nenhuma chamada para /v1/empresas/{id}/dre
+# DevTools Network: só /extrato, /categorias
+
+# Com flag (escape hatch local: NEXT_PUBLIC_USE_BACKEND_DRE=true npm run dev)
+# Acessar /bi/financeiro/caixa
+# DevTools Network: chamada nova para /v1/empresas/{id}/dre
+# Tela: idêntica visualmente; canto inferior direito mostra ComparativoDRE "OK"
+
+# Em staging com flag ON em prod:
+# NEXT_PUBLIC_USE_BACKEND_DRE=true via Vercel env vars (staging environment)
+# Acessar staging.* → mesma renderização do prod
+# Comparar visualmente RoB/EBT2 entre staging (backend) e prod (local)
+```
+
+### Estado consolidado pós-Fase 5.F
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ✅ | PR api #92 (audit 96/100) |
+| 6.E — Fase 5.E (granularity) | ✅ | PR api #93 (audit 96/100) |
+| **6.F — Fase 5.F (front useDRE + feature flag piloto)** | **🟡** | **PR web #121 (audit 97/100, aguardando merge)** |
+| 6.F.2 — Fase 5.F expandida (Portal + AnáliseIA + Dashboard) | ⏭️ | Após piloto OK |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak 7-14 dias |
+
+### Risco residual pós-Fase 5.F
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~26/30 (~87%) — Fase 5.F **NÃO fecha P1-17** ainda (DRE no
+  front continua existindo enquanto flag for OFF default). Só a Fase
+  5.G fecha P1-17 ao remover `calcularDRE`.
+- **Fase 5**: **6/7 sub-fases entregues** (5.A, 5.B, 5.C, 5.D, 5.E, 5.F)
+- **% executado por tempo**: ~95% (era ~94%)
+
+### Próxima sub-fase
+
+**Fase 5.F.2 (expansão do piloto)** ou **Fase 5.G (cleanup)** dependendo
+de como evoluir o soak:
+
+- Se piloto ficar com flag OFF em prod por dias antes de ligar:
+  considerar ligar a flag em staging primeiro
+  (`NEXT_PUBLIC_DRE_COMPARATIVO=true` + `NEXT_PUBLIC_USE_BACKEND_DRE=true`)
+  para usar o `<ComparativoDRE>` em dados reais por X dias.
+- Após confirmar piloto OK com flag ON em prod: PR seguinte expande
+  para Portal mirror + AnáliseIA + Dashboard (~1 dia).
+- Após soak 7-14 dias com flag ON estável em todas as páginas: Fase
+  5.G dropa `calcularDRE` + agregadores do front (-~700 LOC líquidas).
 
