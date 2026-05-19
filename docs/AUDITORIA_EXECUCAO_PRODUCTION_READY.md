@@ -2615,4 +2615,205 @@ railway run redis-cli KEYS "altmax:1:dre:*" | head
 - Feature flag: `NEXT_PUBLIC_USE_BACKEND_DRE`
 - Estimativa: 1-2 dias
 
+---
+
+## Sessão 2026-05-19 (continuação) — Fase 5.E entregue (BACKEND COMPLETO)
+
+Após merge dos PRs #92 + #119, continuação direta com a Fase 5.E
+(granularity temporal). **Esta sub-fase completa o lado backend
+do ADR-001.** Restam apenas 5.F (front via feature flag) e 5.G
+(cleanup do `calcularDRE` do front).
+
+### Fase 5.E — Granularity (PR api #93, audit Score 96/100 APPROVE)
+
+Adiciona quebra temporal opcional ao endpoint `/dre`:
+
+```
+GET /v1/empresas/{empresa_id}/dre
+    ?granularity=total|mensal|trimestral|semanal   (default: total)
+```
+
+#### Estratégia técnica
+
+**Particionamento Python sobre o motor puro existente.** Em vez de
+escrever SQL `GROUP BY date_trunc`, o endpoint particiona os
+lançamentos em Python e chama `calcular_dre(bucket)` para cada bucket.
+
+**Por que essa abordagem**:
+- Motor puro **inalterado** → oracle da Fase 5.A/B continua válido
+- Invariante "total = soma dos buckets" vale por **construção
+  matemática** (motor é abs+soma simples, distributivo sobre union
+  disjunta)
+- Zero duplicação de regra contábil
+- Aceitável em performance (10k linhas → ~50 buckets × O(n/50) = O(n))
+
+#### Formato das chaves
+
+| Granularity | Formato | Exemplo |
+|---|---|---|
+| mensal | `YYYY-MM` | `2026-04` |
+| trimestral | `YYYY-Qn` | `2026-Q2` (Q1=jan-mar, Q4=out-dez) |
+| semanal | `YYYY-Www` | `2026-W14` (ISO 8601) |
+
+**Ordem lexicográfica = ordem cronológica** (decisão intencional,
+documentada nos 3 lugares relevantes). Permite `sorted()` direto.
+
+**ISO 8601 para semanas**: `01/01/2026` (quinta-feira) → `2026-W01`;
+`31/12/2025` (quarta) → também `2026-W01` (mesma semana ISO). Caso
+oposto: `01/01` numa segunda/terça vira `YYYY-W53` do ano anterior.
+
+#### Edge cases
+
+- **`data_lancamento=NULL`**: conta no `subtotais` (total) mas é
+  silenciosamente dropado dos buckets. **Log emitido para vigilância**
+  (1 log por chamada, agregado — não flooda).
+- **Empresa vazia + granularity≠total**: `subtotais_por_periodo` é
+  `[]` (lista vazia), **não `null`**. Discriminação semântica testada:
+  `null` = "não pediu granularity"; `[]` = "pediu mas não tem dados".
+- **Granularity inválida** (ex: `?granularity=anual`): retorna **422**
+  (Pydantic `Literal` rejeita no schema, sem tocar o handler).
+
+#### Compatibilidade preservada
+
+| Fase | Como mantém |
+|---|---|
+| 5.C (endpoint base) | Default `granularity="total"` → response 1:1 (`subtotais_por_periodo: null`). Test `test_default_total_compat_fase_5c` codifica isso. |
+| 5.D (cache Redis) | `_build_cache_suffix(...)` default `"total"` no 4º param → chamadas sem granularity (5.D) produzem MESMA chave que `granularity="total"` (5.E). Test `test_default_total_eh_mesma_que_explicit` codifica isso. Granularities distintas geram chaves distintas. |
+
+#### Implementação
+
+| Arquivo | Mudança |
+|---|---|
+| `app/routers/dre.py` | `+GranularityType` Literal, `+_bucket_key`, `+_split_by_granularity`, `+PeriodoDREOut`, `DREMetaOut.granularity`, `DREResponse.subtotais_por_periodo`, endpoint usa granularity, `_build_cache_suffix` aceita granularity |
+| `tests/test_dre_granularity.py` (novo) | 25 testes em 4 classes |
+
+**Motor puro intocado** (`app/domain/financeiro/dre.py`).
+
+#### Tests (25 novos)
+
+| Suite | Tests | O que valida |
+|---|---|---|
+| `TestBucketKey` | 9 | Formato mensal/trimestral/semanal; ISO week virada de ano; granularity inválida e `'total'` levantam |
+| `TestSplitByGranularity` | 5 | Particionamento; `data=None` dropada; ordenação cronológica; `'total'` levanta |
+| `TestCacheSuffixGranularity` | 2 | Granularity afeta sufixo; default `"total"` bate com chamada sem param (compat 5.D) |
+| `TestDREEndpointGranularity` | 9 | Compat 5.C; mensal/trimestral/semanal corretos; ordenação; **invariante total = Σ(buckets)** nas 3 granularidades; 422; NULL; lista vazia |
+
+#### Métricas (PR #93)
+
+- 2 arquivos: 1 novo (`tests/test_dre_granularity.py`) + 1 modificado
+  (`dre.py`)
+- +619/-7 LOC
+- Suite full: 278 → **303** (+25 granularity, 0 regressão em 5.C/5.D)
+- Ruff `app/` clean
+- CI `lint-and-test pass 2m18s`
+
+#### Audit Fase 5.E (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/23** ✅
+- Review em
+  [`docs/audit/fase-5e-dre-granularity/review.md`](audit/fase-5e-dre-granularity/review.md)
+
+**Pontos positivos destacados** pelo auditor:
+
+1. Reuso máximo do motor puro 5.A — oracle vale por construção
+2. Compatibilidade explícita 5.C + 5.D codificada em tests
+3. Decisão "lexicográfica = cronológica" documentada nos 3 sites
+4. ISO 8601 para semanas (não inventou regra custom)
+5. NULL drop logado, não silencioso
+6. Empresa vazia retorna `[]`, não `null` (discriminação semântica testada)
+7. Pydantic `Literal` valida no schema (422 sem tocar handler)
+8. Tests bem categorizados em 4 classes; fixture reutilizável
+9. Hash 16 chars + sort de projetos preservados (cache 5.D não regredido)
+
+**Pontos de atenção** (2, ambos não-bloqueantes, opcionais):
+
+- **N1**: forward reference `"DRESubtotaisOut"` em `PeriodoDREOut.subtotais`
+  é estilística (classe definida acima + `from __future__ import
+  annotations`). Funciona dos dois jeitos com Pydantic v2.
+- **N2**: conversão `Lancamento` é refeita por bucket (~50ms extra em
+  10k linhas). Micro-opt refatorável se virar gargalo no profiler.
+
+### Estado consolidado pós-Fase 5.E
+
+**🎉 Backend da Fase 5 COMPLETO (5.A → 5.E entregues, 5/7).**
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ✅ | PR api #92 (audit 96/100) |
+| **6.E — Fase 5.E (granularity)** | **🟡** | **PR api #93 (audit 96/100, aguardando merge)** |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Próxima |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak da 5.F |
+
+### Risco residual pós-Fase 5.E
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~26/30 (~87%) — Fase 5.E desbloqueia o consumidor front
+  (5.F) com endpoint feature-completo
+- **Fase 5**: **5/7 sub-fases entregues** (5.A, 5.B, 5.C, 5.D, 5.E)
+- **% executado por tempo**: ~94% (era ~93%)
+
+### Smoke pós-deploy proposto (3 min)
+
+```bash
+# 1. Total (compat 5.C) -- subtotais_por_periodo deve ser null
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30" \
+  | jq '.subtotais_por_periodo'  # esperado: null
+
+# 2. Mensal -- 1 bucket por mes
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-01-01&dt_fim=2026-12-31&granularity=mensal" \
+  | jq '.subtotais_por_periodo | length, .[].periodo'
+
+# 3. Trimestral
+curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=trimestral" \
+  | jq '.subtotais_por_periodo | map(.periodo)'
+
+# 4. Granularity invalida -> 422
+curl -i -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=anual" | head -1
+# Esperado: HTTP/1.1 422 Unprocessable Entity
+
+# 5. Cache hit em granularity=mensal (mesma URL 2x)
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=mensal" >/dev/null
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?granularity=mensal" >/dev/null
+# 2a chamada deve ser <50ms
+```
+
+### Próxima sub-fase
+
+**Fase 5.F — Front consome via feature flag** (1-2 dias):
+
+- Hook `useDRE(empresa_id, filtros)` no front
+  (`grupoalt-web/src/hooks/useDRE.ts`)
+- Feature flag `NEXT_PUBLIC_USE_BACKEND_DRE`:
+  - `false` (default): front continua usando `calcularDRE` local
+    (Fase 5.C/D/E ficam silently ativas, sem consumidor)
+  - `true`: páginas BI/Portal usam `useDRE` em vez de `calcularDRE`
+- **Comparativo paralelo** opcional (dev/staging): renderizar ambos
+  lado a lado para detectar divergência visual
+- Tests Vitest do hook + de página BI substituida
+
+**Fase 5.G — Cleanup** (após N dias de soak da 5.F com flag ligada):
+
+- Remover `calcularDRE` de `src/lib/planoContas.ts` (~367 LOC)
+- Remover agregadores do `src/lib/caixaBuilder.ts` (~394 LOC)
+- Remover feature flag
+- ~-700 LOC líquidos no bundle do front
+
+Estimativa total 5.F + 5.G: ~2-3 dias dedicados + 7-14 dias de soak
+entre eles.
+
+
+
 
