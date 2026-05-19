@@ -1956,8 +1956,238 @@ queries cronológicas).
 
 Estimativa Fase 5: 7-10 dias dedicados.
 
+---
 
+## Sessão 2026-05-18 (parte 3) — P1-2 Camada 2.3 destrutiva (DROP + RENAME)
 
+Continuação da sessão "longa" do dia anterior. Após Camada 2.2b inteira
+mergeada (3 PRs encadeados), user confirmou **backup manual no Railway**
+e autorizou prosseguir com a Camada 2.3 **sem aguardar 24-48h de soak**.
+Decisão consciente: as 3 sub-camadas da 2.2b foram pequenas, idempotentes
+no front (fallback `formatIsoToBr`) e o smoke pós-deploy do JSON ISO
+estava OK.
+
+### Camada 2.3 — DROP COLUMN destrutivo + RENAME canônico
+
+| # | Repo | PR | Estado | Tema |
+|---|---|---|---|---|
+| 1 | api | [#89](https://github.com/vmapex/grupoalt-api/pull/89) | 🟡 OPEN | Migration 0007 destrutiva + models/routers atualizados + 8 testes 0007 + 0005/0006 ajustados |
+| 2 | (este) | web | 🟡 OPEN | Docs sessão 2026-05-18 parte 3 + audit Camada 2.3 |
+
+### Migration 0007 — operações em ordem
+
+1. **DROP de 3 índices da Fase 3C** que apontavam para colunas string:
+   - `ix_lancamento_empresa_data` (lancamentos_cc, data_lancamento)
+   - `ix_cp_empresa_vencimento` (contas_pagar, data_vencimento)
+   - `ix_cr_empresa_vencimento` (contas_receber, data_vencimento)
+
+   **Os outros 6 índices da Fase 3C ficam intactos** — eles indexam
+   colunas `status`, `conta_omie_id`, `projeto_omie_id` que não sofrem
+   alteração nesta migration. Discrepância do exec doc anterior (linha
+   1942 da parte 2 falava em "9 índices"): apenas 3 saem por cascade,
+   não 9.
+
+2. **DROP COLUMN das 11 colunas String(10) DD/MM/YYYY**:
+
+   | Tabela | Colunas removidas |
+   |---|---|
+   | `lancamentos_cc` | `data_lancamento`, `data_conciliacao` |
+   | `contas_pagar` | `data_emissao`, `data_vencimento`, `data_previsao`, `data_pagamento` |
+   | `contas_receber` | `data_emissao`, `data_vencimento`, `data_previsao`, `data_pagamento` |
+   | `baixas_financeiras` | `data_pagamento` |
+
+3. **ALTER COLUMN RENAME**: `data_*_date → data_*` (11 colunas com nome
+   canônico, sem sufixo `_date`).
+
+4. **RENAME INDEX** dos 3 índices da Camada 2.2b.0 para o nome canônico
+   da Fase 3C:
+   - `ix_lancamento_empresa_data_date → ix_lancamento_empresa_data`
+   - `ix_cp_empresa_vencimento_date → ix_cp_empresa_vencimento`
+   - `ix_cr_empresa_vencimento_date → ix_cr_empresa_vencimento`
+
+### Mudanças no código
+
+| Arquivo | Mudança |
+|---|---|
+| `models.py` | Campos `data_*` agora são `Mapped[date \| None]` com `Date`. Remove Index `_date` duplicados. |
+| `sync_service.py` | Para de popular ambas (string + Date). Apenas `data_* = parse_br_date(raw)`. |
+| `dashboard.py`, `conciliacao.py`, `extrato.py`, `cp_cr.py`, `export.py`, `alertas.py`, `orbit_chat.py` | Renomeação mecânica `r.data_*_date → r.data_*` |
+
+### Estratégia dual-dialect
+
+- **PostgreSQL**: `ALTER INDEX RENAME TO` nativo, `drop_column`/`alter_column` atômicos.
+- **SQLite** (tests): `batch_alter_table` recria a tabela. **Downgrade
+  dividido em 2 batches** (rename + add_column em batches separados) para
+  evitar `CircularDependencyError` do SQLAlchemy quando alter_column +
+  add_column do mesmo nome são misturados no mesmo `with` block.
+
+### Tests
+
+- **8 testes novos** em `tests/test_alembic_0007_destructive.py`:
+  - Upgrade dropa strings + renomeia Date para canônico
+  - Upgrade renomeia 3 índices `_date` para nome canônico
+  - Upgrade preserva 6 outros índices da Fase 3C
+  - Downgrade restaura strings + índices originais
+  - Round-trip upgrade→downgrade→upgrade
+  - INSERT direto com Date nativo
+- `test_alembic_0005` e `0006` ajustados para `command.upgrade(cfg,
+  "0005"/"0006")` explícito ao invés de `"head"` — `"head"` agora vai
+  até a 0007 destrutiva e quebraria os testes do estado intermediário.
+
+### Métricas
+
+- **14 arquivos**: 9 modificados + 5 novos/refatorados (migration + test
+  + 3 tests ajustados).
+- **+688/-131 LOC** líquidas no PR api.
+- **Suite local pytest**: 183 → **191** (+8 do 0007).
+- **Ruff** em `app/`: clean.
+- **CI**: pendente run pós-push.
+
+### Audit Camada 2.3 (destrutiva, padrão "seq + 1 auditor")
+
+Audit independente em worktree isolado completado:
+[`docs/audit/p1-2-camada-2-3-destructive-cleanup/review.md`](audit/p1-2-camada-2-3-destructive-cleanup/review.md).
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **nenhum**
+
+Validações cruzadas confirmadas pelo auditor:
+
+- Suite local 191/191 verde
+- Ruff `app/` clean
+- CI `lint-and-test` SUCCESS, mergeable
+- 0 referências residuais a `data_*_date` em `app/`
+- 11 sites de `parse_br_date` em sync_service (era 22 antes — popular duas
+  colunas; agora popula só uma)
+- 0 colunas `String(10)` em campos de data no `models.py`
+- 8 tests novos do 0007 + 2 tests refatorados (0005, 0006) corretos
+
+**Follow-ups opcionais** documentados no review (não-bloqueantes):
+
+- **F-01**: test do downgrade-em-PG do backfill `TO_CHAR` (PG-only, hoje
+  sem cobertura automatizada — CI roda upgrade em PG mas não downgrade).
+- **F-02**: extrair `_is_postgres(bind)` em helper para reduzir
+  duplicação na migration.
+- **F-03**: renomear `dt_*` → `dt_*_raw` em `_calcular_status`
+  (helper interno em `sync_service.py` que ainda usa string da Omie —
+  não é bug, só confunde leitura).
+
+**Pontos fortes destacados pelo auditor**:
+
+- Estratégia dual-dialect madura (PG `ALTER INDEX RENAME TO` nativo vs
+  SQLite drop+create em batch)
+- Downgrade dividido em 2 batches no SQLite com comentário explicando
+  `CircularDependencyError` do SQLAlchemy
+- Test de regressão `test_upgrade_head_preserva_6_indices_fase_3c`
+  garante que índices Fase 3C não tocados sobrevivem ao DROP
+- Comentários inline "P1-2 Camada 2.3" formam trilha rastreável
+- Risco residual baixo: backup manual confirmado, JSON público
+  inalterado (ISO 8601 já desde 2.2b.1)
+
+### Estado consolidado pós-Camada 2.3 (post-merge)
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 0-4 | ✅ | (anterior, inalterado) |
+| 5A — Fase 3A (Alembic baseline) | ✅ | PR #73 |
+| 5B — Backup policy + drill | ✅ | PR #74 |
+| 5C — Fase 3B (Numeric monetário) | ✅ | PR #75 |
+| 5D — Fase 3C (9 índices em colunas string) | ✅ | PR #76 (3 destes serão dropados pela 0007; 6 permanecem) |
+| 5E — P0-7 (soft delete empresa) | ✅ | PR #77 + #78 |
+| 5F — P0-7 UI (delete + restore na interface) | ✅ | PR #79 + #113 |
+| 5G — P1-2 Camada 2.1 (ADD COLUMN paralela + backfill) | ✅ | PR #80 |
+| 5H — P1-2 Camada 2.2a (filtros internos com Date) | ✅ | PR #81 |
+| 5I — P1-2 Camada 2.2b (índices + JSON ISO + front) | ✅ | PR #87 + #88 + #115 |
+| **5J — P1-2 Camada 2.3 (DROP + RENAME destrutivo)** | **🟡** | **PR #89 aguardando audit + merge** |
+| **P1-2 COMPLETO** | **🟡** | **Após merge da 2.3, P1-2 100% fechado** |
+| 6 — Fase 5 (DRE backend, ADR-001) | ⏭️ | Próxima big rock; depende de P1-2 100% |
+
+### Risco residual pós-Camada 2.3 (post-merge esperado)
+
+**Médio-baixo** (mantém o nível).
+
+- **P0 fechados: 10/10 (100%)** ✅
+- **P1 fechados: ~23/30 (~77%)** — P1-2 100% completo após merge.
+- **% executado por tempo: ~88%** (era ~85% pré-Camada 2.3).
+- **Backup manual** Railway confirmado pelo user antes do merge — RPO 0.
+
+### Smoke pós-deploy recomendado (5 min)
+
+```sql
+-- 1. Confirmar versão da migration
+SELECT version_num FROM alembic_version;
+-- Esperado: 0007
+
+-- 2. Confirmar colunas Date com nome canônico (sem _date)
+\d lancamentos_cc
+-- data_lancamento     | date
+-- data_conciliacao    | date
+-- (data_lancamento_date NÃO deve existir)
+
+-- 3. Confirmar índices renomeados (lancamentos_cc)
+SELECT indexname FROM pg_indexes
+WHERE tablename = 'lancamentos_cc'
+ORDER BY indexname;
+-- Esperado:
+-- ix_lancamento_empresa_conta
+-- ix_lancamento_empresa_data    ← renomeado de _date
+-- ix_lancamento_empresa_omie
+-- ix_lancamento_empresa_projeto
+-- (sem ix_lancamento_empresa_data_date)
+
+-- 4. EXPLAIN ANALYZE continua usando Index Scan
+EXPLAIN ANALYZE SELECT * FROM lancamentos_cc
+WHERE empresa_id = 1
+ORDER BY data_lancamento DESC NULLS LAST
+LIMIT 100;
+-- Esperado: Index Scan em ix_lancamento_empresa_data
+```
+
+```bash
+# 5. Confirmar JSON continua em ISO 8601 (inalterado da 2.2b.1)
+curl -H "Cookie: ..." https://api.grupoalt.agr.br/v1/empresas/1/extrato \
+  | jq '.lancamentos[0].data_lancamento'
+# Esperado: "2026-03-15" (ISO 8601 — formato igual ao da Camada 2.2b.1)
+
+# 6. UX inalterada no front (DateRangePicker + tabelas mostram DD/MM/YYYY)
+```
+
+### Pendências operacionais menores pós-Camada 2.3
+
+- **Audit obrigatório**: rodando em background ao final desta sessão.
+  Resultado documentado em
+  `docs/audit/p1-2-camada-2-3-destructive-cleanup/review.md`. Score
+  e follow-ups serão adicionados a este exec doc após audit completar.
+- **Follow-ups acumulados de audits anteriores** (não-bloqueantes): 12
+  da sessão 2026-05-18 partes 1+2 ainda pendentes. Triagem em PR
+  dedicado se vierem a ser priorizados.
+
+### Próxima sessão sugerida
+
+**Big rock: Fase 5 — DRE backend (ADR-001)** — agora desbloqueada:
+
+- ✅ Oracle financeiro entregue (Step 2)
+- ✅ Math.abs documentado como defesa intencional
+- ✅ Numeric monetário evita drift de arredondamento (Fase 3B)
+- ✅ Colunas Date com índices em prod (Camada 2.2b)
+- ✅ **P1-2 100% completo após merge da 2.3** (datas como Date nativo,
+  semântica de range/order correta no DB)
+- ✅ ADR-001 aprovado (Opção B — DRE no backend)
+
+**Escopo Fase 5**:
+1. Endpoint `GET /v1/empresas/{id}/dre`
+2. `app/domain/financeiro/dre.py` (substitui `planoContas.calcularDRE` do front)
+3. Consumir `categorias_omie.grupo_dre_override` + `CATEGORIAS` migrado de TS para DB com cache Redis
+4. Oracle financeiro como teste do endpoint (golden tests)
+5. Refatorar agregadores trimestral/mensal/semanal para SQL puro
+6. Front consume `useDRE` em vez de `calcularDRE` local
+7. Comparativo paralelo entre new endpoint e velho calcularDRE por N dias antes de remover do front
+8. Bug Math.abs: decisão com financeiro (Fase 5.5)
+
+**Estimativa**: 7-10 dias dedicados. Risco: alto (mudança visível ao
+gestor; mitigação via oracle + comparativo paralelo). Múltiplos PRs com
+audit independente.
 
 
 
