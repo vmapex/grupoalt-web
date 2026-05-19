@@ -2435,3 +2435,184 @@ curl -H "Cookie: ..." \
 - SQL `GROUP BY date_trunc(...)` para evitar carregar tudo em Python
 - Estimativa: 1 dia
 
+---
+
+## Sessão 2026-05-19 (continuação) — Fase 5.D entregue
+
+Após merge dos PRs #91 + #118 às 15:02 UTC, continuação direta com a
+Fase 5.D (cache Redis + invalidação).
+
+### Fase 5.D — Cache Redis no endpoint /dre (PR api #92, audit Score 96/100 APPROVE)
+
+Adiciona cache read-aside (Redis, TTL 30min) ao endpoint
+`GET /v1/empresas/{id}/dre` da Fase 5.C, com invalidação automática
+nos 5 sites que mudam estado relevante.
+
+#### Estratégia técnica
+
+**Sufixo determinístico**: `_build_cache_suffix(dt_inicio, dt_fim, projeto_omie_ids)`
+- SHA-1 truncado (16 chars) de `"dt_inicio|dt_fim|projetos_ordenados"`
+- **Estável**: mesmo input → mesmo sufixo, sempre
+- **Ordem-independente**: `["B","A"]` produz mesma chave que `["A","B"]`
+  (normalizado via `sorted()`)
+- **Lista vazia == None**: ambos representam "sem filtro de projeto"
+
+**Read-aside**:
+```python
+# 1. Tenta cache antes do DB (graceful: erro = log + continua)
+cached = await cache_get(empresa.id, "dre", suffix)
+if cached: return DREResponse(**cached)
+# 2. Query + motor puro
+response = ...
+# 3. Salva no cache (graceful)
+await cache_set(empresa.id, "dre", response.model_dump(mode="json"), 1800, suffix)
+return response
+```
+
+**Graceful degradation total**: ambos `cache_get` e `cache_set` em
+`try/except` — endpoint funciona com Redis offline.
+
+#### Invalidação em 5 sites
+
+| Site | Trigger |
+|---|---|
+| `sync_pipeline.py:80` | pós-sync completo (lancamentos_cc + categorias_omie) |
+| `sync_service.py:797` | espelho legado (sync everything) |
+| `webhook.py:84` | evento Omie `lancamento/contacorrente/conciliad` |
+| `extrato.py:471` | endpoint `sync_categorias` |
+| `extrato.py:513` | `atualizar_categoria_grupo_dre` (override individual) |
+| `extrato.py:575` | `bulk_override_categorias` |
+
+**Eventos CP/CR NÃO invalidam `"dre"`** — decisão de escopo: endpoint
+atual lê apenas `lancamentos_cc`, sem reflexo direto de CP/CR no DRE.
+
+#### Constantes exportadas
+
+```python
+DRE_CACHE_NAMESPACE = "dre"
+DRE_CACHE_TTL_SECONDS = 1800  # 30 minutos
+```
+
+TTL conservador. Invalidação automática é a defesa primária; TTL é
+safety net caso uma invalidação falhe.
+
+#### Tests (13 novos)
+
+- **TestBuildCacheSuffix** (7): determinismo, sensibilidade aos 3
+  parâmetros, normalização de ordem, lista vazia == None
+- **TestDRECacheHitMiss** (3): 2ª chamada vem do cache (cache_set 1x,
+  cache_get 2x); parâmetros diferentes → 4 keys distintas; ordem de
+  projetos compartilha cache
+- **TestDRECacheIsolation** (1): cross-tenant não colide (empresa_id
+  faz parte da chave Redis via `_key()`)
+- **TestDRECacheGracefulDegradation** (1): Redis explodindo (raise
+  `RuntimeError`) não quebra endpoint
+- Sanity das constantes (1)
+
+Tests usam in-memory store via `unittest.mock.patch` para simular
+Redis com state persistente.
+
+#### Métricas (PR #92)
+
+- 6 arquivos: 1 novo (`tests/test_dre_cache.py`) + 5 modificados (`dre.py`
+  + 5 sites de invalidação)
+- +409/-6 LOC
+- Suite full: 265 → **278** (+13 cache tests, 0 regressão em endpoint)
+- Ruff `app/` clean
+
+#### Audit Fase 5.D (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/17**
+- Review em
+  [`docs/audit/fase-5d-dre-cache/review.md`](audit/fase-5d-dre-cache/review.md)
+
+Validações cruzadas:
+- 13/13 cache tests verde
+- 13/13 endpoint tests verde (sem regressão)
+- 278/278 suite full verde
+- CI `lint-and-test pass 2m2s`
+- Ruff `app/` clean
+- 5 sites de invalidação confirmados via grep
+
+**Highlight do auditor**: divergência positiva em relação ao
+`dashboard_v3` — DRE tem `try/except` envolvendo cache_get/set
+(graceful degradation), `dashboard_v3` não. Vale retroportar em
+sub-fase futura (anotado como diferimento A2).
+
+**Pontos de atenção não-bloqueantes** (3, todos diferimentos):
+
+- **A1**: nome do teste `test_lista_vazia_eh_diferente_de_none` é
+  levemente enganoso — o assert verifica que compartilham sufixo
+  (comportamento correto, nome confunde). Renomear para
+  `test_lista_vazia_compartilha_cache_com_none`.
+- **A2**: retroportar graceful degradation para `dashboard_v3` em PR
+  separado (melhoria, não bug do 5.D).
+- **A3**: `_build_cache_suffix` candidato a virar helper de
+  `redis_client.py` quando Fase 5.E adicionar endpoints com mesmos
+  filtros temporais.
+
+### Estado consolidado pós-Fase 5.D
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| **6.D — Fase 5.D (cache Redis + invalidação)** | **🟡** | **PR api #92 (audit 96/100, aguardando merge)** |
+| 6.E — Fase 5.E (agregadores por granularity) | ⏭️ | Próxima |
+| 6.F — Fase 5.F (front useDRE + feature flag) | ⏭️ | Após 5.E |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak |
+
+### Risco residual pós-Fase 5.D
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~25/30 (~83%) — Fase 5.D fecha latência percebida do endpoint
+- **Fase 5**: 4/7 sub-fases entregues (5.A, 5.B, 5.C, 5.D)
+- **% executado por tempo**: ~93% (era ~92%)
+
+### Smoke pós-deploy proposto (3 min)
+
+```bash
+# 1. Hit cache (mesma URL 2x) -- 2a deve voltar em <50ms
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+
+# 2. Invalidacao via override de categoria
+curl -X PATCH -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/categorias/2.05.93" \
+  -d '{"grupo_dre":"NEUTRO"}'
+# Proxima chamada do DRE deve recalcular (miss)
+time curl -H "Cookie: ..." \
+  "https://api.grupoalt.agr.br/v1/empresas/1/dre?dt_inicio=2026-04-01&dt_fim=2026-04-30"
+# Esperado: tempo similar ao "miss" inicial; DRE diferente (2.05.93 saiu de CF)
+
+# 3. Confirmar no Redis (Railway CLI)
+railway run redis-cli KEYS "altmax:1:dre:*" | head
+```
+
+### Próxima sessão sugerida
+
+**Continuar com Fase 5.E** (agregadores por granularity):
+
+- Query param `?granularity=total|mensal|trimestral|semanal`
+- SQL `GROUP BY date_trunc('month'|'quarter'|'week', data_lancamento)`
+  para evitar carregar todos os lançamentos em Python
+- Response shape: `{ "subtotais_por_periodo": [{"periodo": "2026-04", subtotais: {...}}, ...] }`
+- Cache da 5.D continua valendo: a chave inclui todos os params
+- Estimativa: 1 dia
+
+**Paralelizável: Fase 5.F** (front consome via feature flag):
+
+- Hook `useDRE` substitui `calcularDRE` do front quando flag ligada
+- Comparativo paralelo (front + back lado a lado) por N dias antes de
+  remover `calcularDRE`
+- Feature flag: `NEXT_PUBLIC_USE_BACKEND_DRE`
+- Estimativa: 1-2 dias
+
+
