@@ -3221,3 +3221,144 @@ alinhados com o oracle financeiro homologado.
    - Avaliar `buildDREMatrix` → novo endpoint backend ou manter
    - ~-700 LOC líquidas no bundle do front
 
+---
+
+## Sessão 2026-05-20 — P1-9 entregue (Redis KEYS → SCAN)
+
+Durante a janela natural de soak da Fase 5.F.2 (aguardando 7-14 dias),
+aproveitamos para atacar **P1-9** do plano de ação original — um quick
+win de segurança operacional que ficou mais crítico após a Fase 5.D
+adicionar invalidação do namespace `dre` em 5 sites novos.
+
+### P1-9 — Substituir KEYS bloqueante por SCAN cursor-based (PR api #95, audit Score 97/100 APPROVE)
+
+`r.keys(pattern)` no Redis é **O(N) sobre o keyspace INTEIRO** e
+**bloqueia o servidor** para outras conexões durante a execução. Em
+produção com milhões de chaves, isso degrada latência de todas as
+outras consultas até o KEYS terminar.
+
+`r.scan_iter()` é cursor-based e não-bloqueante: itera em batches
+pequenos sem segurar o event loop principal do Redis.
+
+### Por que agora
+
+A Fase 5.D adicionou invalidação do namespace `dre` em 5 sites novos,
+ampliando o problema. O caso mais crítico é **`webhook.py:84-99`** que
+faz **9 chamadas seguidas de `cache_invalidate`** por evento Omie — 9×
+`KEYS` bloqueantes em sequência durante cada webhook.
+
+### Arquivos (2)
+
+| Arquivo | Mudança |
+|---|---|
+| `app/cache/redis_client.py` | `cache_invalidate` usa `scan_iter` + DEL em batches de 100 chaves |
+| `tests/test_cache_redis.py` | NOVO. 6 tests isolados via `importlib.util` |
+
+**Total**: +226/-5 LOC.
+
+### Highlights técnicos
+
+#### `cache_invalidate` agora retorna `int` (chaves deletadas)
+
+Antes era `None`. **Backward-compat 100%**: todos os call sites
+ignoram o retorno (auditor verificou via `grep "= await cache_invalidate"`
+em `app/` → 0 matches).
+
+#### Batches controlados
+
+`_SCAN_BATCH=100` (hint para SCAN) e `_DEL_BATCH=100` (cap real para DEL).
+Cada batch é O(1) amortizado no Redis. Final flush para batch parcial.
+
+#### Isolamento de testes via `importlib.util`
+
+O `conftest.py` global substitui `app.cache.redis_client` por um stub
+em `sys.modules`. Para exercitar o código real sem contaminar outros
+tests, carregamos o módulo via `importlib.util.spec_from_file_location`
+— gera um módulo independente, fora de `sys.modules`.
+
+**Histórico:** primeira versão usava `del sys.modules[...]` no toplevel,
+o que causou 18 falhas em tests dependentes do stub. Refatoração para
+`importlib.util` corrigiu sem precisar mudar o conftest.
+
+### Tests (6 novos, suite 310 → 316)
+
+| Cenário | O que valida |
+|---|---|
+| `test_cache_invalidate_remove_chaves_do_namespace` | Comportamento básico |
+| `test_cache_invalidate_usa_scan_nao_keys` | **ANTI-REGRESSÃO** explícita: `fake.keys.assert_not_called()` |
+| `test_cache_invalidate_sem_chaves_retorna_zero` | Edge case |
+| `test_cache_invalidate_deleta_em_batches` | 250 chaves → 3 batches (100, 100, 50) |
+| `test_cache_invalidate_isolamento_empresa` | Cross-tenant safety |
+| `test_cache_invalidate_segunda_chamada_e_idempotente` | Idempotência |
+
+### Audit P1-9 (worktree isolado, padrão "seq + 1")
+
+- **Score**: **97/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/12** ✅
+- 6/6 qualidade aprovados
+- 4 riscos avaliados (mitigados ou follow-up)
+- Review em
+  [`docs/audit/p1-9-redis-scan/review.md`](audit/p1-9-redis-scan/review.md)
+  (no repo `grupoalt-api`, PR #96 docs)
+
+**Penalizações (-3)**:
+
+- **−1**: Stub `_FakeRedis` em `tests/conftest.py:85-101` ainda expõe
+  `keys`, não `scan_iter`. Follow-up não-bloqueante (tests de
+  integração não chamam `cache_invalidate` na versão real).
+- **−1**: `_SCAN_BATCH` vs `_DEL_BATCH` ambos = 100 com semânticas
+  distintas (hint vs cap real). Documentar exemplos de tuning seria
+  bom.
+- **−1**: `scan_iter(count=100)` é apenas hint para o Redis;
+  recomenda-se monitorar P95 de `cache_invalidate` pós-deploy em
+  keyspace grande.
+
+### Validações cruzadas pelo auditor
+
+- 6/6 `test_cache_redis.py` verde
+- **316/316** suite full verde (era 310; +6 novos)
+- `grep "= await cache_invalidate"` em `app/` → **0 matches**
+  (backward-compat confirmado)
+- `grep "r.keys" app/cache/` → **0 matches** (bug erradicado)
+- Ruff clean nos arquivos modificados
+- Hot path `webhook.py:82-99` (9× `cache_invalidate` por evento Omie)
+  agora totalmente não-bloqueante
+
+### Impacto operacional esperado em prod
+
+| Antes | Depois |
+|---|---|
+| 1 evento Omie → 9× `KEYS altmax:{id}:{ns}:*` bloqueantes | 9× `SCAN` cursor-based, zero bloqueio |
+| Sync completo (~1-2× `cache_invalidate`) bloqueava Redis | Sync agora não afeta latência de outras consultas |
+| Em prod com keyspace grande: pico de latência durante invalidação | Latência uniforme, indistinguível de tráfego normal |
+
+### Estado consolidado pós-P1-9
+
+- **P0**: 10/10 ✅
+- **P1**: ~27/30 (~90%) — P1-9 fechado ✅
+- **Fase 5**: 7/8 sub-fases entregues (em soak)
+- **% executado por tempo**: ~96.5% (era ~96%)
+
+### Risco residual pós-P1-9
+
+**Médio-baixo** (mantém o nível). Risco operacional do Redis reduzido
+significativamente.
+
+### Próximas frentes possíveis (aguardando soak)
+
+Backlog de P1 ainda em aberto:
+
+- **P1-12**: filtros Python sobre listas DB → mover pra SQL (4-6h)
+- **P1-16**: `get_db` autocommit (1h)
+- **P1-26**: jspdf + html2canvas dynamic import (1h)
+- **P1-27**: imagens `<img>` → `<Image />` Next (2h)
+
+Backlog P2 (estruturais, maior esforço):
+
+- Quebrar `sync_service.py` (792 LOC)
+- Quebrar `useAPI.ts` (632 LOC)
+- Centralizar `_parse_date` / `_get_client_ip` duplicados (quick win)
+- Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas)
+
+
