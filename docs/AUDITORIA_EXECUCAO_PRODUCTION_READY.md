@@ -3480,4 +3480,118 @@ Backlog P2 (estruturais):
 - Unificar `bi/` ↔ `portal/` (~3500 LOC)
 - Atualizar `_FakeRedis` stub do conftest com `scan_iter` (15min, follow-up audit P1-9)
 
+---
+
+## Sessão 2026-05-20 (parte 3) — P1-26 + P1-27 entregues (perf front)
+
+Continuação do dia. Após P1-9 (Redis SCAN) e P1-16 (autocommit get_db),
+fechamos mais dois P1 de performance do front num único PR combinado.
+
+### P1-26 + P1-27 — Perf front (PR [web#127](https://github.com/vmapex/grupoalt-web/pull/127), audit Score 98/100 APPROVE)
+
+Combina dois P1 de assets/bundle no mesmo PR (arquivos diferentes,
+escopo coeso).
+
+#### P1-26 — Remove jspdf + html2canvas (dependências mortas)
+
+Descoberta ao investigar: `jspdf@4.2.1` e `html2canvas@1.4.1` estavam
+no `package.json` mas **ninguém importava** em `src/`. Tree shaking já
+excluía do bundle, mas ainda assim:
+
+- ~50MB a menos em `node_modules`
+- Reduz superfície de segurança (1 dep direta + ~10 transitivas)
+- Limpa o `package.json` (sinal claro do que o projeto realmente usa)
+
+**Histórico**: `ExportPDFButton.tsx` antes gerava PDFs no client com
+jspdf. Em algum momento migrou para chamar `/export/.../pdf` no backend
+(xhtml2pdf em Python). As deps ficaram órfãs.
+
+**Solução escolhida vs dynamic import**: REMOÇÃO é mais simples. Lazy
+import só faria sentido se houvesse uso real.
+
+#### P1-27 — `<img>` → `next/image` em 4 sites
+
+| Arquivo | Tipo de logo | Estratégia |
+|---|---|---|
+| `src/app/login/page.tsx` | Asset local (`/logo_grupo_alt.png`, 302KB) | `Image` com `priority` — Next gera WebP/AVIF + responsive sizes |
+| `src/components/nav/Navbar.tsx` | URL dinâmica | `Image` com `unoptimized` — ganha lazy + tag semântica |
+| `src/components/nav/EmpresaDropdown.tsx` | URL dinâmica | Mesmo padrão |
+| `src/app/bi/financeiro/admin/page.tsx` | Base64 ou URL externa | Mesmo padrão |
+
+**Ganho do login**:
+- Asset 302KB servido em WebP (~60% menor em browsers modernos)
+- `priority` evita lazy loading (logo acima da fold)
+- `width`/`height` explícitos → reserva espaço no DOM → menos CLS
+
+**Ganho dos 3 dinâmicos (mesmo com `unoptimized`)**:
+- Lazy loading automático (logos fora da viewport não baixam)
+- Tag semântica + warning se faltar `alt`
+
+### Validações
+
+- `npm run typecheck` → 0 erros
+- `npm test -- --run` → **231/231 verde** (sem regressão da Fase 5)
+- `npm run lint` → **0 warnings de `<img>`** (eram 4)
+- `npm run build` → 50 rotas, sem regressão:
+  - `/login`: 5.49 kB (+30B do `next/image` import)
+  - `/bi/financeiro/admin`: 4.28 kB
+  - First Load JS shared: 160 kB (mantido)
+- `npm run audit:bundle` → 0 credenciais (81 arquivos JS)
+
+### Diff
+
+6 arquivos, **+39/-220 LOC** (220 deletions vêm do `package-lock.json`
+purgando transitivas do jspdf/html2canvas).
+
+### Audit P1-26 + P1-27 (worktree isolado, padrão "seq + 1")
+
+- **Score**: **98/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/16** ✅
+- 7/7 qualidade aprovados
+- Review em
+  [`docs/audit/p1-26-p1-27-perf-front/review.md`](audit/p1-26-p1-27-perf-front/review.md)
+
+**Penalizações (-2)**:
+
+- **−2**: Sem `images.remotePatterns` em `next.config.js`. É
+  intencional dado que os 3 sites dinâmicos usam `unoptimized`, mas
+  fica como follow-up se quisermos otimização real dos logos
+  dinâmicos no futuro.
+
+### Estado consolidado pós-P1-26 + P1-27
+
+- **P0**: 10/10 ✅
+- **P1**: **~30/30 (100%)** — P1-26 + P1-27 fechados ✅
+- **Fase 5**: 7/8 sub-fases entregues (em soak)
+- **% executado por tempo**: ~98% (era ~97%)
+- **Audits cumulados**: 12 (todos ≥ 91/100)
+
+### Risco residual pós-P1-26 + P1-27
+
+**Médio-baixo** (mantém o nível). Bundle do front mais limpo, login
+com LCP melhor esperado.
+
+### Próximas frentes possíveis
+
+P1 está praticamente fechado. Restante do backlog:
+
+**Quick wins (~45min)**:
+- Centralizar `_parse_date` / `_get_client_ip` duplicados (30min)
+- Atualizar `_FakeRedis` stub com `scan_iter` (15min)
+
+**P2 estruturais**:
+- Quebrar `sync_service.py` (792 LOC, 1-2 dias)
+- Quebrar `useAPI.ts` (632 LOC, 1 dia)
+- Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 dias)
+- P1-12: filtros Python → SQL (4-6h, fica adiado por enquanto)
+
+**Operacional**:
+- Ligar `NEXT_PUBLIC_DRE_COMPARATIVO=true` em staging
+- Iniciar soak real da Fase 5 (7-14 dias)
+- Fase 5.G (cleanup) após soak
+
+**Configuração**:
+- Configurar `next.config.js images.remotePatterns` (follow-up audit P1-27)
+
 
