@@ -2,6 +2,7 @@
 
 import { useState, useRef, type ChangeEvent } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Settings, Upload, Trash2, Pencil, Plus, X, Tag, Landmark, Sparkles } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
@@ -78,10 +79,16 @@ function LogoUploadBox({
       >
         {logoSrc ? (
           <>
-            <img
+            {/* P1-27: logoSrc eh base64 (data:image/...) ou URL externa.
+                Usamos `unoptimized` -- next/image nao consegue otimizar
+                base64; ganho continua sendo lazy + tag semantica. */}
+            <Image
               src={logoSrc}
               alt={label}
-              style={{ maxHeight: 48, maxWidth: '80%', objectFit: 'contain' }}
+              width={120}
+              height={48}
+              unoptimized
+              style={{ maxHeight: 48, maxWidth: '80%', width: 'auto', objectFit: 'contain' }}
             />
             <button
               onClick={onRemove}
