@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import styles from './login.module.css'
@@ -132,10 +133,15 @@ export default function LoginPage() {
                 <span className={styles.eyebrowDot} aria-hidden="true" />
                 <span>Identifique-se</span>
               </div>
-              <img
+              {/* P1-27: next/image faz otimizacao automatica (WebP/AVIF +
+                  responsive). Asset local em `/public`. */}
+              <Image
                 src="/logo_grupo_alt.png"
                 alt="Grupo ALT — Portal Corporativo"
                 className={styles.brandLogo}
+                width={240}
+                height={64}
+                priority
               />
             </div>
 
