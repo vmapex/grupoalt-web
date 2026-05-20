@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import api from '@/lib/api'
 import { useThemeStore } from '@/store/themeStore'
@@ -111,7 +112,17 @@ export function Navbar() {
 
         <div className="hidden md:flex items-center gap-2.5">
           {logo ? (
-            <img src={logo} alt={active?.nome || 'Logo'} style={{ height: 28 }} />
+            // P1-27: `next/image` com `unoptimized` -- logos vem de URLs
+            // dinamicas (Omie/banco), nao da pra pre-otimizar.
+            // Ganhos: lazy loading auto + tag semantica + sem warning lint.
+            <Image
+              src={logo}
+              alt={active?.nome || 'Logo'}
+              width={120}
+              height={28}
+              unoptimized
+              style={{ height: 28, width: 'auto' }}
+            />
           ) : (
             <>
               {/* Brand mark — square with the "A" gold accent (design system) */}

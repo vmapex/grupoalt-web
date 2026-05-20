@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { ChevronDown, Building2, Check } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, getLogo } from '@/store/empresaStore'
@@ -34,7 +35,16 @@ export function EmpresaDropdown() {
         }}
       >
         {logo ? (
-          <img src={logo} alt={active?.nome || 'Logo'} className="h-4" />
+          // P1-27: next/image com unoptimized (logo dinamico de URL externa).
+          <Image
+            src={logo}
+            alt={active?.nome || 'Logo'}
+            className="h-4"
+            width={60}
+            height={16}
+            unoptimized
+            style={{ width: 'auto', height: 16 }}
+          />
         ) : (
           <Building2 size={12} style={{ color: active?.cor || '#38BDF8' }} />
         )}
