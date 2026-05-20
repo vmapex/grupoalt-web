@@ -8,8 +8,10 @@ import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useUnidadeStore } from '@/store/unidadeStore'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useExtrato } from '@/hooks/useAPI'
+import { useDRE } from '@/hooks/useDRE'
 import { buildDREMatrix, type DREMesMatrix } from '@/lib/caixaBuilder'
 import { calcularDRE } from '@/lib/planoContas'
+import { useBackendDRE } from '@/lib/featureFlags'
 import { fmtK } from '@/lib/formatters'
 import { GlowLine } from '@/components/ui/GlowLine'
 
@@ -71,14 +73,30 @@ export default function DREMensalPage() {
     return { rl, mc, ebt1, ebt2 }
   }, [matrix])
 
-  /** Consolidado do período (via calcularDRE tradicional). */
-  const consolidado = useMemo(() => {
+  // Fase 5.F.2 (ADR-001): consolidado vem do backend quando flag ligada.
+  // `buildDREMatrix` continua local porque a tabela mes-a-mes ainda nao
+  // tem endpoint backend equivalente (Fase 5.E entrega granularity total,
+  // mas a matriz aqui inclui breakdown por nivel2/nivel3 que precisa de
+  // novo endpoint -- ficou para 5.G ou sub-fase futura).
+  const useBackend = useBackendDRE()
+  const { data: dreBackend } = useDRE(
+    useBackend ? empresaId : null,
+    useBackend
+      ? { dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds }
+      : undefined,
+  )
+
+  /** Consolidado do período. Local (calcularDRE) ou backend (subtotais). */
+  const consolidadoLocal = useMemo(() => {
     if (!lancamentos.length) return null
     return calcularDRE(
       lancamentos.map((l: any) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
       categoriaMap,
     )
   }, [lancamentos, categoriaMap])
+
+  // Backend response tem o mesmo shape (`subtotais` com RoB/TDCF/RL/CV/MC/CF/EBT1/RNOP/DNOP/SNOP/EBT2/IRPJ/CSLL/RES_LIQ).
+  const consolidado = useBackend && dreBackend ? dreBackend.subtotais : consolidadoLocal
 
   /** Estado de expansão: grupo expandido → mostra N2; N2 expandido → mostra N3. */
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set())
