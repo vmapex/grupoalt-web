@@ -3061,3 +3061,163 @@ de como evoluir o soak:
 - Após soak 7-14 dias com flag ON estável em todas as páginas: Fase
   5.G dropa `calcularDRE` + agregadores do front (-~700 LOC líquidas).
 
+---
+
+## Sessão 2026-05-19 (continuação 5) — Fase 5.F.2 entregue (expansão front)
+
+Após merge dos PRs web #121 + #122 (Fase 5.F piloto), continuação direta
+com a Fase 5.F.2 — **expansão do piloto para os 4 sites restantes** que
+ainda consumiam `calcularDRE`/`calcularNeutros` localmente.
+
+### Fase 5.F.2 — Expansão Portal + AnáliseIA + Dashboard + DRE Mês a Mês (PR web #123, audit Score 96/100 APPROVE)
+
+Encerra o lado do front do ADR-001. Mesma arquitetura da Fase 5.F (hook
+`useDRE` + flag `NEXT_PUBLIC_USE_BACKEND_DRE` + fallback `dreLocal`).
+Zero arquivo novo, apenas 4 sites consumindo a infra já entregue.
+
+### Sites migrados (4)
+
+| Arquivo | Tipo de migração |
+|---|---|
+| `src/app/portal/financeiro/caixa/_content.tsx` | Espelha Caixa BI: shim 9 campos lowercase + `<ComparativoDRE>` dev-only. Sem `useUnidadeStore` (Portal não filtra projetos) |
+| `src/components/analise/AnaliseIAView.tsx` | Plug direto: `dre.RoB` shape já casa com `DRESubtotais`. `neutros` vem de `dreBackend.neutros` (mesmo shape) |
+| `src/app/bi/financeiro/page.tsx` | Dashboard executivo (KPI EBT2). Mesmo shim do Caixa BI; passa `projeto_omie_ids` |
+| `src/app/bi/financeiro/caixa/dre-mensal/page.tsx` | Apenas `consolidado` migrado. `buildDREMatrix` (tabela N2/N3) permanece local |
+
+**Total**: 4 arquivos, +106/-9 LOC.
+
+### Decisões técnicas
+
+**Por que AnaliseIAView é plug direto (sem shim)**
+
+AnaliseIAView já usa shape `dre.RoB`, `dre.TDCF`, etc. — maiúsculo,
+idêntico ao `DRESubtotais` Pydantic. Zero código de conversão. Idem
+`neutros` com mesmo formato `{ codigo, nome, total, count }`.
+
+**Por que DRE Mês a Mês não migra a tabela inteira**
+
+`buildDREMatrix` retorna breakdown por nível2 (subgrupo) + nível3
+(categoria) — estrutura que a Fase 5.E backend não entrega (apenas
+`subtotais` por bucket). Migração da tabela inteira requer novo
+endpoint dedicado.
+
+**Risco mitigado**: divergência potencial entre tabela (local) e card
+consolidado (backend) na DRE Mês a Mês quando flag ON. Como motor
+backend e local fazem `abs + soma` idêntico ao oracle 5.A, divergência
+só é possível via desalinhamento de overrides de categoria entre cache
+local de `categoriaMap` e DB. Em dev/staging, `<ComparativoDRE>` no
+Caixa BI detecta divergências sistêmicas antes do soak.
+
+**Por que Dashboard não tem ComparativoDRE**
+
+Dashboard usa apenas `dreData.ebt2` num único KPI — `ComparativoDRE`
+poluiria a tela com bolha que mostra 9 linhas pra 1 valor. Caixa BI
+e Portal mirror têm DRE inteiro visível — lá o componente paga o
+custo visual. Trade-off aceitável.
+
+### Validações
+
+- `npm run typecheck` → **0 erros**
+- `npm test -- --run` → **231/231 verde** (mesma suite — hook já exercitado em 5.F)
+- `npm run lint` → 0 erros (warnings preexistentes)
+- `npm run build` → 50 rotas, tamanhos:
+  - `/bi/financeiro` (Dashboard) = 12.3 kB
+  - `/bi/financeiro/caixa` = 13.9 kB
+  - `/bi/financeiro/caixa/dre-mensal` = 7.56 kB
+  - `/portal/financeiro/caixa` = 2.32 kB (lazy chunk preservado)
+- `npm run audit:bundle` → 0 credenciais expostas
+
+### Compatibilidade preservada
+
+Em prod com flag OFF (default), comportamento atual **byte-a-byte**:
+- Portal Caixa renderiza idêntico
+- AnaliseIAView gera contexto IA com `dre/neutros` locais (mesmo input pro Claude)
+- Dashboard KPI EBT2 vem do `calcularDRE` local
+- DRE Mês a Mês consolidado vem do `calcularDRE` local
+
+### Audit Fase 5.F.2 (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/14** ✅
+- Review em
+  [`docs/audit/fase-5f2-front-expansao/review.md`](audit/fase-5f2-front-expansao/review.md)
+
+**Penalizações (-4 pontos)**:
+
+- **−2**: hook `useDRE` é mounted mesmo com flag OFF (efeito mínimo
+  de re-render, aceitável).
+- **−1**: risco de divergência tabela (local) vs card consolidado
+  (backend) na DRE Mês a Mês — documentado e mitigado.
+- **−1**: Dashboard sem `<ComparativoDRE>` (trade-off aceitável; soak
+  captura divergências sistêmicas antes do Dashboard).
+
+**Validações cruzadas pelo auditor:**
+
+- Diff puramente aditivo nos 4 arquivos (confirmado via `git diff origin/main`)
+- 231/231 tests verde (sem regressão; mesma suite da 5.F)
+- Typecheck 0 erros
+- Lint 0 erros
+- Build 50 rotas sem regressão de tamanho
+- Bundle audit limpo
+- Portal espelha padrão do Caixa BI corretamente
+- AnaliseIA plug direto (shape maiúsculo casa)
+- Dashboard passa `projeto_omie_ids` (tem `useUnidadeStore`)
+- DRE Mês a Mês migra só consolidado; tabela permanece local
+- `<ComparativoDRE>` adicionado apenas onde DRE inteiro é visível
+
+### Estado consolidado pós-Fase 5.F.2
+
+**🎉 Lado do front da Fase 5 COMPLETO** — todos os 5 consumidores de
+`calcularDRE` gateados pela flag:
+
+| # | Site | Entregue em |
+|---|---|---|
+| 1 | Caixa BI executivo | Fase 5.F (PR web #121) |
+| 2 | Portal mirror Caixa | Fase 5.F.2 (PR web #123) |
+| 3 | AnaliseIAView | Fase 5.F.2 (PR web #123) |
+| 4 | Dashboard executivo | Fase 5.F.2 (PR web #123) |
+| 5 | DRE Mês a Mês (consolidado) | Fase 5.F.2 (PR web #123) |
+
+Quando flag ON em prod: **TODOS** usam backend simultaneamente,
+alinhados com o oracle financeiro homologado.
+
+| Bloco | Status | Saída |
+|---|---|---|
+| 6.A — Fase 5.A (motor puro Python) | ✅ | PR api #90 |
+| 6.B — Fase 5.B (oracle adapter + runner) | ✅ | PR api #90 |
+| 6.C — Fase 5.C (endpoint GET /dre) | ✅ | PR api #91 (audit 94/100) |
+| 6.D — Fase 5.D (cache Redis + invalidação) | ✅ | PR api #92 (audit 96/100) |
+| 6.E — Fase 5.E (granularity) | ✅ | PR api #93 (audit 96/100) |
+| 6.F — Fase 5.F (front useDRE + feature flag piloto) | ✅ | PR web #121 (audit 97/100) |
+| **6.F.2 — Fase 5.F.2 (expansão front)** | **🟡** | **PR web #123 (audit 96/100, aguardando merge)** |
+| 6.G — Fase 5.G (cleanup calcularDRE do front) | ⏭️ | Após soak 7-14 dias |
+
+### Risco residual pós-Fase 5.F.2
+
+**Médio-baixo** (mantém o nível).
+
+- **P0**: 10/10 ✅
+- **P1**: ~26/30 (~87%) — P1-17 só fecha na 5.G
+- **Fase 5**: **7/8 sub-fases entregues** (5.A, 5.B, 5.C, 5.D, 5.E, 5.F, 5.F.2)
+- **% executado por tempo**: ~96% (era ~95%)
+
+### Próxima sub-fase
+
+**Soak da 5.F + 5.F.2** antes da Fase 5.G:
+
+1. Ligar `NEXT_PUBLIC_DRE_COMPARATIVO=true` em staging Vercel — usar
+   ComparativoDRE em Caixa BI + Portal para validar paridade local↔backend
+2. Ligar `NEXT_PUBLIC_USE_BACKEND_DRE=true` em staging — exercitar
+   chamadas reais para o endpoint backend com dados de prod
+3. Após validação em staging, ligar a flag em prod (sem
+   `NEXT_PUBLIC_DRE_COMPARATIVO` — comparativo só dev/staging)
+4. Soak 7-14 dias com flag ON em prod
+5. **Fase 5.G**: cleanup
+   - Remover `calcularDRE`/`calcularDREPorMes`/`calcularNeutros` de
+     `planoContas.ts` (~367 LOC)
+   - Remover `dreLocal` de todos os 5 sites
+   - Remover `<ComparativoDRE>` + `featureFlags.ts`
+   - Avaliar `buildDREMatrix` → novo endpoint backend ou manter
+   - ~-700 LOC líquidas no bundle do front
+
