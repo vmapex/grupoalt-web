@@ -3361,4 +3361,123 @@ Backlog P2 (estruturais, maior esforço):
 - Centralizar `_parse_date` / `_get_client_ip` duplicados (quick win)
 - Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas)
 
+---
+
+## Sessão 2026-05-20 (parte 2) — P1-16 entregue (autocommit removido do get_db)
+
+Continuação do dia de soak. Após P1-9 (Redis SCAN), aproveitamos o
+mesmo dia para fechar mais um quick win de qualidade: **P1-16** do
+plano de auditoria.
+
+### P1-16 — Remover autocommit implícito do `get_db` (PR [api#97](https://github.com/vmapex/grupoalt-api/pull/97), audit Score 96/100 APPROVE)
+
+`get_db()` fazia `await session.commit()` ao sair do `yield`, mesmo
+quando o handler não chamava commit. Três problemas resolvidos:
+
+1. **GETs (leitura) recebiam commit desnecessário** — overhead.
+2. **POSTs/PATCHes/DELETEs sem commit explícito "funcionavam por
+   sorte"** — mascarava bugs onde a transação deveria ter rollback
+   condicional.
+3. **`flush()` sem `commit()`** (geração de ID com posterior
+   cancelamento) era impossível.
+
+### Mudança
+
+`app/core/database.py:get_db`:
+
+- **REMOVIDO**: `await session.commit()` após o yield
+- **MANTIDO**: `await session.rollback()` em exceção (consistência)
+- **MANTIDO**: `await session.close()` no finally
+- Docstring de 15 linhas explica o porquê e como migrar handlers
+
+### Backward-compat: mapeamento AST de 32 call sites
+
+Antes de remover o autocommit, mapeamos manualmente + via AST todos
+os call sites de `db.add()` em `app/`. Resultado:
+
+- **25 handlers** já chamavam `await db.commit()` no mesmo escopo
+  (admin.py 20×, gestao.py 10×, documentos.py 8×, sync_service.py 9×, etc.)
+- **2 funções intencionalmente sem commit local** (seguras):
+  - `app/services/auditoria.py:14 registrar_auditoria` — helper
+    compartilhado que delega commit ao caller. **22 callers
+    verificados via AST**, todos commitam.
+  - `app/services/alertas.py:131 _criar_alerta_unico` — chamado em
+    loop dentro de `gerar_alertas_empresa`, que commita uma vez no fim.
+- **Cron jobs / background tasks** usam `AsyncSessionLocal()` direto
+  (não `get_db`), não são afetados.
+
+### Tests (3 novos, suite 316 → 319)
+
+`tests/test_get_db.py`:
+
+| Cenário | O que valida |
+|---|---|
+| `test_get_db_nao_commita_automaticamente` | SQLite isolado: `add()` sem `commit()` → dados NÃO persistem (prova o pattern P1-16) |
+| `test_get_db_persiste_com_commit_explicito` | Commit explícito funciona normalmente (regressão básica) |
+| `test_get_db_source_nao_contem_autocommit` | **ANTI-REGRESSÃO source-based**: lê `database.py` e verifica que `await session.commit()` NÃO existe em `get_db` |
+
+### Validações
+
+- `npm run typecheck` N/A (mudança no api)
+- `ruff check` (arquivos modificados) → All checks passed
+- `pytest tests/ -q --ignore=tests/test_integration.py` → **319/319 verde**
+- Zero regressão
+
+### Audit P1-16 (worktree isolado, padrão "seq + 1")
+
+- **Score**: **96/100**
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **0/14** ✅
+- Review em
+  [`docs/audit/p1-16-get-db-no-autocommit/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/p1-16-get-db-no-autocommit/review.md)
+  (no repo `grupoalt-api`, [PR #98 docs](https://github.com/vmapex/grupoalt-api/pull/98))
+
+**Penalizações (-4)**:
+
+- **−1**: `logger` declarado mas não usado em `database.py:7` (cosmético)
+- **−1**: Test source-based é frágil a renomeações futuras (mas
+  proteção contra regressão vale o custo)
+- **−1**: Observação pré-existente sobre `receber_webhook` passar `db`
+  a background task (fora de escopo desta PR; já documentado)
+- **−1**: R4 — monitorar `state = 'idle in transaction'` no PG
+  pós-deploy (boa prática de observabilidade)
+
+### Impacto operacional esperado
+
+| Antes | Depois |
+|---|---|
+| GETs recebiam commit desnecessário ao final | GETs sem overhead de commit |
+| Dev esquece `commit()` em POST → "funciona por sorte" | Dev esquece `commit()` → dados não persistem (bug visível imediatamente) |
+| `flush()` + decisão condicional de rollback era impossível | Possível: dev pode flush para gerar ID e depois decidir rollback |
+
+### Estado consolidado pós-P1-16
+
+- **P0**: 10/10 ✅
+- **P1**: ~28/30 (~93%) — P1-9 + P1-16 fechados ✅
+- **Fase 5**: 7/8 sub-fases entregues (em soak)
+- **% executado por tempo**: ~97% (era ~96.5%)
+- **Audits cumulados**: 11 (todos ≥ 91/100)
+
+### Risco residual pós-P1-16
+
+**Médio-baixo** (mantém o nível). Risco de transações implícitas
+desaparece; observability `idle in transaction` pode ser adicionada
+em sub-fase futura como melhoria.
+
+### Próximas frentes possíveis
+
+Backlog de P1 ainda em aberto (~2 itens):
+
+- **P1-12**: filtros Python sobre listas DB → SQL (4-6h, perf)
+- **P1-26**: jspdf + html2canvas dynamic import (1h, bundle)
+- **P1-27**: imagens `<img>` → `next/image` (2h, LCP/bandwidth)
+
+Backlog P2 (estruturais):
+
+- Quebrar `sync_service.py` (792 LOC)
+- Quebrar `useAPI.ts` (632 LOC)
+- Centralizar `_parse_date` / `_get_client_ip` duplicados (30min)
+- Unificar `bi/` ↔ `portal/` (~3500 LOC)
+- Atualizar `_FakeRedis` stub do conftest com `scan_iter` (15min, follow-up audit P1-9)
+
 
