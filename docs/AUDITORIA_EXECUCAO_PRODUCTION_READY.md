@@ -3984,3 +3984,162 @@ não é urgente.
 - Investigar audit-agent watchdog timeout (operacional)
 - Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
 
+---
+
+## Sessão 2026-05-21 (parte 3) — P1-12: filtros CP/CR/conciliação em SQL
+
+> Terceira frente entregue na sessão. Fecha o **último P1 estrutural**
+> aberto da auditoria. Audit-agent **96/100 APPROVE**.
+
+### Refactor P1-12 — SQL pushdown ([api #103](https://github.com/vmapex/grupoalt-api/pull/103))
+
+**Motivação**: o helper `_filtrar()` em `cp_cr.py` carregava TODOS os
+títulos da empresa, montava DTOs em memória e filtrava em Python.
+Para empresas com milhares de títulos isso virava gargalo (rotas
+quentes do BI: dashboard, fluxo, análise IA). `conciliacao.py` tinha
+o mesmo padrão num filtro de janela de 5 meses.
+
+**Estratégia**: empurrar filtros (status, data, favorecido, categoria,
+projeto_ids) e paginação para o SQL. Manter agregações Python (KPIs
+em `/resumo`) — escopo menor desse refactor.
+
+#### Sites refatorados
+
+**`app/routers/cp_cr.py`**:
+- Remove `_filtrar()`, `_query_cp_from_db()`, `_query_cr_from_db()`
+- Adiciona `_cp_filter_conditions()` / `_cr_filter_conditions()`
+  retornando condições SQLAlchemy byte-perfect:
+  - status: igualdade direta (CP); `CASE WHEN status='PAGO' THEN 'RECEBIDO'` (CR remap)
+  - data: `COALESCE(data_previsao, data_vencimento)`, NULL passa
+  - favorecido: `func.lower(...).contains(...)`
+  - categoria: igualdade exata
+  - projeto_ids: `COALESCE(projeto_omie_id, '').in_(...)`
+- `listar_cp` / `listar_cr` paginam via SQL `LIMIT/OFFSET`; `total`
+  via `func.count()` sobre as mesmas condições
+- `resumo_cp` / `resumo_cr` aplicam filtro SQL + agregação Python
+- Novos helpers `_has_any_cp()` / `_has_any_cr()` — query rápida
+  para detectar DB vazio (ADR-002) sem carregar lista inteira
+
+**`app/routers/conciliacao.py`**: filtro `data_lancamento >= dt_ini`
+empurrado para WHERE SQL (antes carregava anos de movimentos em
+Python e filtrava em loop).
+
+#### Testes goldens (NOVOS — 12 testes)
+
+`tests/test_p1_12_sql_filters.py` cobre a semântica byte-perfect:
+
+| # | Foco |
+|---|---|
+| 1 | Status pushdown CP |
+| 2 | COALESCE prioriza data_previsao |
+| 3 | NULL date passa (espelha `if l_date and ...`) |
+| 4 | favorecido case-insensitive substring |
+| 5 | categoria igualdade exata |
+| 6 | projeto_ids NULL → string vazia |
+| 7 | LIMIT/OFFSET bate Python slice |
+| 8 | CR remap RECEBIDO ↔ PAGO |
+| 9 | `?status=PAGO` em CR devolve 0 (preserva quirk Python) |
+| 10 | CASE WHEN só remapeia PAGO, outros passam |
+| 11 | /resumo aplica filtro SQL antes da agregação |
+| 12 | /resumo + projeto_ids |
+
+#### Validações pré-PR
+
+- `pytest tests/ --ignore=tests/test_integration.py` → **331/331 verde** (319 antigos + 12 novos)
+- `ruff check app/ tests/test_p1_12_sql_filters.py --select E,F,W --ignore E501,E712,E741` → All checks passed (flags batem com CI)
+
+#### Audit do PR #103
+
+- **Score**: **96/100** ✅
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **12/12 OK**
+- **Qualidade**: **5/5 OK**
+- Review em
+  [`docs/audit/p1-12-sql-filters/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/p1-12-sql-filters/review.md)
+  (no repo `grupoalt-api`, [PR #104 docs](https://github.com/vmapex/grupoalt-api/pull/104))
+
+Auditor verificou semântica byte-perfect em cada dimensão de filtro
+(CR remap em 4 cenários, COALESCE de datas, NULL passing, projeto
+NULL→"", favorecido case-insensitive, LIMIT/OFFSET).
+
+**Penalização (-4)**:
+- −2: paginação sem ORDER BY explícito — herdado do Python antigo
+  (sem `sorted()` antes do slice). Postgres pode retornar ordem
+  não-determinística em índice/heap scan. Follow-up trivial:
+  `.order_by(ContaPagar.id)`.
+- −2: `_has_any_cp/cr` usa `SELECT COUNT(*)` quando `SELECT 1 LIMIT 1`
+  seria micro-otimização. Não bloqueante (count com índice em
+  `empresa_id` é rápido).
+
+### Perf esperada
+
+- Empresa com 5k títulos:
+  - **Antes**: 5000 linhas carregadas + 5000 DTOs alocados +
+    filtrados em Python + paginados → ~25MB transfer + alloc
+  - **Depois**: SQL aplica filtros + retorna SOMENTE página
+    (≤500 linhas) → ~2.5MB
+
+### Scope note
+
+`dashboard.py` (citado no handoff original) **NÃO entrou** nesse PR.
+O `projeto_ids` já está em SQL lá; o restante é agregação por status
+em Python que migrar para `GROUP BY` é refactor diferente e maior.
+Marcado como follow-up futuro.
+
+### Estado consolidado pós-2026-05-21 (parte 3)
+
+- **P0**: 10/10 ✅
+- **P1**: **31/31** (100%) ✅ — P1-12 era o último estrutural aberto
+- **P2**: 2 entregues (`useAPI.ts`, `sync_service.py`); 1 restante
+  (unificação `bi/`↔`portal/` aguarda Fase 5.G)
+- **Fase 5**: 7/8 em soak
+- **% executado por tempo**: ~99% (mantém — mas inflexão importante
+  com P1 100%)
+- **Audits cumulados**: **16** (15 formais + 1 manual; 3 ≥ 96/100
+  na sessão de hoje)
+
+### Sessão 2026-05-21 — resumo executivo final
+
+| Frente | PR | Score audit | Tipo |
+|---|---|---|---|
+| Split `useAPI.ts` (web) | [#130](https://github.com/vmapex/grupoalt-web/pull/130) | **100/100** | P2 refactor |
+| Docs `useAPI.ts` (web) | [#131](https://github.com/vmapex/grupoalt-web/pull/131) | — | docs |
+| Split `sync_service.py` (api) | [#101](https://github.com/vmapex/grupoalt-api/pull/101) | **99/100** | P2 refactor |
+| Docs `sync_service.py` (api) | [#102](https://github.com/vmapex/grupoalt-api/pull/102) | — | docs |
+| Docs cross-repo (web) | [#132](https://github.com/vmapex/grupoalt-web/pull/132) | — | docs |
+| P1-12 SQL pushdown (api) | [#103](https://github.com/vmapex/grupoalt-api/pull/103) | **96/100** | P1 perf |
+| Docs P1-12 (api) | [#104](https://github.com/vmapex/grupoalt-api/pull/104) | — | docs |
+| Docs P1-12 cross-repo (web) | este PR | — | docs |
+
+8 PRs entregues no dia, fechando 2 frentes P2 + 1 P1 com 3 audits
+formais (média **97/100**).
+
+### Risco residual
+
+**Baixo** (mantém o nível). P1 estrutural 100% fechado. P2 75%
+entregue. Resta apenas unificação `bi/`↔`portal/` que aguarda
+Fase 5.G + soak. Code paths críticos do BI (cp_cr) ganham SQL
+pushdown sem alterar semântica (12 testes goldens).
+
+### Próximas frentes possíveis
+
+**Operacional** (sem código, depende do usuário):
+- Ligar `NEXT_PUBLIC_USE_BACKEND_DRE=true` +
+  `NEXT_PUBLIC_DRE_COMPARATIVO=true` em staging Vercel
+- Soak Fase 5 (7-14 dias)
+- Fase 5.G (cleanup ~-700 LOC) após soak
+
+**P2 estrutural restante**:
+- Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 dias) —
+  esperar Fase 5.G terminar
+
+**Follow-ups menores acumulados**:
+- Atualizar referências a "50 rotas" no CLAUDE.md (build atual: 42)
+- Depreciar barrel `useAPI.ts` quando consumers migrarem
+- Depreciar barrel `sync_service.py` analogamente
+- Adicionar `ORDER BY` explícito na paginação CP/CR (follow-up P1-12)
+- Trocar `COUNT(*)` por `SELECT 1 LIMIT 1` em `_has_any_cp/cr`
+- Dashboard.py: migrar agregações Python para SQL `GROUP BY`
+- Investigar audit-agent watchdog timeout (operacional)
+- Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
+
