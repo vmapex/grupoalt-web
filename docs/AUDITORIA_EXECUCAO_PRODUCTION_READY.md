@@ -3854,4 +3854,133 @@ atualizados em PRs menores e independentes.
 - Investigar audit-agent watchdog timeout (operacional)
 - Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
 
+---
+
+## Sessão 2026-05-21 (parte 2) — P2: split `sync_service.py`
+
+> Segunda frente P2 estrutural entregue na mesma sessão. Padrão
+> idêntico ao split do `useAPI.ts`: refactor mecânico + barrel
+> re-export. Audit-agent **99/100** com **validação byte-perfect
+> via AST**.
+
+### Refactor P2 — quebra de `app/services/sync_service.py` ([api #101](https://github.com/vmapex/grupoalt-api/pull/101))
+
+**Motivação**: monolito de 805 LOC com 13 funções (helpers + 7 syncs
+por domínio + orchestrator). Mesma fricção do `useAPI.ts`: difícil
+auditar, oneroso onboarding, evolução incremental travada.
+
+**Estratégia**: split por domínio + barrel re-export. Mantém **zero
+diff em todos os ~12 call sites** (sync_pipeline + 8 routers, alguns
+com 4+ inline lazy imports).
+
+#### Antes / Depois
+
+**Antes:** `app/services/sync_service.py` — 805 LOC, 13 funções
+
+**Depois:** `app/services/sync/` com 10 arquivos focados:
+
+| Arquivo | LOC | Conteúdo |
+|---|---|---|
+| `__init__.py` | 54 | Re-exporta os 13 símbolos públicos |
+| `helpers.py` | 113 | `get_client`, `_calcular_status`, `_build_movement_map`, `_build_client_name_map` |
+| `contas_correntes.py` | 55 | `sync_contas_correntes` |
+| `lancamentos.py` | 158 | `sync_lancamentos` (extrato bancário) |
+| `cp.py` | 139 | `sync_cp` |
+| `cr.py` | 137 | `sync_cr` |
+| `baixas.py` | 77 | `sync_baixas` |
+| `categorias.py` | 57 | `sync_categorias` |
+| `unidades.py` | 77 | `sync_unidades` |
+| `orchestrator.py` | 117 | `reset_ultima_sync`, `sync_empresa_completo` |
+
+`app/services/sync_service.py` reduzido a 48 LOC — barrel re-export.
+
+#### Validações pré-PR
+
+- `pytest tests/ --ignore=tests/test_integration.py` → **319/319 verde** (26.7s)
+- `ruff check app/services/sync/ app/services/sync_service.py` → All checks passed
+
+#### Audit do PR #101
+
+- **Score**: **99/100** ✅
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **12/12 OK**
+- **Qualidade**: **5/5 OK**
+- Review em
+  [`docs/audit/p2-split-sync-service/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/p2-split-sync-service/review.md)
+  (no repo `grupoalt-api`, [PR #102 docs](https://github.com/vmapex/grupoalt-api/pull/102))
+
+**Validação byte-perfect via AST**: o auditor comparou cada uma das
+13 funções entre `git show 8bee9e1^:app/services/sync_service.py`
+(805 LOC) e os novos módulos via `ast.get_source_segment(...).strip()`.
+Resultado: **13/13 IDENTICAL** — incluindo os pontos mais sensíveis
+(`_calcular_status` 4 prioridades, `sync_lancamentos` JANELA=90 +
+MAX_JANELAS=8 + projeto_nome_to_codigo, `sync_empresa_completo` 7
+try/except + cache invalidate dos 6 namespaces com "dre" da Fase 5.D).
+
+Penalização (-1): inconsistência cosmética de agrupamento do `__all__`
+entre barrel (sem comentários) e `__init__.py` (com seções). Não
+bloqueia.
+
+### Diff total
+
+11 arquivos, **+1027/-800 LOC** no `grupoalt-api` (refactor mecânico
+aumenta total em ~+227 LOC por causa de docstrings de módulo,
+`__init__` explícito, imports por arquivo e `__all__` em ambos os
+níveis).
+
+### Estado consolidado pós-2026-05-21 (parte 2)
+
+- **P0**: 10/10 ✅
+- **P1**: 30/30 (100%) ✅
+- **P2**: **2 entregues** (`useAPI.ts` + `sync_service.py`); 1
+  restante (unificação `bi/`↔`portal/` ~3500 LOC — evitar até Fase
+  5.G)
+- **Fase 5**: 7/8 em soak (5.G aguarda fim do soak)
+- **% executado por tempo**: ~99% (mantém)
+- **Audits cumulados**: **15** (14 formais + 1 manual; **dois
+  audits ≥ 99/100** nesta sessão)
+
+### Sessão 2026-05-21 — resumo executivo
+
+| Frente | PR | Score audit | LOC |
+|---|---|---|---|
+| Split `useAPI.ts` (web) | [#130](https://github.com/vmapex/grupoalt-web/pull/130) | 100/100 | 696 → 11 arquivos |
+| Docs `useAPI.ts` (web) | [#131](https://github.com/vmapex/grupoalt-web/pull/131) | — | — |
+| Split `sync_service.py` (api) | [#101](https://github.com/vmapex/grupoalt-api/pull/101) | 99/100 | 805 → 10 arquivos |
+| Docs `sync_service.py` (api) | [#102](https://github.com/vmapex/grupoalt-api/pull/102) | — | — |
+
+4 PRs entregues no dia, fechando ambas as frentes P2 estruturais de
+escopo médio. Resta apenas a unificação `bi/`↔`portal/` (escopo
+maior, conflita com Fase 5.G de cleanup do legado — sensato deixar
+para depois do soak).
+
+### Risco residual
+
+**Baixo** (queda de meio nível). Os dois maiores monolitos do projeto
+foram quebrados sem alterar comportamento. Foundation pra migração
+gradual para imports diretos. P2 estrutural restante (unificação)
+não é urgente.
+
+### Próximas frentes possíveis
+
+**Operacional** (sem código, depende do usuário):
+- Ligar `NEXT_PUBLIC_USE_BACKEND_DRE=true` +
+  `NEXT_PUBLIC_DRE_COMPARATIVO=true` em staging Vercel
+- Soak Fase 5 (7-14 dias)
+- Fase 5.G (cleanup ~-700 LOC) após soak
+
+**P1-12** (4-6h, code paths críticos do BI):
+- Filtros Python sobre listas DB → SQL (cp_cr, dashboard, conciliacao)
+
+**P2 estrutural restante**:
+- Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 dias) —
+  esperar Fase 5.G terminar
+
+**Follow-ups menores**:
+- Atualizar referências a "50 rotas" no CLAUDE.md (build atual: 42)
+- Depreciar barrel `useAPI.ts` quando consumers migrarem para
+  imports diretos
+- Depreciar barrel `sync_service.py` analogamente
+- Investigar audit-agent watchdog timeout (operacional)
+- Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
 
