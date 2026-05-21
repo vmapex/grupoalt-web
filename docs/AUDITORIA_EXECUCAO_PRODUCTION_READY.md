@@ -3731,4 +3731,127 @@ plano original + 3 follow-ups acumulados. Restam apenas P2 estruturais
 - Investigar audit-agent watchdog timeout (operacional)
 - Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
 
+---
+
+## Sessão 2026-05-21 — P2: split `useAPI.ts` por domínio
+
+> Primeira frente de P2 estrutural entregue. Refactor 100% mecânico,
+> diff cirúrgico, audit-agent **100/100**.
+
+### Estado inicial
+
+- P0: 10/10 ✅
+- P1: 30/30 (100%) ✅
+- Fase 5: 7/8 sub-fases em soak
+- Sem PRs abertos (exceto dependabot)
+
+### Refactor P2 — quebra de `src/hooks/useAPI.ts` ([web #130](https://github.com/vmapex/grupoalt-web/pull/130))
+
+**Motivação**: monolito de 696 LOC com 11 domínios misturados. Tornava
+auditoria + onboarding caros e adicionava fricção para evolução
+incremental dos hooks.
+
+**Estratégia**: split por domínio + barrel re-export. Mantém **zero
+diff em todos os 19 call sites de produção**.
+
+#### Antes / Depois
+
+**Antes:** `src/hooks/useAPI.ts` — 696 LOC
+
+**Depois:** `src/hooks/api/` com 11 arquivos focados:
+
+| Arquivo | LOC | Conteúdo |
+|---|---|---|
+| `_core.ts` | 165 | `useApi`, `useApiPaginatedAll`, `fetchAllPages`, `PAGINATED_ALL_PAGE_SIZE`, `buildCleanParams` |
+| `useExtrato.ts` | 21 | `useExtrato` |
+| `useSaldos.ts` | 22 | `useSaldos` |
+| `useCPCR.ts` | 148 | CP/CR + variantes paginadas + `useBaixas` |
+| `useFluxo.ts` | 33 | `useFluxoCaixa` (Step 13 Parte D) |
+| `useConciliacao.ts` | 39 | 4 hooks de conciliação |
+| `useNotificacoes.ts` | 21 | Notificações + ações |
+| `useCategoriasAPI.ts` | 53 | Plano de contas API (distinto de `useCategoriasMap.ts`, que é consumidor) |
+| `useContasBancarias.ts` | 33 | Admin contas bancárias |
+| `useOrbitAudit.ts` | 90 | Step 16 Fase C (admin audit) |
+| `useAdminEmpresas.ts` | 53 | P0-7 soft delete + restore |
+
+`src/hooks/useAPI.ts` reduzido a 85 LOC — apenas re-exports.
+
+#### Por que barrel (vs. tocar 19 call sites)
+
+- Diff mecânico, mais auditável (split puro, sem touching de consumers)
+- Zero risco de typo em rename de 19 arquivos
+- Migração gradual: novo código pode importar direto de
+  `@/hooks/api/<dominio>`; código legado continua via barrel
+- Comentário no topo do barrel orienta preferência futura
+
+#### Validações pré-PR
+
+- `npm run typecheck` → sem erros TS
+- `npm test` → **231/231** verde em 14 arquivos (~10s)
+- `npm run lint` → 4 warnings em `_core.ts` (linhas 73/172) são os
+  MESMOS que existiam em `useAPI.ts` (88/192) — movidos, não novos
+- `npm run build` → Compiled successfully (42 rotas + middleware,
+  shared 160 kB) — sem regressão
+- `npm run audit:bundle` → 0 credenciais em 81 arquivos JS
+
+#### Audit do PR #130
+
+- **Score**: **100/100** ✅
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **12/12 OK**
+- **Qualidade**: **5/5 OK**
+- Review em
+  [`docs/audit/p2-split-useapi-hooks/review.md`](audit/p2-split-useapi-hooks/review.md)
+
+Auditor verificou: surface 100% preservada (41 símbolos exportados,
+incluindo 10 tipos públicos via `export type`), `fetchAllPages`
+byte-perfect (ADR-002 com `sync_pending`/`sync_status` da 1ª página +
+defesa contra loop em página vazia), zero touching em
+`useCategoriasMap.ts`, e que call sites de produção continuam intactos.
+
+Audit-agent terminou sem timeout (~11min). Investigação do watchdog
+de 2026-05-20 segue pendente como follow-up operacional.
+
+### Diff total
+
+12 arquivos, **+777/-690 LOC** (refactor mecânico, sem variação real
+de LOC útil — apenas mudança de organização).
+
+### Estado consolidado pós-2026-05-21
+
+- **P0**: 10/10 ✅
+- **P1**: 30/30 (100%) ✅
+- **P2**: 1 entregue (`useAPI.ts` split); 2 restantes (`sync_service.py`
+  792 LOC, unificação `bi/`↔`portal/` ~3500 LOC)
+- **Fase 5**: 7/8 sub-fases em soak (5.G aguarda fim do soak)
+- **% executado por tempo**: ~99% (mantém)
+- **Audits cumulados**: 14 (13 formais + 1 manual; **14 com score
+  ≥ 91/100**, sendo este o primeiro 100/100)
+
+### Risco residual
+
+**Médio-baixo** (mantém). Refactor barrel é foundation de baixo risco
+para migração gradual futura. Quando consumers migrarem naturalmente
+para imports diretos, o barrel pode ser depreciado e os 19 call sites
+atualizados em PRs menores e independentes.
+
+### Próximas frentes possíveis
+
+**Operacional** (sem código, depende do usuário):
+- Ligar `NEXT_PUBLIC_USE_BACKEND_DRE=true` +
+  `NEXT_PUBLIC_DRE_COMPARATIVO=true` em staging Vercel
+- Soak Fase 5 (7-14 dias)
+- Fase 5.G (cleanup ~-700 LOC) após soak
+
+**P2 estruturais restantes**:
+- Quebrar `sync_service.py` (792 LOC) no `grupoalt-api` (1-2 dias)
+- Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 dias) —
+  evitar até Fase 5.G terminar para não conflitar com cleanup
+- P1-12: filtros Python → SQL (4-6h, code paths críticos do BI)
+
+**Follow-ups menores**:
+- Atualizar referências a "50 rotas" no CLAUDE.md (build atual: 42)
+- Investigar audit-agent watchdog timeout (operacional)
+- Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
+
 
