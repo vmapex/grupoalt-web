@@ -4377,4 +4377,114 @@ follow-ups + foundation Fase A.
    `require_permission()` aplicado em routers críticos
    (cp_cr, dashboard, fluxo, conciliação, admin)
 
+---
+
+## Sessão 2026-05-22 — Fase A PR 2: middleware require_permission
+
+> Continuação direta da sessão 2026-05-21. PRs 107+108 (PR 1) já
+> mergeados. Esta sessão entrega o **enforcement** do RBAC granular
+> via feature flag. Audit-agent **98/100 APPROVE, 13/13 OK**.
+
+### PR 2 entregue ([api #109](https://github.com/vmapex/grupoalt-api/pull/109))
+
+Aplica `require_permission(modulo, acao)` em **26 sites de 7 routers
+críticos**, controlado pela env var `RBAC_ENFORCE`.
+
+#### Estratégia: feature flag
+
+| `RBAC_ENFORCE` | Comportamento |
+|---|---|
+| `False` (default) | Middleware é no-op. Valida apenas auth + acesso à empresa (igual hoje). **Zero impacto em prod no merge.** |
+| `True` | Aplica `has_permission()` real. 403 se faltar permissão. `is_admin=True` continua bypass total |
+
+Sequência operacional:
+1. Merge → prod como hoje (flag OFF)
+2. PR 4 entrega UI admin pra atribuir perfis
+3. Atribuir perfis aos não-admins em staging
+4. `RBAC_ENFORCE=true` em staging → validar
+5. Repetir em prod
+
+#### Routers protegidos
+
+| Router | # sites | Permissão |
+|---|---|---|
+| `cp_cr.py` | 6 | `financeiro:ver` |
+| `dashboard.py` | 1 | `financeiro:ver` |
+| `dre.py` | 1 | `financeiro:ver` |
+| `conciliacao.py` | 4 | `financeiro:ver` |
+| `fluxo_caixa.py` | 3 | `financeiro:ver` |
+| `extrato.py` | 8 | misto: 3 `financeiro:ver` + 1 `admin_contas_bancarias:editar` + 1 `admin_categorias:ver` + 3 `admin_categorias:editar` |
+| `export.py` | 3 | `financeiro:exportar` |
+| **Total** | **26** | |
+
+Fora deste PR (escopo conservador): `sync.py`, `gestao.py`, `extrato.py::flush_cache` (já admin-only via `get_current_admin`).
+
+#### Novo módulo + config
+
+`app/core/rbac_deps.py`:
+- `is_rbac_enforced() -> bool` lê `settings.RBAC_ENFORCE`
+- `require_permission(modulo, acao)` factory de dependency:
+  - Valida `(modulo, acao)` no momento da factory (fail-fast no startup)
+  - No-op se flag OFF; aplica `has_permission` se ON
+  - Retorna `Empresa` (compatível com `get_empresa_ctx`) ou 403
+
+`app/core/config.py`:
+- `Settings.RBAC_ENFORCE: bool = False`
+
+#### Testes (16 novos goldens)
+
+`tests/test_rbac_middleware_pr2.py`:
+- Factory: rejeita inválido / aceita válido (3 testes)
+- Flag `is_rbac_enforced` respeita settings (2 testes)
+- **Modo no-op**: admin passa, usuário com vínculo passa (2 testes — retrocompat)
+- **Modo enforce**: admin bypass, sem perfil 403, perfil concede 200, perfil sem permissão 403, override pontual 200, ver≠exportar (6 testes)
+- Cross-router: dashboard 403, admin_categorias bloqueia Diretoria, Controladoria passa (3 testes)
+
+#### Validações pré-PR
+
+- `pytest tests/test_rbac_middleware_pr2.py` → **16/16 verde**
+- `pytest tests/ --ignore=tests/test_integration.py` → **371/371 verde** (355 + 16)
+- Smoke flag OFF (333/333 sem suites RBAC) → **retrocompat confirmada**
+- `ruff check --select E,F,W --ignore E501,E712,E741` → All checks passed
+
+#### Audit do PR #109
+
+- **Score**: **98/100** ✅
+- **Recomendação**: APPROVE
+- **Bloqueadores**: **13/13 OK**, **Riscos**: 3 mitigados
+- Review em
+  [`docs/audit/fase-a-pr2-rbac-middleware/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/fase-a-pr2-rbac-middleware/review.md)
+  (no repo `grupoalt-api`, [PR #110 docs](https://github.com/vmapex/grupoalt-api/pull/110))
+
+Penalização (-2): cosmético (count "19 sites" na descrição quando o
+real era 26 — chute errado meu, corrigido).
+
+### Estado consolidado pós-2026-05-22
+
+- **P0**: 10/10 ✅
+- **P1**: 31/31 (100%) ✅
+- **P2**: 2/3 (resta unificação bi↔portal)
+- **Fase 5**: 7/8 em soak (aguarda flag DRE em staging)
+- **Fase A (RBAC novo)**: **2/4 PRs entregues** ✅
+  - PR 1 ✅ (foundation: modelo + helper + seed)
+  - PR 2 ✅ (enforcement em 26 sites com feature flag)
+  - PR 3 ⏳ (hook frontend `usePermission`)
+  - PR 4 ⏳ (UI admin atribuir perfis)
+- **Audits cumulados**: **19** (18 formais + 1 manual; média da
+  Fase A: 98/100)
+
+### Próximos passos imediatos
+
+1. ⏳ **User**: merge dos PRs (api #109, api #110, web este)
+2. ⏳ **User**: flag DRE em staging Vercel + alembic upgrade head em
+   staging Railway (operacional, pendente da sessão anterior)
+3. 🎯 **Próxima sessão**: **PR 3 da Fase A** — frontend:
+   - Hook `usePermission(modulo, acao)` que consulta as permissões
+     efetivas do usuário na empresa ativa
+   - Componente `<PermissionGate require="financeiro:ver">` que
+     renderiza children só quando autorizado (ou fallback `<AccessDenied/>`)
+   - Auto-fetch via `/auth/me` retornando `permissoes_efetivas` (precisa
+     ajuste no backend `/auth/me` para incluir o set)
+
+
 
