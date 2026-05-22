@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   Settings, Tag, Landmark, Sparkles, AlertCircle,
-  CheckCircle2, ShieldAlert, Clock,
+  CheckCircle2, ShieldAlert, Clock, Users,
 } from 'lucide-react'
 import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -103,6 +103,7 @@ export default function OrbitAuditPage() {
         <SubNavLink href="/bi/financeiro/admin/categorias" icon={<Tag size={12} />} label="Plano de Contas" t={t} />
         <SubNavLink href="/bi/financeiro/admin/contas-bancarias" icon={<Landmark size={12} />} label="Contas Bancárias" t={t} />
         <SubNavLink href="/bi/financeiro/admin/orbit" icon={<Sparkles size={12} />} label="Orbit IA" t={t} active />
+        <SubNavLink href="/bi/financeiro/admin/usuarios" icon={<Users size={12} />} label="Usuários" t={t} />
       </div>
 
       {/* Janela de tempo */}
