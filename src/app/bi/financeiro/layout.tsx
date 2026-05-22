@@ -5,6 +5,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useAuthStore } from '@/store/authStore'
 import { useBiViewStore } from '@/store/biViewStore'
+import { useFetchPermissoesAtivas } from '@/hooks/usePermission'
 import { Navbar } from '@/components/nav/Navbar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
@@ -22,6 +23,11 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
   const synced = useEmpresaStore((s) => s._synced)
   const setAuth = useAuthStore((s) => s.setAuth)
   const user = useAuthStore((s) => s.user)
+
+  // Fase A PR 3: dispara fetch das permissoes RBAC quando empresa ativa muda.
+  // Hook eh side-effect-only; permissoes ficam no permissoesStore pra
+  // <PermissionGate> e usePermission consultarem.
+  useFetchPermissoesAtivas()
 
   // Auth guard: verify session via httpOnly cookie
   useEffect(() => {
