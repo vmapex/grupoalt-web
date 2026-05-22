@@ -15,6 +15,7 @@ import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
 import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const NAV = [
@@ -239,29 +240,38 @@ export function Navbar() {
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
           </button>
         )}
-        {isAdmin && pathname.includes('/extrato') && (
-          <ExportPDFButton
-            empresaId={activeId}
-            report="extrato"
-            filename="extrato.pdf"
-            label="PDF Extrato"
-          />
+        {/* Fase A PR 3: gating dos botoes de export migrado para RBAC granular.
+            Antes: `isAdmin &&` (so admin global via canAccessAdmin).
+            Agora: <PermissionGate require="financeiro:exportar"> — passa pra
+            qualquer perfil que conceda essa permissao (Diretoria, Controladoria,
+            Financeiro, Consultor Externo + admin global via is_admin bypass). */}
+        {pathname.includes('/extrato') && (
+          <PermissionGate require="financeiro:exportar">
+            <ExportPDFButton
+              empresaId={activeId}
+              report="extrato"
+              filename="extrato.pdf"
+              label="PDF Extrato"
+            />
+          </PermissionGate>
         )}
-        {isAdmin && pathname.includes('/cp-cr') && (
-          <>
-            <ExportPDFButton
-              empresaId={activeId}
-              report="cp"
-              filename="contas-pagar.pdf"
-              label="PDF CP"
-            />
-            <ExportPDFButton
-              empresaId={activeId}
-              report="cr"
-              filename="contas-receber.pdf"
-              label="PDF CR"
-            />
-          </>
+        {pathname.includes('/cp-cr') && (
+          <PermissionGate require="financeiro:exportar">
+            <>
+              <ExportPDFButton
+                empresaId={activeId}
+                report="cp"
+                filename="contas-pagar.pdf"
+                label="PDF CP"
+              />
+              <ExportPDFButton
+                empresaId={activeId}
+                report="cr"
+                filename="contas-receber.pdf"
+                label="PDF CR"
+              />
+            </>
+          </PermissionGate>
         )}
         <div className="hidden md:flex items-center gap-2">
           <DateRangePicker />

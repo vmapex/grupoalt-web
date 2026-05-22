@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
+import { useFetchPermissoesAtivas } from '@/hooks/usePermission'
 import Sidebar from '@/components/Sidebar'
 import { HelpCircle, ChevronRight, ChevronDown, Menu } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
@@ -19,6 +20,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const { user, setAuth } = useAuthStore()
   const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
   const empresaSynced = useEmpresaStore((s) => s._synced)
+
+  // Fase A PR 3: dispara fetch das permissoes RBAC quando empresa ativa muda
+  useFetchPermissoesAtivas()
   const [loading, setLoading] = useState(true)
   const [notifCount, setNotifCount] = useState(0)
   const themeMode = useThemeStore((s) => s.mode)
