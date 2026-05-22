@@ -3,7 +3,7 @@
 import { useState, useRef, type ChangeEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Settings, Upload, Trash2, Pencil, Plus, X, Tag, Landmark, Sparkles } from 'lucide-react'
+import { Settings, Upload, Trash2, Pencil, Plus, X, Tag, Landmark, Sparkles, Users } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -291,6 +291,25 @@ export default function PageAdmin() {
         >
           <Sparkles size={12} />
           Orbit IA
+        </Link>
+        <Link
+          href="/bi/financeiro/admin/usuarios"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            color: t.muted,
+            background: 'transparent',
+            border: `1px solid ${t.border}`,
+            textDecoration: 'none',
+          }}
+        >
+          <Users size={12} />
+          Usuários
         </Link>
       </div>
 
