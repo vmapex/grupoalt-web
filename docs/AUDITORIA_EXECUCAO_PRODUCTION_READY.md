@@ -4137,9 +4137,115 @@ pushdown sem alterar semântica (12 testes goldens).
 - Atualizar referências a "50 rotas" no CLAUDE.md (build atual: 42)
 - Depreciar barrel `useAPI.ts` quando consumers migrarem
 - Depreciar barrel `sync_service.py` analogamente
-- Adicionar `ORDER BY` explícito na paginação CP/CR (follow-up P1-12)
 - Trocar `COUNT(*)` por `SELECT 1 LIMIT 1` em `_has_any_cp/cr`
 - Dashboard.py: migrar agregações Python para SQL `GROUP BY`
 - Investigar audit-agent watchdog timeout (operacional)
 - Depreciar re-export de `get_client_ip` em `auditoria.py` (futuro)
+
+---
+
+## Sessão 2026-05-21 (parte 4) — Follow-up audit P1-12: ORDER BY paginação
+
+> Quick win pré-soak (Caminho B do plano de execução). Fecha o
+> descontão -2 do audit do PR #103. Escopo mínimo, audit-agent
+> **98/100 APPROVE**.
+
+### Mudanças ([api #105](https://github.com/vmapex/grupoalt-api/pull/105))
+
+`app/routers/cp_cr.py`:
+- `listar_cp` ganha `.order_by(ContaPagar.id)` na query paginada
+- `listar_cr` ganha `.order_by(ContaReceber.id)` análogo
+- Comentários nos 2 sites explicando o WHY (determinismo, Postgres
+  heap scan, escolha de `id` PK vs `omie_id`/`data_*`)
+
+`tests/test_p1_12_sql_filters.py` (+2 testes, total 14):
+- `test_cp_paginacao_eh_deterministica`: insere 12 linhas em ordem
+  **reversa** de `omie_id` (200, 199, 198...) e chama a mesma página
+  **3x consecutivas**. Assert que as 3 chamadas devolvem MESMAS rows
+  na MESMA ordem.
+- `test_cr_paginacao_eh_deterministica`: espelho para CR.
+
+### Por que `id` (PK serial) e não outra coluna
+
+- `id` é PK → índice B-tree automático, lookup barato
+- `omie_id` poderia ter NULLs ou colisões — contrato menos forte
+- `data_*` muda quando registro atualiza → ordem flutuaria
+
+### Validações
+
+- `pytest tests/ --ignore=tests/test_integration.py` → **333/333 verde**
+- `ruff check --select E,F,W --ignore E501,E712,E741` → All checks passed
+
+### Audit do PR #105
+
+- **Score**: **98/100** ✅
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **8/8 OK**
+- Review em
+  [`docs/audit/p1-12-followup-order-by/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/p1-12-followup-order-by/review.md)
+  (no repo `grupoalt-api`, [PR #106 docs](https://github.com/vmapex/grupoalt-api/pull/106))
+
+Penalização (-2): auditor observou que testes poderiam também
+assertar `codigos == sorted(codigos)` para validar a ordem
+específica, não só a estabilidade entre chamadas. Não bloqueante.
+
+### Estado consolidado pós-2026-05-21 (parte 4)
+
+- **P0**: 10/10 ✅
+- **P1**: 31/31 (100%) ✅
+- **P2**: 2/3 (resta unificação bi↔portal, aguarda Fase 5.G)
+- **Fase 5**: 7/8 em soak (aguarda user ligar flag em staging)
+- **Audits cumulados**: **17** (16 formais + 1 manual; 4 ≥ 96/100 hoje)
+
+### Sessão 2026-05-21 — total final (10 PRs)
+
+| # | Frente | PR | Score |
+|---|---|---|---|
+| 1 | Split `useAPI.ts` | [web #130](https://github.com/vmapex/grupoalt-web/pull/130) | **100/100** |
+| 2 | Docs #130 | [web #131](https://github.com/vmapex/grupoalt-web/pull/131) | — |
+| 3 | Split `sync_service.py` | [api #101](https://github.com/vmapex/grupoalt-api/pull/101) | **99/100** |
+| 4 | Docs #101 | [api #102](https://github.com/vmapex/grupoalt-api/pull/102) | — |
+| 5 | Docs cross-repo P2 | [web #132](https://github.com/vmapex/grupoalt-web/pull/132) | — |
+| 6 | P1-12 SQL pushdown | [api #103](https://github.com/vmapex/grupoalt-api/pull/103) | **96/100** |
+| 7 | Docs #103 | [api #104](https://github.com/vmapex/grupoalt-api/pull/104) | — |
+| 8 | Docs P1-12 cross-repo | [web #133](https://github.com/vmapex/grupoalt-web/pull/133) | — |
+| 9 | Follow-up ORDER BY | [api #105](https://github.com/vmapex/grupoalt-api/pull/105) | **98/100** |
+| 10 | Docs #105 | [api #106](https://github.com/vmapex/grupoalt-api/pull/106) | — |
+| 11 | Docs ORDER BY cross-repo | este PR | — |
+
+Média dos 4 audits formais: **98/100**.
+
+### Pivô da sessão: do plano antigo para o roadmap pós-auditoria
+
+A sessão começou com a auditoria production-ready em ~99%. Após
+3 frentes (P2 split useAPI + P2 split sync_service + P1-12 SQL
+pushdown + follow-up ORDER BY), **o plano original está praticamente
+fechado em termos de código ativo**.
+
+User comunicou **4 itens de produto** que estavam segurados durante
+a auditoria:
+1. Integrar Motor de Fechamento no portal
+2. RBAC granular real (segmentar logins)
+3. Dashboard inicial gated por permissões
+4. Trazer dados do motor no dashboard
+
+Roadmap detalhado salvo na memória local em
+`memory/post-audit-roadmap.md` (8 PRs em 4 fases A→D).
+
+**Decisão**: Caminho B do plano de execução — paralelo otimizado.
+- User liga flag staging (operacional)
+- Em paralelo: começa Fase A (RBAC backend, PR 1) — zero conflito
+  com Fase 5 em soak
+- Quando soak terminar: Fase 5.G + unificação bi↔portal
+- Depois: Fase B/C/D
+
+### Próximos passos imediatos
+
+1. ✅ Quick win ORDER BY entregue (este PR)
+2. ⏳ **User**: ligar `NEXT_PUBLIC_USE_BACKEND_DRE=true` +
+   `NEXT_PUBLIC_DRE_COMPARATIVO=true` em **Preview Vercel**, redeploy
+3. ⏳ **User**: validar paridade DRE via `<ComparativoDRE>` 2-3 dias
+4. 🎯 **Próxima sessão**: começar Fase A — PR 1 RBAC backend
+   (modelo `Perfil`/`PerfilPermissao`/`UsuarioPerfilEmpresa` +
+   migration + helper `get_effective_permissions()` + testes)
 
