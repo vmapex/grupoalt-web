@@ -4486,5 +4486,149 @@ real era 26 — chute errado meu, corrigido).
    - Auto-fetch via `/auth/me` retornando `permissoes_efetivas` (precisa
      ajuste no backend `/auth/me` para incluir o set)
 
+---
+
+## Sessão 2026-05-22 (parte 2) — Fase A PR 3: foundation do gating visual RBAC
+
+> Continuação direta da sessão anterior. PR 2 (api #109/110) mergeado.
+> Esta sessão entrega o **PR 3** completo: backend endpoint + frontend
+> hook/componente + 3 sites de Navbar migrados.
+
+### PR 3 backend ([api #111](https://github.com/vmapex/grupoalt-api/pull/111))
+
+Novo endpoint `GET /auth/me/permissoes/{empresa_id}` que retorna o
+set efetivo de permissões do usuário logado pra alimentar o gating
+visual no frontend.
+
+#### Schema da resposta
+
+```json
+{
+  "empresa_id": 1,
+  "is_admin_global": false,
+  "exports_confidencial": true,
+  "perfis": [{"id": 7, "nome": "Consultor Externo", "exports_confidencial": true}],
+  "permissoes": [
+    {"modulo": "financeiro", "acao": "ver", "empresa_id": 1},
+    {"modulo": "financeiro", "acao": "exportar", "empresa_id": 1}
+  ]
+}
+```
+
+Decisões-chave:
+- **`exports_confidencial`** efetivo: True se QUALQUER perfil tem (marca d'água prevalece)
+- **Sempre retorna o set REAL** (independente de `RBAC_ENFORCE`) — frontend usa pra gating visual mesmo com enforcement OFF
+- **Reusa** `get_effective_permissions()` do PR 1 (zero duplicação)
+
+#### Validações
+
+- `pytest tests/test_me_permissoes_endpoint.py` → **10/10 verde**
+- `pytest tests/ --ignore=tests/test_integration.py` → **381/381 verde**
+- `ruff check` → All checks passed
+
+#### Audit backend
+
+- **Score**: **97/100** ✅
+- **Recomendação**: APPROVE
+- **Bloqueadores**: **12/12 OK**, riscos 2/2 aceitos
+- Review: [api #112](https://github.com/vmapex/grupoalt-api/pull/112) →
+  [`docs/audit/fase-a-pr3-permissoes-endpoint/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/fase-a-pr3-permissoes-endpoint/review.md)
+
+Penalização -3: docstring 404 vs 403 (corrigido em commit follow-up).
+
+---
+
+### PR 3 frontend ([web #137](https://github.com/vmapex/grupoalt-web/pull/137))
+
+Foundation do gating visual + 3 sites migrados.
+
+#### Arquivos novos
+
+| Arquivo | Conteúdo |
+|---|---|
+| `src/store/permissoesStore.ts` | Zustand store (cache por empresa, sem persist) + helper `hasPermissionIn` |
+| `src/store/permissoesStore.test.ts` | **12 testes goldens** |
+| `src/hooks/usePermission.ts` | 5 hooks: `useFetchPermissoesAtivas`, `usePermissoesAtivas`, `usePermission`, `useIsAdminGlobal`, `useExportsConfidencial` |
+| `src/components/auth/PermissionGate.tsx` | Componente com props `require/requireAll/requireAny/fallback` |
+
+#### Cabeamento
+
+`src/app/bi/financeiro/layout.tsx` + `src/app/portal/layout.tsx`:
+- `useFetchPermissoesAtivas()` dispara fetch ao mudar empresa ativa.
+
+#### Gating aplicado (3 sites em Navbar)
+
+`src/components/nav/Navbar.tsx`:
+- Botões **PDF Extrato** (1) + **PDF CP/CR** (2) — antes `isAdmin &&`,
+  agora `<PermissionGate require="financeiro:exportar">`.
+
+Resultado: admin continua passando (`is_admin_global` bypass), **+
+Diretoria/Controladoria/Financeiro/Consultor Externo** agora veem os
+botões.
+
+#### Out of scope (decisão conservadora)
+
+- `Sidebar.tsx` continua com `hasPermissao` legado + `canAccessAdmin`
+- `useRequireAdmin` das páginas admin/* continua com `is_admin` binário
+- Refactor coordenado fica pra **PR 4 (UI admin)**
+
+#### Validações
+
+- `npm test` → **243/243 verde** (231 + 12 novos)
+- `npx tsc --noEmit` → sem erros
+- `npm run build` → Compiled successfully, shared **160 kB** (zero regressão)
+- `npm run audit:bundle` → 0 credenciais em 81 arquivos JS
+
+#### Audit frontend
+
+- **Score**: **96/100** ✅
+- **Recomendação**: APPROVE
+- **Bloqueadores**: **13/13 OK**, riscos 3/3 aceitos
+- Review: [web #138](https://github.com/vmapex/grupoalt-web/pull/138) →
+  [`docs/audit/fase-a-pr3-permission-gate/review.md`](https://github.com/vmapex/grupoalt-web/blob/main/docs/audit/fase-a-pr3-permission-gate/review.md)
+
+Penalização -4: PermissionGate chama hooks 10x sempre (slots fixos), flash
+de "botão some/aparece" durante loading, Sidebar não migrada (intencional).
+Auditor pediu logout reset do permissoesStore — **resolvido em commit
+follow-up** (anti-leak entre sessões).
+
+---
+
+### Estado consolidado pós-2026-05-22 (parte 2)
+
+- **P0**: 10/10 ✅
+- **P1**: 31/31 (100%) ✅
+- **P2**: 2/3 (resta unificação bi↔portal)
+- **Fase 5**: 7/8 em soak
+- **Fase A (RBAC novo)**: **3/4 PRs entregues** ✅
+  - PR 1 ✅ foundation backend
+  - PR 2 ✅ enforcement com feature flag
+  - PR 3 ✅ frontend gating visual
+  - PR 4 ⏳ UI admin pra atribuir perfis
+- **Audits cumulados**: **21** (20 formais + 1 manual)
+- **Média Fase A**: 97.25/100 (4 audits formais)
+
+### Sessão 2026-05-22 — total da Fase A
+
+| # | Frente | PR | Score |
+|---|---|---|---|
+| 1 | PR 2 RBAC middleware | [api #109](https://github.com/vmapex/grupoalt-api/pull/109) | 98/100 |
+| 2 | Docs #109 | [api #110](https://github.com/vmapex/grupoalt-api/pull/110) | — |
+| 3 | Docs PR 2 cross-repo | [web #136](https://github.com/vmapex/grupoalt-web/pull/136) | — |
+| 4 | **PR 3 backend (endpoint)** | [api #111](https://github.com/vmapex/grupoalt-api/pull/111) | **97/100** |
+| 5 | Docs #111 | [api #112](https://github.com/vmapex/grupoalt-api/pull/112) | — |
+| 6 | **PR 3 frontend (PermissionGate)** | [web #137](https://github.com/vmapex/grupoalt-web/pull/137) | **96/100** |
+| 7 | Docs #137 | [web #138](https://github.com/vmapex/grupoalt-web/pull/138) | — |
+| 8 | **Docs PR 3 cross-repo** | este PR | — |
+
+### Próximos passos imediatos
+
+1. ⏳ **User**: merge dos 5 PRs (api #111, #112, web #137, #138, este)
+2. 🎯 **Próxima sessão**: **PR 4 da Fase A** — UI admin `/portal/admin/usuarios`
+   pra atribuir/revogar perfis aos usuários (último PR da Fase A).
+   Depois disso, user pode atribuir perfis em staging + ligar
+   `RBAC_ENFORCE=true` no Railway pra validar o ciclo completo.
+
+
 
 
