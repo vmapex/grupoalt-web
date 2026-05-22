@@ -4249,3 +4249,132 @@ Roadmap detalhado salvo na memória local em
    (modelo `Perfil`/`PerfilPermissao`/`UsuarioPerfilEmpresa` +
    migration + helper `get_effective_permissions()` + testes)
 
+---
+
+## Sessão 2026-05-21 (parte 5) — Fase A PR 1: foundation do RBAC granular
+
+> **PIVÔ COMPLETO** para o roadmap pós-auditoria. Primeira frente
+> entregue na mesma sessão da auditoria final. Audit-agent
+> **98/100 APPROVE, 12/12 PASS**.
+
+### O que é a Fase A
+
+Após validar (com user) os 4 itens do roadmap pós-auditoria
+(motor + RBAC + dashboard gated + KPIs no dashboard), atacamos a
+**Fase A — RBAC granular real** primeiro porque é foundation pra
+3 e 4. Inclui 4 PRs:
+
+| PR | Escopo | Status |
+|---|---|---|
+| **PR 1** | Modelo + migration + helper + testes (backend foundation) | ✅ ENTREGUE |
+| PR 2 | Middleware `require_permission()` aplicado em routers | Próximo |
+| PR 3 | Hook `usePermission` + `<PermissionGate>` (frontend) | Após PR 2 |
+| PR 4 | UI admin `/portal/admin/usuarios` (atribuir perfis) | Após PR 3 |
+
+### PR 1 entregue ([api #107](https://github.com/vmapex/grupoalt-api/pull/107))
+
+**3 modelos novos** em `app/models/models.py`:
+
+- `Perfil(id, nome unique, descricao, exports_confidencial, sistema)`
+- `PerfilPermissao(perfil_id, modulo, acao)` unique (perfil_id, modulo, acao)
+- `UsuarioPerfilEmpresa(usuario_id, perfil_id, empresa_id, concedido_por_id)`
+  unique (usuario_id, perfil_id, empresa_id) + lookup index
+
+**Módulo novo** em `app/core/rbac.py`:
+
+- `MODULOS` (11): financeiro, fechamento, indicadores, grupo, documentos,
+  orbit, **admin_categorias**, **admin_empresas**, **admin_contas_bancarias**,
+  **admin_usuarios**, **admin_orbit** (sub-módulos de admin pra granularidade fina)
+- `ACOES` (4): ver, editar, exportar, executar
+- `get_effective_permissions(usuario_id, empresa_id, db)` — combina:
+  - `is_admin=True` → TODAS as combinações (retrocompat)
+  - Perfis atribuídos via UsuarioPerfilEmpresa → UNION
+  - Overrides via Permissao (legado) → somam ao set
+  - Overrides globais (`empresa_id=NULL`) → aplicam em qualquer empresa
+- `has_permission()` atalho + `is_valid_permission()` validador
+
+**Migration 0008** (`alembic/versions/0008_rbac_perfis.py`):
+
+- 3 CREATE TABLE + indices + seed dos 8 perfis (44 `PerfilPermissao`)
+- Self-contained (replica `PERFIS_SEED` inline)
+- Postgres: `setval('perfis_id_seq', 8)` ao final
+- SQLite (testes): skip setval
+
+### 8 perfis seed canônicos
+
+| # | Perfil | Permissões | Marca d'água |
+|---|---|---|---|
+| 1 | Diretoria | 7 (financeiro+fechamento ver/exportar, indicadores, grupo, orbit) | ❌ |
+| 2 | Controladoria | 11 (financeiro full + admin_categorias) | ❌ |
+| 3 | Financeiro | 6 (financeiro full, sem fechamento) | ❌ |
+| 4 | Operações | 6 (inclui `fechamento:executar`) | ❌ |
+| 5 | Operador Junior | 5 (Operações **sem** `fechamento:executar`) | ❌ |
+| 6 | Gestor Unidade | 3 (fechamento limitado) | ❌ |
+| 7 | Consultor Externo | 4 (leitura + export) | ✅ |
+| 8 | Faturista | 2 (só fechamento ver/editar — CT-e) | ❌ |
+
+### Validações pré-PR
+
+- `pytest tests/test_rbac_fase_a.py` → **22/22 verde**
+- `pytest tests/ --ignore=tests/test_integration.py` → **355/355 verde** (333 + 22)
+- `pytest tests/test_alembic_baseline.py` → **4/4 verde**
+- `ruff check app/ tests/ alembic/ --select E,F,W --ignore E501,E712,E741` → All checks passed
+
+### Audit do PR #107
+
+- **Score**: **98/100** ✅
+- **Recomendação**: **APPROVE**
+- **Bloqueadores**: **12/12 PASS**
+- **Riscos**: 3 aceitáveis (perf de get_effective_permissions max 4 queries,
+  index cobre lookup, Operador Junior congelado por teste)
+- Review em
+  [`docs/audit/fase-a-pr1-rbac-modelo/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/fase-a-pr1-rbac-modelo/review.md)
+  (no repo `grupoalt-api`, [PR #108 docs](https://github.com/vmapex/grupoalt-api/pull/108))
+
+Penalização (-2): cosmético (PR description inicial dizia 33
+perfil_permissoes, real é 44 — corrigido na descrição). Sem ressalva
+técnica.
+
+### Estado consolidado pós-2026-05-21 (parte 5)
+
+- **P0**: 10/10 ✅
+- **P1**: 31/31 (100%) ✅
+- **P2**: 2/3 (resta unificação bi↔portal, aguarda Fase 5.G)
+- **Fase 5**: 7/8 em soak (aguarda flag em staging)
+- **Fase A (RBAC novo)**: **1/4 PRs entregues** (foundation pronta)
+- **Audits cumulados**: **18** (17 formais + 1 manual; 5 ≥ 96/100 hoje)
+
+### Sessão 2026-05-21 — total acumulado: 13 PRs
+
+| # | Frente | PR | Score |
+|---|---|---|---|
+| 1 | Split `useAPI.ts` | [web #130](https://github.com/vmapex/grupoalt-web/pull/130) | 100/100 |
+| 2 | Docs #130 | [web #131](https://github.com/vmapex/grupoalt-web/pull/131) | — |
+| 3 | Split `sync_service.py` | [api #101](https://github.com/vmapex/grupoalt-api/pull/101) | 99/100 |
+| 4 | Docs #101 | [api #102](https://github.com/vmapex/grupoalt-api/pull/102) | — |
+| 5 | Docs cross-repo P2 | [web #132](https://github.com/vmapex/grupoalt-web/pull/132) | — |
+| 6 | P1-12 SQL pushdown | [api #103](https://github.com/vmapex/grupoalt-api/pull/103) | 96/100 |
+| 7 | Docs #103 | [api #104](https://github.com/vmapex/grupoalt-api/pull/104) | — |
+| 8 | Docs P1-12 cross-repo | [web #133](https://github.com/vmapex/grupoalt-web/pull/133) | — |
+| 9 | Follow-up ORDER BY | [api #105](https://github.com/vmapex/grupoalt-api/pull/105) | 98/100 |
+| 10 | Docs #105 | [api #106](https://github.com/vmapex/grupoalt-api/pull/106) | — |
+| 11 | Docs ORDER BY cross-repo | [web #134](https://github.com/vmapex/grupoalt-web/pull/134) | — |
+| 12 | **Fase A PR 1 (RBAC modelo)** | [api #107](https://github.com/vmapex/grupoalt-api/pull/107) | **98/100** |
+| 13 | Docs #107 | [api #108](https://github.com/vmapex/grupoalt-api/pull/108) | — |
+| 14 | Docs Fase A cross-repo | este PR | — |
+
+**Média 5 audits formais da sessão**: 98.2/100. Sessão mais
+produtiva da auditoria — 14 PRs no total cobrindo P2 + P1-12 +
+follow-ups + foundation Fase A.
+
+### Próximos passos imediatos
+
+1. ⏳ **User**: merge dos PRs (api #107, api #108, web este)
+2. ⏳ **User**: rodar `alembic upgrade head` em staging Postgres
+   pós-merge — confirmar 3 tabelas + 8 perfis seed
+3. ⏳ **User**: ligar flag DRE em Preview Vercel (operacional)
+4. 🎯 **Próxima sessão**: **PR 2 da Fase A** — middleware
+   `require_permission()` aplicado em routers críticos
+   (cp_cr, dashboard, fluxo, conciliação, admin)
+
+
