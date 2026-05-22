@@ -92,5 +92,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     import('./unidadeStore').then(({ useUnidadeStore }) => {
       useUnidadeStore.getState().reset()
     })
+    // Fase A PR 3: limpa cache RBAC do usuario anterior pra nao vazar
+    // permissoes entre sessoes.
+    import('./permissoesStore').then(({ usePermissoesStore }) => {
+      usePermissoesStore.getState().reset()
+    })
   },
 }))
