@@ -28,7 +28,7 @@ import {
 
 
 export default function AdminUsuariosPage() {
-  const allowed = useRequireAdmin()
+  const adminAccess = useRequireAdmin()
   const t = useThemeStore((s) => s.tokens)
   const empresas = useAuthStore((s) => s.empresas)
 
@@ -38,7 +38,22 @@ export default function AdminUsuariosPage() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [busca, setBusca] = useState('')
 
-  if (!allowed) return <AccessDenied />
+  // useRequireAdmin retorna AdminAccess = 'loading' | 'allowed' | 'denied'
+  // (enum string). Tem que comparar explicitamente — `if (!access)` daria
+  // sempre false (qualquer string nao-vazia eh truthy).
+  if (adminAccess === 'loading') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '60vh', color: t.muted, fontSize: 12,
+      }}>
+        Carregando...
+      </div>
+    )
+  }
+  if (adminAccess === 'denied') {
+    return <AccessDenied message="A gestao de usuarios e restrita a administradores." />
+  }
 
   const usuarios = usuariosResult.data ?? []
   const perfis = perfisResult.data ?? []
