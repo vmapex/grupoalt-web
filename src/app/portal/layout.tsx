@@ -6,10 +6,11 @@ import { useAuthStore } from '@/store/authStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useFetchPermissoesAtivas } from '@/hooks/usePermission'
 import Sidebar from '@/components/Sidebar'
-import { HelpCircle, ChevronRight, ChevronDown, Menu } from 'lucide-react'
+import { HelpCircle, ChevronRight, Menu } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { ThemeToggle } from '@/components/nav/ThemeToggle'
 import { NotificationBell } from '@/components/nav/NotificationBell'
+import { UserMenu } from '@/components/nav/UserMenu'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { OrbitButton } from '@/components/chat/OrbitButton'
 import api from '@/lib/api'
@@ -17,7 +18,7 @@ import api from '@/lib/api'
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, setAuth } = useAuthStore()
+  const setAuth = useAuthStore((s) => s.setAuth)
   const syncFromAuth = useEmpresaStore((s) => s.syncFromAuth)
   const empresaSynced = useEmpresaStore((s) => s._synced)
 
@@ -30,7 +31,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [chatOpen, setChatOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [hoverHelpBtn, setHoverHelpBtn] = useState(false)
-  const [hoverUserBtn, setHoverUserBtn] = useState(false)
 
   // Sync dark class on <html> for CSS variables
   useEffect(() => {
@@ -97,10 +97,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     }
     return parts.map(p => labels[p] || p)
   })()
-
-  const userInitials = user?.nome
-    ? user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : '?'
 
   if (loading) {
     return (
@@ -215,51 +211,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
             <div className="w-px h-6" style={{ background: t.border }} />
 
-            {/* User */}
-            <button
-              className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl transition-all"
-              style={{
-                background: hoverUserBtn ? t.surfaceHover : 'transparent',
-                border: `1px solid ${hoverUserBtn ? t.border : 'transparent'}`,
-              }}
-              onMouseEnter={() => setHoverUserBtn(true)}
-              onMouseLeave={() => setHoverUserBtn(false)}
-            >
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold"
-                style={{
-                  background: `linear-gradient(135deg, ${t.gold}, ${t.goldSoft})`,
-                  color: '#1A1718',
-                  fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 10px ${t.goldDim}`,
-                  border: `1px solid ${t.borderGold}`,
-                }}
-              >
-                {userInitials}
-              </div>
-              <div className="text-left">
-                <div
-                  className="text-sm font-medium leading-tight"
-                  style={{ color: t.text, fontFamily: 'var(--font-display)', letterSpacing: '-0.005em' }}
-                >
-                  {user?.nome?.split(' ').slice(0, 2).join(' ')}
-                </div>
-                <div
-                  className="text-[10px] leading-tight"
-                  style={{
-                    color: t.muted,
-                    fontFamily: 'var(--font-mono)',
-                    letterSpacing: '0.18em',
-                    textTransform: 'uppercase',
-                    marginTop: 2,
-                  }}
-                >
-                  {user?.is_admin ? 'Administrador' : 'Usuário'}
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5" style={{ color: t.muted }} />
-            </button>
+            <UserMenu />
           </div>
         </header>
 
