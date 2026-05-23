@@ -7,7 +7,7 @@ import { useThemeStore } from '@/store/themeStore'
 interface AccessDeniedProps {
   /** Texto principal. Default: mensagem generica. */
   message?: string
-  /** Onde levar o usuario quando ele clicar em "Voltar". Default: /portal/grupo. */
+  /** Onde levar o usuario quando ele clicar em "Voltar". Default: /portal. */
   homeHref?: string
   /** Texto do botao. Default: "Voltar para o portal". */
   homeLabel?: string
@@ -15,7 +15,7 @@ interface AccessDeniedProps {
 
 export function AccessDenied({
   message = 'Voce nao tem permissao para acessar esta area.',
-  homeHref = '/portal/grupo',
+  homeHref = '/portal',
   homeLabel = 'Voltar para o portal',
 }: AccessDeniedProps) {
   const t = useThemeStore((s) => s.tokens)

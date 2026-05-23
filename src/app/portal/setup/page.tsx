@@ -30,7 +30,7 @@ export default function SetupPage() {
 
   useEffect(() => {
     if (accessState === 'completed') {
-      router.replace('/portal/grupo')
+      router.replace('/portal')
     }
   }, [accessState, router])
 
@@ -321,7 +321,7 @@ export default function SetupPage() {
             </p>
 
             <button
-              onClick={() => router.push('/portal/grupo')}
+              onClick={() => router.push('/portal')}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-[#CCA000] hover:bg-[#E0B82E] text-zinc-900 transition-all"
             >
               Ir para o Dashboard

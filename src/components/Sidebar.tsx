@@ -28,7 +28,7 @@ const sections: NavSection[] = [
     id: 'principal',
     label: 'Principal',
     children: [
-      { label: 'Dashboard', href: '/portal/grupo', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+      { label: 'Início', href: '/portal', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
     ],
   },
   {

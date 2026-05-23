@@ -50,7 +50,7 @@ const SUGGESTIONS = [
 
 const PAGE_LABELS: Record<string, string> = {
   '/portal': 'Dashboard',
-  '/portal/grupo': 'Dashboard',
+  '/portal/grupo': 'Grupo',
   '/portal/financeiro/caixa': 'Caixa Realizado',
   '/portal/financeiro/extrato': 'Extrato',
   '/portal/financeiro/cp': 'Contas a Pagar/Receber',

@@ -96,7 +96,7 @@ export function Navbar() {
       {/* Left: Back to Portal + Brand */}
       <div className="flex items-center gap-2 md:gap-3 shrink-0">
         <Link
-          href="/portal/grupo"
+          href="/portal"
           className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] no-underline transition-all"
           style={{
             color: t.muted,
