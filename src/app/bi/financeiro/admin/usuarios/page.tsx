@@ -11,7 +11,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX, ArchiveRestore } from 'lucide-react'
+import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX, ArchiveRestore, X } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -160,12 +160,26 @@ export default function AdminUsuariosPage() {
             <div
               role="alert"
               style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
                 color: '#fca5a5', fontSize: 11, padding: 8, marginBottom: 8,
                 background: '#7f1d1d22', border: '1px solid #f8717155',
                 borderRadius: 6,
               }}
             >
-              {restoreError}
+              <span style={{ flex: 1 }}>{restoreError}</span>
+              <button
+                type="button"
+                onClick={() => setRestoreError(null)}
+                aria-label="Fechar mensagem de erro"
+                style={{
+                  flexShrink: 0,
+                  background: 'transparent', border: 'none',
+                  color: '#fca5a5', cursor: 'pointer', padding: 0,
+                  display: 'flex', alignItems: 'center',
+                }}
+              >
+                <X size={12} />
+              </button>
             </div>
           )}
 
@@ -303,6 +317,7 @@ export default function AdminUsuariosPage() {
               empresas={empresas}
               t={t}
               isAutoDelete={currentUser?.id === userSelecionado.id}
+              isSoftDeleted={userSelecionado.deleted_at != null}
               onRequestDelete={() => setDeleteAlvo(userSelecionado)}
             />
           )}
@@ -391,12 +406,16 @@ interface DetalheUsuarioProps {
    *  Backend bloqueia auto-delete com 403, mas desabilitamos o botao
    *  em UI tambem pra evitar caminho de erro. */
   isAutoDelete: boolean
+  /** F2 (2026-05-23): True quando o user ja esta soft-deletado.
+   *  Em fluxo normal nao chega aqui (lista bloqueia selecao de deletado),
+   *  mas defense in depth contra race (outro admin deletou em paralelo). */
+  isSoftDeleted: boolean
   /** Callback pra abrir o modal de delete (state vive no parent). */
   onRequestDelete: () => void
 }
 
 
-function DetalheUsuario({ user, perfis, empresas, t, isAutoDelete, onRequestDelete }: DetalheUsuarioProps) {
+function DetalheUsuario({ user, perfis, empresas, t, isAutoDelete, isSoftDeleted, onRequestDelete }: DetalheUsuarioProps) {
   const atribuicoesResult = useAdminUsuarioAtribuicoes(user.id)
   const atribuicoes: AtribuicaoPerfil[] = atribuicoesResult.data ?? []
 
@@ -465,26 +484,35 @@ function DetalheUsuario({ user, perfis, empresas, t, isAutoDelete, onRequestDele
             </div>
           </div>
           {/* Bug #4: botao Excluir usuario (soft delete). Disabled em auto-delete
-              pra evitar caminho de erro — backend rejeita com 403 mesmo. */}
-          <button
-            onClick={onRequestDelete}
-            disabled={isAutoDelete}
-            title={isAutoDelete
+              ou se ja esta soft-deletado — backend rejeita com 403/409, evitamos
+              caminho de erro em UI. */}
+          {(() => {
+            const deleteDisabled = isAutoDelete || isSoftDeleted
+            const disabledReason = isAutoDelete
               ? 'Voce nao pode deletar a si mesmo. Peca a outro admin.'
-              : 'Soft delete deste usuario (reversivel via API)'}
-            style={{
-              flexShrink: 0,
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-              background: 'transparent',
-              color: isAutoDelete ? t.muted : t.red,
-              border: `1px solid ${isAutoDelete ? t.border : t.red + '55'}`,
-              cursor: isAutoDelete ? 'not-allowed' : 'pointer',
-              opacity: isAutoDelete ? 0.5 : 1,
-            }}
-          >
-            <UserX size={12} /> Excluir usuario
-          </button>
+              : isSoftDeleted
+                ? 'Usuario ja esta soft-deletado. Use Restaurar antes.'
+                : 'Soft delete deste usuario (reversivel via API)'
+            return (
+              <button
+                onClick={onRequestDelete}
+                disabled={deleteDisabled}
+                title={disabledReason}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                  background: 'transparent',
+                  color: deleteDisabled ? t.muted : t.red,
+                  border: `1px solid ${deleteDisabled ? t.border : t.red + '55'}`,
+                  cursor: deleteDisabled ? 'not-allowed' : 'pointer',
+                  opacity: deleteDisabled ? 0.5 : 1,
+                }}
+              >
+                <UserX size={12} /> Excluir usuario
+              </button>
+            )
+          })()}
         </div>
         {user.is_admin && (
           <div style={{
