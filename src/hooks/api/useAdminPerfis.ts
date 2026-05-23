@@ -82,3 +82,30 @@ export async function removerAtribuicaoPerfil(
 ) {
   await api.delete(`/admin/usuarios/${usuarioId}/atribuicoes/${atribuicaoId}`)
 }
+
+
+/** Soft delete de usuario (Bug #4, 2026-05-23). Confirmacao dupla:
+ *  senha do admin atual + nome exato do usuario alvo (case-sensitive).
+ *
+ *  Status codes do backend (mapeados em DeleteUsuarioModal):
+ *  - 204: sucesso (sem body)
+ *  - 403: senha errada OU nome errado OU auto-delete OU ultimo admin
+ *  - 404: usuario nao encontrado
+ *  - 409: usuario ja soft-deletado (use restore) */
+export async function deleteUsuario(
+  usuarioId: number,
+  senhaAdmin: string,
+  nomeUsuario: string,
+) {
+  await api.delete(`/admin/usuarios/${usuarioId}`, {
+    data: { senha_admin: senhaAdmin, nome_usuario: nomeUsuario },
+  })
+}
+
+
+/** Reverte soft delete. 409 se nao estava deletado, 404 se nao existe.
+ *  Por enquanto a UI nao expoe restore (escopo do PR cobre so delete);
+ *  hook fica disponivel pra um PR de UI de restauracao no futuro. */
+export async function restaurarUsuario(usuarioId: number) {
+  await api.post(`/admin/usuarios/${usuarioId}/restore`)
+}

@@ -11,11 +11,12 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2 } from 'lucide-react'
+import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
 import {
   useAdminUsuarios,
   useAdminPerfis,
@@ -31,12 +32,15 @@ export default function AdminUsuariosPage() {
   const adminAccess = useRequireAdmin()
   const t = useThemeStore((s) => s.tokens)
   const empresas = useAuthStore((s) => s.empresas)
+  const currentUser = useAuthStore((s) => s.user)
 
   const usuariosResult = useAdminUsuarios()
   const perfisResult = useAdminPerfis()
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [busca, setBusca] = useState('')
+  // Bug #4: alvo do soft delete. Null = modal fechado.
+  const [deleteAlvo, setDeleteAlvo] = useState<AdminUsuarioListado | null>(null)
 
   // useRequireAdmin retorna AdminAccess = 'loading' | 'allowed' | 'denied'
   // (enum string). Tem que comparar explicitamente — `if (!access)` daria
@@ -180,10 +184,27 @@ export default function AdminUsuariosPage() {
               perfis={perfis}
               empresas={empresas}
               t={t}
+              isAutoDelete={currentUser?.id === userSelecionado.id}
+              onRequestDelete={() => setDeleteAlvo(userSelecionado)}
             />
           )}
         </div>
       </div>
+
+      {/* Bug #4: modal de soft delete. Renderiza em portal-like overlay */}
+      <DeleteUsuarioModal
+        usuario={deleteAlvo}
+        onClose={() => setDeleteAlvo(null)}
+        onSuccess={() => {
+          // Refetch a lista pra remover o user soft-deletado (filtro padrao
+          // do backend exclui). Se o user deletado era o selecionado,
+          // deseleciona pra mostrar empty state.
+          if (deleteAlvo && deleteAlvo.id === selectedUserId) {
+            setSelectedUserId(null)
+          }
+          usuariosResult.refetch()
+        }}
+      />
     </div>
   )
 }
@@ -248,10 +269,16 @@ interface DetalheUsuarioProps {
     ? T extends Array<infer E> ? E[] : never : never
   empresas: ReturnType<typeof useAuthStore.getState>['empresas']
   t: ReturnType<typeof useThemeStore.getState>['tokens']
+  /** True quando o usuario selecionado eh o admin logado.
+   *  Backend bloqueia auto-delete com 403, mas desabilitamos o botao
+   *  em UI tambem pra evitar caminho de erro. */
+  isAutoDelete: boolean
+  /** Callback pra abrir o modal de delete (state vive no parent). */
+  onRequestDelete: () => void
 }
 
 
-function DetalheUsuario({ user, perfis, empresas, t }: DetalheUsuarioProps) {
+function DetalheUsuario({ user, perfis, empresas, t, isAutoDelete, onRequestDelete }: DetalheUsuarioProps) {
   const atribuicoesResult = useAdminUsuarioAtribuicoes(user.id)
   const atribuicoes: AtribuicaoPerfil[] = atribuicoesResult.data ?? []
 
@@ -301,20 +328,45 @@ function DetalheUsuario({ user, perfis, empresas, t }: DetalheUsuarioProps) {
     <div>
       {/* Header do usuario */}
       <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${t.border}` }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: t.text }}>
-          {user.nome}
-        </h2>
-        <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>
-          {user.email}
-          {user.is_admin && (
-            <span style={{
-              marginLeft: 8, padding: '1px 6px', borderRadius: 4,
-              background: t.goldDim, color: t.gold, fontSize: 10, fontWeight: 600,
-              letterSpacing: '0.05em', textTransform: 'uppercase',
-            }}>
-              Admin Global
-            </span>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: t.text }}>
+              {user.nome}
+            </h2>
+            <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>
+              {user.email}
+              {user.is_admin && (
+                <span style={{
+                  marginLeft: 8, padding: '1px 6px', borderRadius: 4,
+                  background: t.goldDim, color: t.gold, fontSize: 10, fontWeight: 600,
+                  letterSpacing: '0.05em', textTransform: 'uppercase',
+                }}>
+                  Admin Global
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Bug #4: botao Excluir usuario (soft delete). Disabled em auto-delete
+              pra evitar caminho de erro — backend rejeita com 403 mesmo. */}
+          <button
+            onClick={onRequestDelete}
+            disabled={isAutoDelete}
+            title={isAutoDelete
+              ? 'Voce nao pode deletar a si mesmo. Peca a outro admin.'
+              : 'Soft delete deste usuario (reversivel via API)'}
+            style={{
+              flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+              background: 'transparent',
+              color: isAutoDelete ? t.muted : t.red,
+              border: `1px solid ${isAutoDelete ? t.border : t.red + '55'}`,
+              cursor: isAutoDelete ? 'not-allowed' : 'pointer',
+              opacity: isAutoDelete ? 0.5 : 1,
+            }}
+          >
+            <UserX size={12} /> Excluir usuario
+          </button>
         </div>
         {user.is_admin && (
           <div style={{
