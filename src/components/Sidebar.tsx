@@ -4,15 +4,15 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, BarChart3, FileText,
+  BarChart3, FileText,
   ChevronDown, Search, LayoutDashboard,
   Landmark, TrendingUp, GitCompare, Network, Layers,
   Settings,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { useEmpresaStore } from '@/store/empresaStore'
 import { useThemeStore } from '@/store/themeStore'
 import { canAccessAdmin } from '@/lib/access'
+import { EmpresaSelector } from '@/components/nav/EmpresaSelector'
 
 interface NavChild { label: string; href: string; icon?: React.ReactNode; badge?: string }
 interface NavSection {
@@ -69,17 +69,12 @@ const sections: NavSection[] = [
 
 export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
-  const { user, empresas, grupoAtivo, hasPermissao } = useAuthStore()
-  // STEP 11 — empresa ativa vem do empresaStore (fonte de verdade compartilhada com BI).
-  const activeEmpresaId = useEmpresaStore((s) => s.activeId)
-  const setActiveEmpresa = useEmpresaStore((s) => s.setActive)
+  const { user, hasPermissao } = useAuthStore()
   const t = useThemeStore((s) => s.tokens)
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-  const [hoveredEmpresa, setHoveredEmpresa] = useState<number | string | null>(null)
   const [hoveredAdmin, setHoveredAdmin] = useState(false)
-  const [hoveredGroupBtn, setHoveredGroupBtn] = useState(false)
 
   const toggleSection = (id: string) => {
     setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
@@ -125,23 +120,7 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
         className="flex items-center justify-between p-5"
         style={{ borderBottom: `1px solid ${t.border}` }}
       >
-        <button
-          className="flex gap-2 transition-all text-[13px] font-medium border rounded-xl py-2 px-3 items-center"
-          style={{
-            background: hoveredGroupBtn ? t.surfaceHover : t.surface,
-            borderColor: hoveredGroupBtn ? t.borderGold : t.border,
-            color: t.text,
-            fontFamily: 'var(--font-body)',
-          }}
-          onMouseEnter={() => setHoveredGroupBtn(true)}
-          onMouseLeave={() => setHoveredGroupBtn(false)}
-        >
-          <Building2 className="w-4 h-4" style={{ color: t.gold }} />
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 400, letterSpacing: '-0.01em' }}>
-            {grupoAtivo?.nome || 'Grupo ALT'}
-          </span>
-          <ChevronDown className="w-3.5 h-3.5" style={{ color: t.muted }} />
-        </button>
+        <EmpresaSelector />
 
         {/* User avatar — gold gradient with online dot */}
         <div className="relative">
@@ -264,64 +243,6 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
           </div>
         ))}
 
-        {/* Empresas section */}
-        <div>
-          <button className="w-full px-4 mb-2 mt-5 cursor-pointer hover:opacity-80 transition-opacity">
-            <span
-              className="text-[10px] tracking-[0.22em] flex items-center gap-2"
-              style={{
-                color: t.gold,
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 500,
-                textTransform: 'uppercase',
-              }}
-            >
-              <ChevronDown className="w-3 h-3" />
-              Empresas
-            </span>
-          </button>
-          {empresas.map((emp, i) => {
-            const empActive = activeEmpresaId === String(emp.id)
-            const empHovered = hoveredEmpresa === emp.id
-            const dotColors = [t.gold, t.blue, t.green]
-            return (
-              <button
-                key={emp.id}
-                onClick={() => setActiveEmpresa(String(emp.id))}
-                className="flex items-center gap-3 w-full px-4 py-2 mx-2 rounded-xl transition-all"
-                style={{
-                  background: empActive ? t.surfaceHover : empHovered ? t.surface : 'transparent',
-                  color: empActive || empHovered ? t.text : t.textSec,
-                  border: `1px solid ${empActive ? t.border : 'transparent'}`,
-                }}
-                onMouseEnter={() => setHoveredEmpresa(emp.id)}
-                onMouseLeave={() => setHoveredEmpresa(null)}
-              >
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    background: dotColors[i % dotColors.length],
-                    boxShadow: `0 0 8px ${dotColors[i % dotColors.length]}`,
-                  }}
-                />
-                <span className="text-[13px]">{emp.nome}</span>
-                {empActive && (
-                  <span
-                    className="ml-auto text-[9px]"
-                    style={{
-                      color: t.gold,
-                      fontFamily: 'var(--font-mono)',
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Ativa
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
       </nav>
 
       {/* Settings / Admin */}
