@@ -173,6 +173,23 @@ describe('<DeleteUsuarioModal />', () => {
     })
   })
 
+  it('erro 5xx/network (default branch) vira banner com fallback', async () => {
+    // Audit follow-up: cobre o branch `default` do switch (sem response.status
+    // conhecido). Inclui timeout/network error e qualquer 5xx.
+    deleteUsuarioMock.mockRejectedValueOnce(new Error('Network Error'))
+    render(<DeleteUsuarioModal usuario={usuario} onClose={() => {}} onSuccess={() => {}} />)
+
+    fireEvent.change(screen.getByLabelText(/Senha do admin/), { target: { value: 'admin123' } })
+    fireEvent.change(screen.getByLabelText(/Digite o nome exato/), {
+      target: { value: 'Maria da Silva' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^Excluir$/ }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/Erro ao excluir/)
+    })
+  })
+
   it('erro 404 vira banner com mensagem amigavel', async () => {
     deleteUsuarioMock.mockRejectedValueOnce({
       response: { status: 404, data: {} },

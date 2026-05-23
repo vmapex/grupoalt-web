@@ -195,6 +195,7 @@ export function DeleteUsuarioModal({ usuario, onClose, onSuccess }: DeleteUsuari
               onChange={(e) => setSenha(e.target.value)}
               disabled={loading}
               autoComplete="current-password"
+              autoFocus
               placeholder="Sua senha"
               style={{
                 width: '100%',
