@@ -11,7 +11,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX } from 'lucide-react'
+import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX, ArchiveRestore } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -23,6 +23,7 @@ import {
   useAdminUsuarioAtribuicoes,
   criarAtribuicaoPerfil,
   removerAtribuicaoPerfil,
+  restaurarUsuario,
   type AdminUsuarioListado,
   type AtribuicaoPerfil,
 } from '@/hooks/api/useAdminPerfis'
@@ -34,13 +35,35 @@ export default function AdminUsuariosPage() {
   const empresas = useAuthStore((s) => s.empresas)
   const currentUser = useAuthStore((s) => s.user)
 
-  const usuariosResult = useAdminUsuarios()
+  // F2 (2026-05-23): toggle "Mostrar deletados" controla include_deleted.
+  // Quando ligado, lista mostra soft-deletados com badge + botao Restaurar.
+  const [includeDeleted, setIncludeDeleted] = useState(false)
+  const usuariosResult = useAdminUsuarios({ includeDeleted })
   const perfisResult = useAdminPerfis()
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [busca, setBusca] = useState('')
   // Bug #4: alvo do soft delete. Null = modal fechado.
   const [deleteAlvo, setDeleteAlvo] = useState<AdminUsuarioListado | null>(null)
+  // F2: id em loading durante restore (botao mostra spinner)
+  const [restoringId, setRestoringId] = useState<number | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+
+  async function handleRestore(u: AdminUsuarioListado) {
+    setRestoringId(u.id)
+    setRestoreError(null)
+    try {
+      await restaurarUsuario(u.id)
+      usuariosResult.refetch()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string }
+      setRestoreError(
+        `Falha ao restaurar ${u.nome}: ${e?.response?.data?.detail || e?.message || 'erro desconhecido'}`,
+      )
+    } finally {
+      setRestoringId(null)
+    }
+  }
 
   // useRequireAdmin retorna AdminAccess = 'loading' | 'allowed' | 'denied'
   // (enum string). Tem que comparar explicitamente — `if (!access)` daria
@@ -112,9 +135,39 @@ export default function AdminUsuariosPage() {
             style={{
               width: '100%', padding: '8px 10px', borderRadius: 6,
               background: t.bg, color: t.text,
-              border: `1px solid ${t.border}`, fontSize: 12, marginBottom: 10,
+              border: `1px solid ${t.border}`, fontSize: 12, marginBottom: 8,
             }}
           />
+
+          {/* F2: toggle Mostrar deletados (UI de restore) */}
+          <label
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 11, color: t.muted, marginBottom: 10,
+              cursor: 'pointer', userSelect: 'none',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(e) => setIncludeDeleted(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            Mostrar usuários deletados
+          </label>
+
+          {restoreError && (
+            <div
+              role="alert"
+              style={{
+                color: '#fca5a5', fontSize: 11, padding: 8, marginBottom: 8,
+                background: '#7f1d1d22', border: '1px solid #f8717155',
+                borderRadius: 6,
+              }}
+            >
+              {restoreError}
+            </div>
+          )}
 
           {usuariosResult.loading && (
             <div style={{ color: t.muted, fontSize: 12, padding: 12, textAlign: 'center' }}>
@@ -134,35 +187,100 @@ export default function AdminUsuariosPage() {
             </div>
           )}
 
-          {usuariosFiltrados.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => setSelectedUserId(u.id)}
-              style={{
-                width: '100%',
-                display: 'flex', flexDirection: 'column', gap: 2,
-                padding: '8px 10px', marginBottom: 4,
-                borderRadius: 6, textAlign: 'left',
-                background: u.id === selectedUserId ? t.blueDim : 'transparent',
-                border: `1px solid ${u.id === selectedUserId ? t.blue + '66' : 'transparent'}`,
-                color: t.text, cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{u.nome}</span>
-                {u.is_admin && (
-                  <span style={{
-                    fontSize: 9, padding: '1px 6px', borderRadius: 4,
-                    background: t.goldDim, color: t.gold, fontWeight: 600,
-                    letterSpacing: '0.05em', textTransform: 'uppercase',
-                  }}>
-                    Admin
-                  </span>
+          {usuariosFiltrados.map((u) => {
+            const isDeleted = u.deleted_at != null
+            const isRestoring = restoringId === u.id
+            return (
+              <div
+                key={u.id}
+                style={{
+                  position: 'relative',
+                  marginBottom: 4,
+                  opacity: isDeleted ? 0.65 : 1,
+                }}
+              >
+                <button
+                  onClick={() => setSelectedUserId(u.id)}
+                  disabled={isDeleted}
+                  title={isDeleted
+                    ? 'Usuário deletado — restaure para selecionar'
+                    : undefined}
+                  style={{
+                    width: '100%',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                    padding: '8px 10px',
+                    paddingRight: isDeleted ? 92 : 10,
+                    borderRadius: 6, textAlign: 'left',
+                    background: u.id === selectedUserId ? t.blueDim : 'transparent',
+                    border: `1px solid ${u.id === selectedUserId ? t.blue + '66' : 'transparent'}`,
+                    color: t.text,
+                    cursor: isDeleted ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 500,
+                      textDecoration: isDeleted ? 'line-through' : 'none',
+                    }}>
+                      {u.nome}
+                    </span>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {u.is_admin && (
+                        <span style={{
+                          fontSize: 9, padding: '1px 6px', borderRadius: 4,
+                          background: t.goldDim, color: t.gold, fontWeight: 600,
+                          letterSpacing: '0.05em', textTransform: 'uppercase',
+                        }}>
+                          Admin
+                        </span>
+                      )}
+                      {isDeleted && (
+                        <span
+                          aria-label="Usuário deletado"
+                          style={{
+                            fontSize: 9, padding: '1px 6px', borderRadius: 4,
+                            background: '#7f1d1d44', color: '#fca5a5', fontWeight: 600,
+                            letterSpacing: '0.05em', textTransform: 'uppercase',
+                          }}
+                        >
+                          Deletado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, color: t.muted }}>{u.email}</span>
+                </button>
+
+                {/* F2: botao Restaurar sobreposto na borda direita do item */}
+                {isDeleted && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleRestore(u)
+                    }}
+                    disabled={isRestoring}
+                    title={`Restaurar ${u.nome}`}
+                    aria-label={`Restaurar ${u.nome}`}
+                    style={{
+                      position: 'absolute', right: 6, top: '50%',
+                      transform: 'translateY(-50%)',
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '4px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                      background: t.surface,
+                      color: isRestoring ? t.muted : t.blue,
+                      border: `1px solid ${isRestoring ? t.border : t.blue + '55'}`,
+                      cursor: isRestoring ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {isRestoring
+                      ? <Loader2 size={10} className="animate-spin" />
+                      : <ArchiveRestore size={10} />}
+                    Restaurar
+                  </button>
                 )}
               </div>
-              <span style={{ fontSize: 11, color: t.muted }}>{u.email}</span>
-            </button>
-          ))}
+            )
+          })}
         </div>
 
         {/* Coluna direita: detalhe + atribuicoes */}

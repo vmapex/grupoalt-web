@@ -42,11 +42,28 @@ export interface AdminUsuarioListado {
   email: string
   ativo: boolean
   is_admin: boolean
+  /** F2 (2026-05-23): null = ativo; string ISO 8601 = soft-deletado.
+   *  Quando truthy, UI mostra badge "DELETADO" + botao Restaurar.
+   *  Backend so retorna este campo desde a migration 0010 + UsuarioResponse
+   *  expose patch (api PR #116). */
+  deleted_at?: string | null
 }
 
-/** Lista todos os usuarios (admin-only). Reusa GET /admin/usuarios. */
-export function useAdminUsuarios() {
-  return useApi<AdminUsuarioListado[]>('/admin/usuarios')
+interface UseAdminUsuariosOpts {
+  /** Quando true, GET /admin/usuarios?include_deleted=true (UI de restore).
+   *  Default false — lista padrao exclui soft-deletados. */
+  includeDeleted?: boolean
+}
+
+/** Lista todos os usuarios (admin-only). Reusa GET /admin/usuarios.
+ *
+ *  F2 (2026-05-23): aceita `{ includeDeleted: true }` pra incluir soft-
+ *  deletados na lista. UI de admin usa pra oferecer restore. */
+export function useAdminUsuarios(opts: UseAdminUsuariosOpts = {}) {
+  return useApi<AdminUsuarioListado[]>(
+    '/admin/usuarios',
+    opts.includeDeleted ? { include_deleted: 'true' } : undefined,
+  )
 }
 
 /** Lista os 8 perfis canonicos cadastrados (seed + customs). */
