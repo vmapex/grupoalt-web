@@ -4629,6 +4629,154 @@ follow-up** (anti-leak entre sessões).
    Depois disso, user pode atribuir perfis em staging + ligar
    `RBAC_ENFORCE=true` no Railway pra validar o ciclo completo.
 
+---
+
+## Sessão 2026-05-22 (parte 3) — Fase A PR 4: UI admin e fechamento
+
+> Sessão continuou direto após o PR 3 mergeado. PR 4 entregue
+> (backend + frontend). **Fase A FECHADA.**
+
+### PR 4 backend ([api #113](https://github.com/vmapex/grupoalt-api/pull/113))
+
+4 endpoints novos em `app/routers/admin.py` pro frontend gerenciar
+atribuições de perfis aos usuários.
+
+| Método | Path | Permissão |
+|---|---|---|
+| `GET` | `/admin/perfis` | `get_current_admin` |
+| `GET` | `/admin/usuarios/{id}/atribuicoes` | idem |
+| `POST` | `/admin/usuarios/{id}/atribuicoes` (201) | idem |
+| `DELETE` | `/admin/usuarios/{id}/atribuicoes/{aid}` (204) | idem |
+
+Decisões:
+- **POST idempotente**: duplicata retorna a atribuição existente em
+  vez de 409
+- **DELETE defesa cruzada**: `atrib.usuario_id` precisa bater com o
+  `usuario_id` da URL — evita revogar atribuição de outro user
+- **Auditoria**: `acao="atribuir_perfil" / "revogar_perfil"` com
+  detalhes (perfil_id, empresa_id, etc)
+- **`concedido_por_id`** populado com o admin caller (rastreabilidade)
+
+#### Validações
+- `pytest tests/test_admin_perfis_endpoint.py` → **19/19 verde**
+  (17 originais + 2 follow-up)
+- `pytest tests/ --ignore=tests/test_integration.py` → **400/400 verde**
+- `ruff check` → All checks passed
+
+#### Audit backend
+- **Score**: **96/100** ✅
+- **Recomendação**: APPROVE
+- **Bloqueadores**: **12/12 OK**, riscos 3/3 aceitos
+- Penalização -4 → resolvida em follow-up commit `7ecda69`:
+  - B5: faltava 1 teste 403 GET atribuições
+  - B6: faltava teste empresa soft-deletada
+- Review: [api #114](https://github.com/vmapex/grupoalt-api/pull/114) →
+  [`docs/audit/fase-a-pr4-admin-perfis-backend/review.md`](https://github.com/vmapex/grupoalt-api/blob/main/docs/audit/fase-a-pr4-admin-perfis-backend/review.md)
+
+---
+
+### PR 4 frontend ([web #140](https://github.com/vmapex/grupoalt-web/pull/140))
+
+Página nova `/bi/financeiro/admin/usuarios` (~400 LOC) — layout
+2 colunas com busca + form atribuir + lista revogar.
+
+Smart UX:
+- Empresas onde user JÁ tem o perfil selecionado são **filtradas**
+  do dropdown empresa
+- Aviso âmbar quando `is_admin=True` ("RBAC ignorado por bypass")
+- Badge "Marca confidencial" pra perfis com `exports_confidencial=True`
+- `confirm()` antes de revogar
+
+Hooks API novos (`src/hooks/api/useAdminPerfis.ts`): `useAdminUsuarios`,
+`useAdminPerfis`, `useAdminUsuarioAtribuicoes`, `criarAtribuicaoPerfil`,
+`removerAtribuicaoPerfil` + types.
+
+Sub-nav atualizada em 5 páginas admin (4 existentes + nova).
+
+#### Validações
+- `npx tsc --noEmit` → sem erros
+- `npm test` → **243/243 verde**
+- `npm run build` → Compiled successfully, shared **160 kB**
+- `npm run audit:bundle` → 0 credenciais em 83 arquivos JS
+
+#### Audit frontend
+- **Score inicial**: 89/100 REQUEST_CHANGES
+- **Score pós-fix**: ~95/100 APPROVE
+- **Bloqueador único (B1)**: `useRequireAdmin()` é enum string
+  (`'loading' | 'allowed' | 'denied'`), não boolean. Eu tinha feito
+  `if (!allowed)` — sempre truthy. Fix replicou pattern das 4 páginas
+  admin existentes.
+- Fix em follow-up commit `be7ead1` no próprio PR #140
+- Riscos não-bloqueantes: página inline ~400 LOC, sub-nav duplicada
+  em 5 páginas, `confirm()` nativo
+- Review: [web #141](https://github.com/vmapex/grupoalt-web/pull/141) →
+  [`docs/audit/fase-a-pr4-admin-usuarios-frontend/review.md`](https://github.com/vmapex/grupoalt-web/blob/main/docs/audit/fase-a-pr4-admin-usuarios-frontend/review.md)
+
+---
+
+### 🎉 FASE A FECHADA
+
+| PR | Escopo | Status | Audit |
+|---|---|---|---|
+| PR 1 | Foundation backend (modelo + helper + seed) | ✅ | 98/100 |
+| PR 2 | Enforcement em 26 sites com feature flag | ✅ | 98/100 |
+| PR 3 backend | Endpoint /auth/me/permissoes | ✅ | 97/100 |
+| PR 3 frontend | Hook + PermissionGate | ✅ | 96/100 |
+| PR 4 backend | Endpoints admin (4 novos) | ✅ | 96/100 |
+| PR 4 frontend | UI admin /portal/admin/usuarios | ✅ | 95/100 |
+
+**Média de audits da Fase A: 96.7/100** (6 audits formais).
+
+### Estado consolidado pós-Fase A
+
+- **P0**: 10/10 ✅
+- **P1**: 31/31 (100%) ✅
+- **P2**: 2/3 (resta unificação bi↔portal — aguarda Fase 5.G)
+- **Fase 5**: 7/8 em soak
+- **Fase A (RBAC granular)**: **4/4 PRs entregues** ✅
+- **Audits cumulados**: **23** (22 formais + 1 manual)
+
+### Sessão 2026-05-22 — total
+
+| # | Frente | PR | Score |
+|---|---|---|---|
+| 1 | PR 2 RBAC middleware | [api #109](https://github.com/vmapex/grupoalt-api/pull/109) | 98/100 |
+| 2 | Docs cross-repo PR 2 | [web #136](https://github.com/vmapex/grupoalt-web/pull/136) | — |
+| 3 | PR 3 backend endpoint | [api #111](https://github.com/vmapex/grupoalt-api/pull/111) | 97/100 |
+| 4 | PR 3 frontend gating | [web #137](https://github.com/vmapex/grupoalt-web/pull/137) | 96/100 |
+| 5-6 | Docs PR 3 | [api #112](https://github.com/vmapex/grupoalt-api/pull/112) + [web #138](https://github.com/vmapex/grupoalt-web/pull/138) | — |
+| 7 | Docs PR 3 cross-repo | [web #139](https://github.com/vmapex/grupoalt-web/pull/139) | — |
+| 8 | **PR 4 backend admin** | [api #113](https://github.com/vmapex/grupoalt-api/pull/113) | **96/100** |
+| 9 | **PR 4 frontend admin** | [web #140](https://github.com/vmapex/grupoalt-web/pull/140) | **95/100** |
+| 10-11 | Docs PR 4 | [api #114](https://github.com/vmapex/grupoalt-api/pull/114) + [web #141](https://github.com/vmapex/grupoalt-web/pull/141) | — |
+| 12 | **Docs PR 4 cross-repo (este)** | — | — |
+
+**12 PRs entregues** em uma sessão — recorde da auditoria.
+
+### Próximos passos operacionais (user)
+
+1. ⏳ Mergear os 4 PRs (api #113, api #114, web #140, web #141, este)
+2. 🎯 **Validar o ciclo RBAC end-to-end em staging**:
+   - Abrir `/bi/financeiro/admin/usuarios`
+   - Atribuir um perfil "Faturista" a um usuário não-admin
+   - Logar com esse usuário em outra janela → ver que só `/portal/fechamento` é acessível
+   - Ligar `RBAC_ENFORCE=true` no Railway staging
+   - Confirmar que tentar acessar `/bi/financeiro` retorna 403 efetivo
+3. 🎯 **Promover pra prod** após validação:
+   - Atribuir perfis aos usuários reais
+   - Ligar `RBAC_ENFORCE=true` no Railway prod
+
+### Próximas frentes (após estabilização da Fase A)
+
+- **Fase B** — Dashboard inicial gated (`/portal/page.tsx` hoje só
+  redirect → trocar por dashboard com `<PermissionGate>`)
+- **Fase C** — Integração com Motor de Fechamento via SSO compartilhado
+  (JWT_SECRET + JWT_ISSUER) — handoff técnico em
+  `grupoalt-api/MOTOR_FECHAMENTO_HANDOFF.md`
+- **Fase D** — KPIs do motor no dashboard inicial
+- **Operacional restante** — flag DRE em staging (ainda pendente),
+  soak Fase 5, Fase 5.G cleanup, unificação bi↔portal (P2 final)
+
 
 
 
