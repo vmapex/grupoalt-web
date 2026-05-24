@@ -7,6 +7,7 @@ import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
 import { restoreEmpresa } from '@/hooks/api/useAdminEmpresas'
+import { describeAxiosError } from '@/lib/errorPresentation'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean
@@ -75,8 +76,13 @@ export default function AdminPage() {
       showToast('success', `Empresa "${emp.nome}" restaurada`)
       loadData()
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      showToast('error', detail || 'Erro ao restaurar')
+      // Usa describeAxiosError para cobrir 409 (ja restaurada), 403 (RBAC),
+      // 429 (rate limit), 5xx (unavailable) com mensagens consistentes.
+      const presentation = describeAxiosError(err, {
+        entity: 'empresa',
+        prefix: `Falha ao restaurar "${emp.nome}"`,
+      })
+      showToast('error', presentation.message)
     } finally {
       setRestoringEmpresaIds((prev) => {
         if (!prev.has(emp.id)) return prev
