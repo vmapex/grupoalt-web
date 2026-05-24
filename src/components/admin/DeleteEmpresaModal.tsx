@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useThemeStore } from '@/store/themeStore'
-import { deleteEmpresa } from '@/hooks/useAPI'
+import { deleteEmpresa } from '@/hooks/api/useAdminEmpresas'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
 
 

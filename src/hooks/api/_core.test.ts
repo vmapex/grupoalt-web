@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchAllPages, PAGINATED_ALL_PAGE_SIZE } from './useAPI'
+import { fetchAllPages, PAGINATED_ALL_PAGE_SIZE } from './_core'
 import type { LancamentoAPI } from '@/lib/types'
 
 /**

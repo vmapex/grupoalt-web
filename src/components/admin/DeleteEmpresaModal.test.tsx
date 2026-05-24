@@ -6,7 +6,7 @@ import { DeleteEmpresaModal } from './DeleteEmpresaModal'
 
 // Mock do hook de API (mesmo arquivo em que vive deleteEmpresa).
 const deleteEmpresaMock = vi.fn()
-vi.mock('@/hooks/useAPI', () => ({
+vi.mock('@/hooks/api/useAdminEmpresas', () => ({
   deleteEmpresa: (...args: unknown[]) => deleteEmpresaMock(...args),
 }))
 

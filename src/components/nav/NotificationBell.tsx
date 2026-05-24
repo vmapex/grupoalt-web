@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useThemeStore } from '@/store/themeStore'
 import { Bell, AlertCircle, AlertTriangle, Info, ChevronRight } from 'lucide-react'
-import { useNotificacoes, useNotificacoesContagem, marcarTodasLidas } from '@/hooks/useAPI'
+import { useNotificacoes, useNotificacoesContagem, marcarTodasLidas } from '@/hooks/api/useNotificacoes'
 import { safeInternalRoute } from '@/lib/access'
 
 interface Notification {

@@ -13,7 +13,7 @@ import {
   useOrbitAudit,
   useOrbitAuditSummary,
   type OrbitAuditItemAPI,
-} from '@/hooks/useAPI'
+} from '@/hooks/api/useOrbitAudit'
 
 const STATUS_LABELS: Record<string, { label: string; color: 'green' | 'red' | 'amber' | 'muted' }> = {
   success: { label: 'Sucesso', color: 'green' },
