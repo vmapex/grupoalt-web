@@ -6,7 +6,7 @@ import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
-import { restoreEmpresa } from '@/hooks/useAPI'
+import { restoreEmpresa } from '@/hooks/api/useAdminEmpresas'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean

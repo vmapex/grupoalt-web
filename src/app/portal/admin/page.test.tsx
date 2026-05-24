@@ -61,7 +61,7 @@ function makeDeferred(): Deferred {
 
 const restoreDeferreds = new Map<number, Deferred>()
 
-vi.mock('@/hooks/useAPI', () => ({
+vi.mock('@/hooks/api/useAdminEmpresas', () => ({
   restoreEmpresa: (id: number) => {
     const d = makeDeferred()
     restoreDeferreds.set(id, d)

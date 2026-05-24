@@ -13,7 +13,7 @@
  * em outras abas sem precisar dar F5.
  */
 import { useEffect, useMemo, useRef } from 'react'
-import { useCategorias } from './useAPI'
+import { useCategorias } from './api/useCategoriasAPI'
 import {
   CATEGORIAS,
   buildCategoriasFromAPI,
