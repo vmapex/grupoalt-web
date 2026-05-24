@@ -65,24 +65,10 @@ export function validateOutgoing(text: string): ValidationResult {
   return { ok: true }
 }
 
-export type ErrorKind =
-  | 'rate_limited_burst'
-  | 'rate_limited_daily'
-  | 'forbidden'
-  | 'not_found'
-  | 'payload_too_large'
-  | 'unauthorized'
-  | 'unavailable'
-  | 'unknown'
-
-export type ErrorSeverity = 'rate' | 'error' | 'warn' | 'info'
-
-export interface ErrorPresentation {
-  kind: ErrorKind
-  message: string
-  severity: ErrorSeverity
-  retryAfterSeconds?: number
-}
+// Types movidos para src/lib/errorPresentation.ts em 2026-05-24 (shared).
+// Re-exporta aqui para preservar imports existentes do ChatPanel + tests.
+export type { ErrorKind, ErrorSeverity, ErrorPresentation } from '@/lib/errorPresentation'
+import type { ErrorPresentation } from '@/lib/errorPresentation'
 
 /**
  * Mapeia um erro do axios para uma apresentacao consistente — texto pronto

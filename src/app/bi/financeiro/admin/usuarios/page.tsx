@@ -17,6 +17,7 @@ import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { AdminSubNav } from '@/components/admin/AdminSubNav'
 import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
+import { describeAxiosError, type ErrorPresentation } from '@/lib/errorPresentation'
 import {
   useAdminUsuarios,
   useAdminPerfis,
@@ -27,6 +28,17 @@ import {
   type AdminUsuarioListado,
   type AtribuicaoPerfil,
 } from '@/hooks/api/useAdminPerfis'
+
+
+// Mapeamento de severidade -> cores do banner (consistente com ChatPanel
+// do Orbit). `rate` e `warn` usam ambar; `error` vermelho; `info` cinza
+// (graceful degradation — feature continua usavel).
+const SEVERITY_COLORS = {
+  rate:  { fg: '#fde68a', bg: '#78350f22', border: '#fbbf2455' },
+  warn:  { fg: '#fde68a', bg: '#78350f22', border: '#fbbf2455' },
+  error: { fg: '#fca5a5', bg: '#7f1d1d22', border: '#f8717155' },
+  info:  { fg: '#cbd5e1', bg: '#1e293b22', border: '#64748b55' },
+} as const
 
 
 export default function AdminUsuariosPage() {
@@ -49,7 +61,7 @@ export default function AdminUsuariosPage() {
   // Usa Set pra permitir restaurar varios users em paralelo sem que o
   // spinner do segundo apague o do primeiro (sugestao do audit #148).
   const [restoringIds, setRestoringIds] = useState<Set<number>>(() => new Set())
-  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<ErrorPresentation | null>(null)
 
   async function handleRestore(u: AdminUsuarioListado) {
     setRestoringIds((prev) => {
@@ -62,9 +74,8 @@ export default function AdminUsuariosPage() {
       await restaurarUsuario(u.id)
       usuariosResult.refetch()
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } }; message?: string }
       setRestoreError(
-        `Falha ao restaurar ${u.nome}: ${e?.response?.data?.detail || e?.message || 'erro desconhecido'}`,
+        describeAxiosError(err, { entity: 'usuario', prefix: `Falha ao restaurar ${u.nome}` }),
       )
     } finally {
       setRestoringIds((prev) => {
@@ -166,32 +177,36 @@ export default function AdminUsuariosPage() {
             Mostrar usuários deletados
           </label>
 
-          {restoreError && (
-            <div
-              role="alert"
-              style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-                color: '#fca5a5', fontSize: 11, padding: 8, marginBottom: 8,
-                background: '#7f1d1d22', border: '1px solid #f8717155',
-                borderRadius: 6,
-              }}
-            >
-              <span style={{ flex: 1 }}>{restoreError}</span>
-              <button
-                type="button"
-                onClick={() => setRestoreError(null)}
-                aria-label="Fechar mensagem de erro"
+          {restoreError && (() => {
+            const c = SEVERITY_COLORS[restoreError.severity]
+            return (
+              <div
+                role="alert"
+                data-severity={restoreError.severity}
                 style={{
-                  flexShrink: 0,
-                  background: 'transparent', border: 'none',
-                  color: '#fca5a5', cursor: 'pointer', padding: 0,
-                  display: 'flex', alignItems: 'center',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  color: c.fg, fontSize: 11, padding: 8, marginBottom: 8,
+                  background: c.bg, border: `1px solid ${c.border}`,
+                  borderRadius: 6,
                 }}
               >
-                <X size={12} />
-              </button>
-            </div>
-          )}
+                <span style={{ flex: 1 }}>{restoreError.message}</span>
+                <button
+                  type="button"
+                  onClick={() => setRestoreError(null)}
+                  aria-label="Fechar mensagem de erro"
+                  style={{
+                    flexShrink: 0,
+                    background: 'transparent', border: 'none',
+                    color: c.fg, cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center',
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )
+          })()}
 
           {usuariosResult.loading && (
             <div style={{ color: t.muted, fontSize: 12, padding: 12, textAlign: 'center' }}>
