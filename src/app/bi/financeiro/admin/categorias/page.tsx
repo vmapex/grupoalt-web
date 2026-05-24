@@ -1,7 +1,6 @@
 'use client'
 import { useMemo, useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
-import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Settings, Pencil, Check, X as XIcon, Square, CheckSquare, Layers, Landmark, Sparkles, Users } from 'lucide-react'
+import { RefreshCw, Search, ChevronDown, ChevronRight, Tag, Pencil, Check, X as XIcon, Square, CheckSquare, Layers } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategorias, updateCategoriaGrupoDRE, syncCategoriasEmpresa, bulkUpdateCategoriasGrupoDRE } from '@/hooks/useAPI'
@@ -9,6 +8,7 @@ import { CATEGORIAS, buildCategoriasFromAPI, type CategoriaInfo } from '@/lib/pl
 import { GlowLine } from '@/components/ui/GlowLine'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { AdminSubNav } from '@/components/admin/AdminSubNav'
 
 /* ── Cores dos grupos DRE ─────────────────────────────────────── */
 const GRUPO_COLORS: Record<string, string> = {
@@ -406,74 +406,7 @@ export default function AdminCategoriasPage() {
         </div>
       )}
 
-      {/* ── Sub-navigation ────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
-        <Link
-          href="/bi/financeiro/admin"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 600,
-            color: t.muted, background: 'transparent',
-            border: `1px solid ${t.border}`, textDecoration: 'none',
-          }}
-        >
-          <Settings size={12} />
-          Empresas
-        </Link>
-        <Link
-          href="/bi/financeiro/admin/categorias"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 600,
-            color: t.blue, background: t.blueDim,
-            border: `1px solid ${t.blue}33`, textDecoration: 'none',
-          }}
-        >
-          <Tag size={12} />
-          Plano de Contas
-        </Link>
-        <Link
-          href="/bi/financeiro/admin/contas-bancarias"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 600,
-            color: t.muted, background: 'transparent',
-            border: `1px solid ${t.border}`, textDecoration: 'none',
-          }}
-        >
-          <Landmark size={12} />
-          Contas Bancárias
-        </Link>
-        <Link
-          href="/bi/financeiro/admin/orbit"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 600,
-            color: t.muted, background: 'transparent',
-            border: `1px solid ${t.border}`, textDecoration: 'none',
-          }}
-        >
-          <Sparkles size={12} />
-          Orbit IA
-        </Link>
-        <Link
-          href="/bi/financeiro/admin/usuarios"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 600,
-            color: t.muted, background: 'transparent',
-            border: `1px solid ${t.border}`, textDecoration: 'none',
-          }}
-        >
-          <Users size={12} />
-          Usuários
-        </Link>
-      </div>
+      <AdminSubNav active="categorias" />
 
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">

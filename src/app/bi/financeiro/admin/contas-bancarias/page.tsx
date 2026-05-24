@@ -1,13 +1,13 @@
 'use client'
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
-import { Settings, Tag, Landmark, Search, RefreshCw, Sparkles, Users } from 'lucide-react'
+import { Landmark, Search, RefreshCw } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useContasBancarias, updateContaBancariaFlags, type ContaBancariaAPIItem } from '@/hooks/useAPI'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { AdminSubNav } from '@/components/admin/AdminSubNav'
 
 export default function AdminContasBancariasPage() {
   const t = useThemeStore((s) => s.tokens)
@@ -89,54 +89,7 @@ export default function AdminContasBancariasPage() {
         </p>
       </div>
 
-      {/* Sub-navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
-        <Link href="/bi/financeiro/admin" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 12px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600,
-          color: t.muted, background: 'transparent',
-          border: `1px solid ${t.border}`, textDecoration: 'none',
-        }}>
-          <Settings size={12} /> Empresas
-        </Link>
-        <Link href="/bi/financeiro/admin/categorias" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 12px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600,
-          color: t.muted, background: 'transparent',
-          border: `1px solid ${t.border}`, textDecoration: 'none',
-        }}>
-          <Tag size={12} /> Plano de Contas
-        </Link>
-        <Link href="/bi/financeiro/admin/contas-bancarias" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 12px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600,
-          color: t.blue, background: t.blueDim,
-          border: `1px solid ${t.blue}33`, textDecoration: 'none',
-        }}>
-          <Landmark size={12} /> Contas Bancárias
-        </Link>
-        <Link href="/bi/financeiro/admin/orbit" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 12px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600,
-          color: t.muted, background: 'transparent',
-          border: `1px solid ${t.border}`, textDecoration: 'none',
-        }}>
-          <Sparkles size={12} /> Orbit IA
-        </Link>
-        <Link href="/bi/financeiro/admin/usuarios" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 12px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600,
-          color: t.muted, background: 'transparent',
-          border: `1px solid ${t.border}`, textDecoration: 'none',
-        }}>
-          <Users size={12} /> Usuários
-        </Link>
-      </div>
+      <AdminSubNav active="contas" />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3 mb-4">

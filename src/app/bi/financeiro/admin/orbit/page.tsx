@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
-  Settings, Tag, Landmark, Sparkles, AlertCircle,
-  CheckCircle2, ShieldAlert, Clock, Users,
+  Sparkles, AlertCircle,
+  CheckCircle2, ShieldAlert, Clock,
 } from 'lucide-react'
 import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { AdminSubNav } from '@/components/admin/AdminSubNav'
 import {
   useOrbitAudit,
   useOrbitAuditSummary,
@@ -97,14 +97,7 @@ export default function OrbitAuditPage() {
         </code>.
       </p>
 
-      {/* Sub-navigation tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: `1px solid ${t.border}`, paddingBottom: 12, flexWrap: 'wrap' }}>
-        <SubNavLink href="/bi/financeiro/admin" icon={<Settings size={12} />} label="Empresas" t={t} />
-        <SubNavLink href="/bi/financeiro/admin/categorias" icon={<Tag size={12} />} label="Plano de Contas" t={t} />
-        <SubNavLink href="/bi/financeiro/admin/contas-bancarias" icon={<Landmark size={12} />} label="Contas Bancárias" t={t} />
-        <SubNavLink href="/bi/financeiro/admin/orbit" icon={<Sparkles size={12} />} label="Orbit IA" t={t} active />
-        <SubNavLink href="/bi/financeiro/admin/usuarios" icon={<Users size={12} />} label="Usuários" t={t} />
-      </div>
+      <AdminSubNav active="orbit" />
 
       {/* Janela de tempo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -283,34 +276,6 @@ export default function OrbitAuditPage() {
 }
 
 /* ─── Sub-componentes ────────────────────────────────────────── */
-
-function SubNavLink({
-  href, icon, label, active = false, t,
-}: {
-  href: string; icon: React.ReactNode; label: string; active?: boolean; t: ThemeTokens
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 12px',
-        borderRadius: 6,
-        fontSize: 11,
-        fontWeight: 600,
-        color: active ? t.purple : t.muted,
-        background: active ? t.purpleDim : 'transparent',
-        border: `1px solid ${active ? `${t.purple}33` : t.border}`,
-        textDecoration: 'none',
-      }}
-    >
-      {icon}
-      {label}
-    </Link>
-  )
-}
 
 function KpiCard({
   label, value, icon, loading, t, highlight = false,
