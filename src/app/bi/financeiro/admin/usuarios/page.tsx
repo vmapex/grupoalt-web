@@ -10,12 +10,12 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
-import { Settings, Tag, Landmark, Sparkles, Users, Trash2, Plus, Shield, Loader2, UserX, ArchiveRestore, X } from 'lucide-react'
+import { Users, Trash2, Plus, Shield, Loader2, UserX, ArchiveRestore, X } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
+import { AdminSubNav } from '@/components/admin/AdminSubNav'
 import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
 import {
   useAdminUsuarios,
@@ -112,8 +112,7 @@ export default function AdminUsuariosPage() {
         união dos perfis + overrides.
       </p>
 
-      {/* Sub-navigation */}
-      <SubNav active="usuarios" t={t} />
+      <AdminSubNav active="usuarios" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16 }}>
         {/* Coluna esquerda: lista de usuarios */}
@@ -338,44 +337,6 @@ export default function AdminUsuariosPage() {
           usuariosResult.refetch()
         }}
       />
-    </div>
-  )
-}
-
-
-function SubNav({ active, t }: { active: string; t: ReturnType<typeof useThemeStore.getState>['tokens'] }) {
-  const items = [
-    { key: 'empresas', label: 'Empresas', href: '/bi/financeiro/admin', icon: <Settings size={12} /> },
-    { key: 'categorias', label: 'Plano de Contas', href: '/bi/financeiro/admin/categorias', icon: <Tag size={12} /> },
-    { key: 'contas', label: 'Contas Bancárias', href: '/bi/financeiro/admin/contas-bancarias', icon: <Landmark size={12} /> },
-    { key: 'orbit', label: 'Orbit IA', href: '/bi/financeiro/admin/orbit', icon: <Sparkles size={12} /> },
-    { key: 'usuarios', label: 'Usuários', href: '/bi/financeiro/admin/usuarios', icon: <Users size={12} /> },
-  ]
-  return (
-    <div style={{
-      display: 'flex', gap: 8, marginBottom: 24,
-      borderBottom: `1px solid ${t.border}`, paddingBottom: 12,
-    }}>
-      {items.map((item) => {
-        const isActive = item.key === active
-        return (
-          <Link
-            key={item.key}
-            href={item.href}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 6,
-              fontSize: 11, fontWeight: 600,
-              color: isActive ? t.blue : t.muted,
-              background: isActive ? t.blueDim : 'transparent',
-              border: `1px solid ${isActive ? t.blue + '33' : t.border}`,
-              textDecoration: 'none',
-            }}
-          >
-            {item.icon} {item.label}
-          </Link>
-        )
-      })}
     </div>
   )
 }
