@@ -48,6 +48,9 @@ export function DeleteEmpresaModal({ empresa, onClose, onSuccess }: DeleteEmpres
       }
       onConfirm={deleteEmpresa}
       errorMessages={{
+        // Mensagem original do P0-7 preservada: se o backend nao devolver
+        // `detail` em 403 (improvavel — sempre devolve), cai aqui.
+        403: 'Senha ou nome nao confere.',
         404: 'Empresa nao encontrada (pode ter sido removida).',
         409: 'Empresa ja esta soft-deletada.',
       }}
