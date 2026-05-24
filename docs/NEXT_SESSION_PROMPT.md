@@ -1,6 +1,6 @@
 # Prompt da próxima sessão
 
-> Última sessão: 2026-05-22 — **Fase A do RBAC granular FECHADA** (4 PRs com audit médio 96.7/100).
+> Última sessão: 2026-05-23 → 2026-05-24 — **Bug #4 + F1 + F2 + E1 entregues e mergeados; E2 (PR #150) aberto aguardando merge**.
 > Cole o conteúdo abaixo na primeira mensagem da próxima sessão.
 
 ---
@@ -9,46 +9,56 @@ Continuando trabalho no Portal BI Grupo ALT (vmapex/grupoalt-web + vmapex/grupoa
 
 ## O que aconteceu até agora
 
-**Auditoria production-ready (sessões 2026-05-12 → 2026-05-21):**
+### Fase A do RBAC (FECHADA em 2026-05-22)
 
-- P0: 10/10 ✅
-- P1: 31/31 (100%) ✅
-- P2: 2/3 ✅ (resta unificação `bi/`↔`portal/`, aguarda Fase 5.G)
-- Fase 5: 7/8 sub-fases em soak (a Fase 5.G de cleanup aguarda fim do soak)
-- 23 audits cumulados ao todo
+4 PRs entregues, audit médio 96.7/100. Modelo `Perfil` + `PerfilPermissao` + `UsuarioPerfilEmpresa`, middleware `require_permission()` em 26 sites com feature flag `RBAC_ENFORCE` (default `False`), endpoint `GET /auth/me/permissoes/{empresa_id}`, componentes frontend `<PermissionGate>`, hook `usePermission`, store Zustand. 8 perfis canônicos seeded (Diretoria, Controladoria, Financeiro, Operações, Operador Junior, Gestor Unidade, Consultor Externo, Faturista). Vocabulário: 11 módulos × 4 ações. Retrocompat absoluta: `is_admin=True` continua bypass total.
 
-**Roadmap pós-auditoria (sessões 2026-05-21 → 2026-05-22):**
+### Fase B do roadmap (FECHADA em 2026-05-23)
 
-User comunicou 4 itens de produto que segurou durante a auditoria:
+**3 PRs entregues, audit médio 96.3/100:**
+- web #144 Fase B: dashboard inicial em `/portal` com 6 cards gated via `<PermissionGate>` (97/100)
+- web #145 Bug #3: `<UserMenu>` com dropdown clicável + ação Sair (96/100)
+- web #146 Bug #1/2: `<EmpresaSelector>` substitui botão "Grupo ALT" + remove lista duplicada (96/100)
 
-1. Integrar Motor de Fechamento no portal
-2. RBAC granular real (segmentar logins por perfil)
-3. Dashboard inicial gated por permissões
-4. Trazer dados do motor pro dashboard inicial
+### Sessão 2026-05-23 → 2026-05-24 — 6 PRs
 
-**Fase A (RBAC granular) — ENTREGUE em 4 PRs com média 96.7/100:**
+**Bug #4 (deletar usuário com soft delete) — MERGEADO:**
 
 | PR | Escopo | Score |
 |---|---|---|
-| PR 1 (api) | Foundation: 3 tabelas (`Perfil`, `PerfilPermissao`, `UsuarioPerfilEmpresa`) + migration 0008 + seed dos 8 perfis + helper `get_effective_permissions()` | 98/100 |
-| PR 2 (api) | Middleware `require_permission()` em 26 sites + feature flag `RBAC_ENFORCE` (default `False` = no-op) | 98/100 |
-| PR 3 backend (api) | Endpoint `GET /auth/me/permissoes/{empresa_id}` | 97/100 |
-| PR 3 frontend (web) | Zustand store + 5 hooks + `<PermissionGate>` + 3 sites na Navbar | 96/100 |
-| PR 4 backend (api) | 4 endpoints admin: GET perfis, GET/POST/DELETE atribuições | 96/100 |
-| PR 4 frontend (web) | UI `/bi/financeiro/admin/usuarios` + 5 sub-navs atualizadas | 95/100 |
+| api #115 backend | Migration 0009 (`usuarios.deleted_at`) + `DELETE /admin/usuarios/{id}` + `POST /restore` + 6 guards (senha, nome, auto-delete, último admin, 409, 404) + filtros em listar/criar/patch/atribuições + login + get_current_user + refresh rejeitam soft-deletados + 21 pytests | 92 |
+| web #147 frontend | `<DeleteUsuarioModal>` (clone do P0-7) + hooks `deleteUsuario`/`restaurarUsuario` + botão "Excluir usuário" em `/admin/usuarios` desabilitado em auto-delete + 13 vitests | 96 |
 
-**8 perfis canônicos seeded:**
-Diretoria · Controladoria · Financeiro · Operações · Operador Junior · Gestor Unidade · Consultor Externo (com `exports_confidencial=True`) · Faturista
+**F1: documentos:ver pros 6 perfis canônicos — MERGEADO:**
 
-**Vocabulário:** 11 módulos × 4 ações (`ver` / `editar` / `exportar` / `executar`)
+| PR | Escopo | Score |
+|---|---|---|
+| api #116 | Migration 0010 (INSERT em `perfil_permissoes` idempotente) + atualiza `app/core/rbac.py::PERFIS_SEED` + expõe `deleted_at` em `UsuarioResponse` (pré-req do F2) + 3 pytests | 95 |
 
-**Migração gradual:** `RBAC_ENFORCE=False` por default → merge não muda prod. Quando user atribuir perfis + ligar flag em staging → valida → liga em prod.
+Quem ganhou: Diretoria, Controladoria, Financeiro, Operações, Operador Junior, Gestor Unidade. NÃO ganharam: Consultor Externo, Faturista (escopo restrito por design).
 
-**Retrocompat absoluta:** `Usuario.is_admin=True` continua bypass total.
+**F2: UI de restore de usuários — MERGEADO:**
+
+| PR | Escopo | Score |
+|---|---|---|
+| web #148 | Hook `useAdminUsuarios({ includeDeleted })` + toggle "Mostrar deletados" + badge "DELETADO" + botão Restaurar inline + 9 vitests | 96 |
+
+**E1: AdminSubNav extract (DRY) — MERGEADO:**
+
+| PR | Escopo | Score |
+|---|---|---|
+| web #149 | `<AdminSubNav>` extraído (dedup nas 5 páginas admin) + CLAUDE.md atualizado + 5 vitests. Mudança visual: orbit muda purple→blue (uniformização) | 97 |
+
+**E2: ConfirmDeleteModal base (DRY) — ABERTO ⏳:**
+
+| PR | Escopo | Score |
+|---|---|---|
+| web #150 | `<ConfirmDeleteModal>` base + 2 wrappers thin (~55 LOC cada) sobre Delete{Empresa,Usuario}Modal. ~250 LOC removidas. API pública dos wrappers preservada (23 tests existentes passam zero mudança) + 11 tests novos | 96 |
 
 ## Antes de qualquer coisa
 
 1. **Sync local de ambos os repos:**
+
    ```bash
    cd grupoalt-web && git checkout main && git pull origin main
    cd grupoalt-api && git checkout main && git pull origin main
@@ -56,18 +66,18 @@ Diretoria · Controladoria · Financeiro · Operações · Operador Junior · Ge
    gh pr list --repo vmapex/grupoalt-api --state open
    ```
 
-2. **Confirme com o user**: os PRs da sessão 2026-05-22 foram mergeados?
-   - `api #113, #114` (PR 4 backend + docs)
-   - `web #140, #141, #142, e este de handoff` (PR 4 frontend + 2 docs)
-   - Estado esperado: zero PRs abertos exceto dependabot.
+2. **Confirme com o user**: o PR #150 (E2) foi mergeado?
 
-3. **Leia em ordem:**
-   - `docs/AUDITORIA_EXECUCAO_PRODUCTION_READY.md` (especialmente as últimas 3 sessões: 2026-05-22 partes 1, 2, 3)
-   - `docs/AUDITORIA_HANDOFF_PRODUCTION_READY.md` apenas se primeira sessão em dias
+   - Esperado: zero PRs abertos exceto dependabot.
+   - Se #150 ainda aberto e CI verde + audit APPROVE: peça pro user mergear antes de seguir.
+
+3. **Leia em ordem**:
+
+   - `docs/AUDITORIA_EXECUCAO_PRODUCTION_READY.md` (últimas sessões para contexto)
+   - `docs/audit/e1-admin-subnav-extract/review.md` e `e2-confirm-delete-modal-base/review.md` se quiser entender padrão atual de DRY
+   - `grupoalt-api/MOTOR_FECHAMENTO_HANDOFF.md` SE for atacar Fase C nesta sessão
 
 ## Estado operacional pendente (depende do user — não-código)
-
-Estas tarefas precisam você (ou o user) executar **fora** do código:
 
 ### Bloco 1 — DRE backend (pendente desde 2026-05-20)
 
@@ -77,56 +87,60 @@ Estas tarefas precisam você (ou o user) executar **fora** do código:
 - Soak 7-14 dias
 - Após soak: Fase 5.G (cleanup ~-700 LOC de `calcularDRE` local)
 
-### Bloco 2 — RBAC granular (novo — pendente desta sessão)
+### Bloco 2 — RBAC granular
 
-- Rodar `alembic upgrade head` em staging Postgres (cria tabelas + seed dos 8 perfis)
+- Rodar `alembic upgrade head` em staging Postgres (cria tabelas 0008-0010 + seeds dos 8 perfis + `usuarios.deleted_at`)
 - Abrir `/bi/financeiro/admin/usuarios` → atribuir perfil "Faturista" a um user não-admin
-- Logar com esse user → confirmar que só vê `/portal/fechamento`
+- Logar com esse user → confirmar que `/portal` mostra só "Motor de Fechamento" + "Documentos" não aparece
+- Logar como Diretoria → confirmar que card "Documentos" aparece (F1)
 - Ligar `RBAC_ENFORCE=true` no Railway staging
 - Confirmar que `/bi/financeiro` retorna 403 efetivo pra Faturista
-- Repetir em prod após validação
+- Validar fluxo de delete + restore de usuário (Bug #4 + F2): deletar → toggle "Mostrar deletados" → restaurar
+- Repetir tudo em prod após validação
+
+### Bloco 3 — Regra de estornos no DRE (pendente desde Step 13)
+
+Validação financeiro/controladoria sobre `Math.abs` em estornos. Step 13 Parte B aberta até decisão contábil.
 
 ## Próximas frentes possíveis (em ordem de dependência/valor)
 
-### Fase B — Dashboard inicial gated (~1 sessão)
+### Fase C — Integração Motor de Fechamento via SSO (~2 sessões, MAIOR)
 
-`/portal/page.tsx` hoje só faz `redirect('/portal/grupo')`. Substituir por dashboard real com cards condicionais via `<PermissionGate>`. Depende de Fase A (✅) e idealmente de RBAC_ENFORCE ligado em prod.
-
-### Fase C — Integração Motor de Fechamento via SSO (~2 sessões)
-
-Motor está em outro repo (`vmapex/motor-fechamento-grupoalt-api` + `VinnyMMHH/motor-fechamento-alt`). Já tem RBAC próprio (5 perfis ADM/GESTOR_FECHAMENTO/OPERADOR/ANALISTA/EMISSOR_CTE). Caminho documentado:
+Motor está em outro repo (`vmapex/motor-fechamento-grupoalt-api` + `VinnyMMHH/motor-fechamento-alt`). Já tem RBAC próprio (5 perfis ADM/GESTOR_FECHAMENTO/OPERADOR/ANALISTA/EMISSOR_CTE). Caminho documentado em `grupoalt-api/MOTOR_FECHAMENTO_HANDOFF.md`:
 
 - Compartilhar `JWT_SECRET` + `JWT_ISSUER` entre portal e motor
 - Cookie `auth_token` em `.grupoatla.gr.br` (cross-site)
 - Login direto no motor desabilitado
 - Lazy provisioning: motor pede `GET /portal-api/users/{id}/motor-profile` no 1º acesso → portal devolve `{login, nome, perfil_motor, unidade_ids}`
 
-Mapeamento Portal Perfil → Motor Perfil já desenhado em `memory/post-audit-roadmap.md`.
-
-Handoff completo: `grupoalt-api/MOTOR_FECHAMENTO_HANDOFF.md`.
+Mapeamento Portal Perfil → Motor Perfil já desenhado em `memory/post-audit-roadmap.md`. **Exige coordenação com sessão paralela do motor** antes de iniciar.
 
 ### Fase D — KPIs do motor no dashboard inicial (~1 sessão)
 
-Cards no dashboard inicial mostrando último fechamento + viagens via `GET /api/historico-fechamentos` e `GET /api/dashboard` do motor. Depende de Fase C (SSO).
+Cards no dashboard inicial mostrando último fechamento + viagens via `GET /api/historico-fechamentos` e `GET /api/dashboard` do motor. **Depende de Fase C (SSO)**.
 
-### P2 estrutural restante (escopo grande, aguarda Fase 5.G)
+### Quick wins remanescentes (~30min-2h cada, isolados)
 
-Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 sessões). Não iniciar antes da 5.G terminar — evita retrabalho.
+Esses ficaram pendentes do handoff anterior e desta sessão. Bons pra warmup ou se Fase C ainda não pode iniciar:
 
-### Follow-ups menores (rápidos, isolados)
+- **Race condition restore** (sugestão deferida do audit #148): trocar `restoringId: number | null` por `Set<number>` em `/admin/usuarios/page.tsx` pra permitir restaurar múltiplos users em paralelo. ~20min.
+- **Depreciar barrels `useAPI.ts` e `sync_service.py`**: migrar consumers para imports diretos do dominio. ~1h.
+- **Agregações Python → SQL no `dashboard.py`** (backend): migrar GROUP BY para SQL. ~1.5h.
+- **Depreciar re-export `get_client_ip`** em `auditoria.py`: ~15min.
+- **UI de restore para EMPRESA** (paralelo ao F2 mas pra empresa): hoje admin precisa chamar `POST /admin/empresas/{id}/restore` via curl. ~45min usando padrão do F2.
+- **Status `error: string` vs `ErrorPresentation`** (OBS-2 do audit E2): se quiser unificar com padrão da Fase A do Orbit (ChatPanel). ~1h, refactor maior.
 
-- Atualizar referências a "50 rotas" no CLAUDE.md (build atual: 42)
-- Depreciar barrels `useAPI.ts` e `sync_service.py` (migrar consumers para imports diretos do dominio)
-- `dashboard.py`: migrar agregações Python para SQL `GROUP BY`
-- Depreciar re-export de `get_client_ip` em `auditoria.py`
-- Extrair `<AdminSubNav>` componente (hoje duplicado em 5 páginas admin)
+### P2 estrutural restante (escopo grande)
+
+Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 sessões). Aguarda Fase 5.G do DRE terminar — evita retrabalho.
 
 ## Bloqueios respeitados (valem toda a sessão)
 
 - NÃO bypass branch protection (hard-enforced em ambos os repos)
-- Audit-agent **OBRIGATÓRIO** para PRs que tocam contrato, segurança, ou destrutivo
+- Audit-agent **OBRIGATÓRIO** para PRs que tocam contrato, segurança, ou destrutivo (ou mudança visível ao cliente)
 - Padrão "seq + 1 auditor" — ver memória `[[audit-pattern-portal-bi]]`
-- Se audit-agent travar (raro), suplementar com verificação manual e registrar como follow-up
+- Se audit-agent travar (raro, mas aconteceu 3x até agora): re-spawnar com prompt mais enxuto OU suplementar com verificação manual
+- **CUIDADO com worktrees**: após audit-agent terminar, o worktree fica `locked` e bloqueia checkout da branch original. Use `git worktree remove --force --force` antes de checkout. **Cleanup APAGA o review.md do worktree** — se ainda não foi copiado pra pasta principal, reconstitua a partir do summary do agent.
 - PRs docs sempre com **links clicáveis** para PRs (`[#123](https://github.com/...)`)
 - Motor de Fechamento está em desenvolvimento paralelo em outra sessão — **não tocar** os repos do motor sem alinhamento
 
@@ -134,18 +148,19 @@ Unificar `bi/` ↔ `portal/` (~3500 LOC duplicadas, 2-3 sessões). Não iniciar 
 
 Pergunte ao user qual frente atacar:
 
-**Opção A — Soak operacional**: você pausa o trabalho de código enquanto o user liga as flags em staging (DRE + RBAC) e valida alguns dias. Próxima sessão retoma com Fase B.
+**Opção A — Pausa operacional**: você (claude) pausa o trabalho de código enquanto o user liga as flags em staging (Bloco 1 DRE + Bloco 2 RBAC) e valida alguns dias. Próxima sessão retoma com Fase C ou D.
 
-**Opção B — Avançar Fase B em paralelo**: enquanto user valida, você implementa o dashboard inicial gated (`/portal/page.tsx`) — escopo 1 sessão, baixo risco, não conflita com soak.
+**Opção B — Fase C (motor SSO)**: maior escopo (2 sessões). Recomendado se o user confirmar que a sessão paralela do motor está pronta pra coordenar (compartilhar JWT_SECRET, etc.). Senão, fica em risco de retrabalho.
 
-**Opção C — Iniciar Fase C (motor SSO)**: maior escopo (2 sessões), exige planejamento detalhado com o user. Recomendado depois do dashboard.
+**Opção C — Quick wins acumulados**: pegar 2-3 itens dos "Quick wins remanescentes" numa sessão única. Boa pra fechar débito técnico antes da Fase C grande. Eu sugiro: race condition restore + UI restore empresa + depreciar barrels.
 
-**Opção D — Quick wins de follow-ups menores** (depreciar barrels, AdminSubNav, etc.) — bom pra warmup de sessão se user não tiver prioridade clara.
+**Opção D — Aguardar soak operacional e fechar P2 estrutural**: começar unificação `bi/` ↔ `portal/` após Fase 5.G terminar. Escopo grande, baixo valor visível pro user final.
 
 ## Memórias técnicas relevantes
 
-- `[[audit-pattern-portal-bi]]` — padrão de audit + branch protection
-- `[[post-audit-roadmap]]` — atualizada agora com Fase A ✅
+- `[[audit-pattern-portal-bi]]` — padrão de audit + branch protection + worktree caveats
+- `[[post-audit-roadmap]]` — atualizada agora com Bug #4 + F1 + F2 + E1 + E2
+- `[[portal-ux-validation-pattern]]` — botões com chevron sem onClick (validação manual obrigatória pre-merge UX)
 - `[[railway-restore-model]]` — Restore Railway via volume swap
 - `[[local-db-tooling]]` — Postgres 16.14 local, sem pg_dump/Docker/WSL
 - `[[classifier-railway-prod]]` — bloqueios de `railway run` em prod
