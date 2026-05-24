@@ -528,3 +528,20 @@ migrations não destrutivas.
   (Step 13 — Parte B aberta até decisão contábil).
 - Cumprir checklist operacional da Seção 9 do relatório do Step 17
   antes de cada deploy de produção.
+
+## Estado atual do build (2026-05-24)
+
+Referências de "50 rotas" nas seções históricas dos Steps 16/17 estão
+congeladas no tempo. Após a auditoria production-ready + roadmap
+pós-Fase B, o build atual é:
+
+- **44 rotas** geradas (`npm run build`)
+- Suite de testes: ~308 testes em ~20 arquivos
+- Bundle: 0 credenciais (`npm run audit:bundle` cobre 84 arquivos JS)
+
+Componentes compartilhados adicionados pós-Step 17:
+- `<PermissionGate>`, `usePermission`, `usePermissoesAtivas` (Fase A RBAC)
+- `<UserMenu>` (Bug #3 da Fase B)
+- `<EmpresaSelector>` (Bug #1/2 da Fase B)
+- `<DeleteUsuarioModal>` (Bug #4 backend + frontend)
+- `<AdminSubNav>` (refactor E1: dedup de sub-nav nas 5 páginas admin)
