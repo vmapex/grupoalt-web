@@ -55,14 +55,21 @@ export default function AdminPage() {
   const [testing, setTesting] = useState<number | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
-  const [restoringEmpresa, setRestoringEmpresa] = useState<number | null>(null)
+  // Usa Set pra permitir restaurar varias empresas em paralelo sem que
+  // o spinner do segundo apague o do primeiro. Mesmo pattern do
+  // /bi/financeiro/admin/usuarios (PR #152).
+  const [restoringEmpresaIds, setRestoringEmpresaIds] = useState<Set<number>>(() => new Set())
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg })
     setTimeout(() => setToast(null), 4000)
   }
 
   const handleRestoreEmpresa = async (emp: EmpresaOption) => {
-    setRestoringEmpresa(emp.id)
+    setRestoringEmpresaIds((prev) => {
+      const next = new Set(prev)
+      next.add(emp.id)
+      return next
+    })
     try {
       await restoreEmpresa(emp.id)
       showToast('success', `Empresa "${emp.nome}" restaurada`)
@@ -71,7 +78,12 @@ export default function AdminPage() {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       showToast('error', detail || 'Erro ao restaurar')
     } finally {
-      setRestoringEmpresa(null)
+      setRestoringEmpresaIds((prev) => {
+        if (!prev.has(emp.id)) return prev
+        const next = new Set(prev)
+        next.delete(emp.id)
+        return next
+      })
     }
   }
 
@@ -366,11 +378,11 @@ export default function AdminPage() {
                   {isSoftDeleted ? (
                     <button
                       onClick={() => handleRestoreEmpresa(emp)}
-                      disabled={restoringEmpresa === emp.id}
+                      disabled={restoringEmpresaIds.has(emp.id)}
                       aria-label={`Restaurar ${emp.nome}`}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      {restoringEmpresa === emp.id ? (
+                      {restoringEmpresaIds.has(emp.id) ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <RotateCcw className="w-3.5 h-3.5" />
