@@ -45,12 +45,18 @@ export default function AdminUsuariosPage() {
   const [busca, setBusca] = useState('')
   // Bug #4: alvo do soft delete. Null = modal fechado.
   const [deleteAlvo, setDeleteAlvo] = useState<AdminUsuarioListado | null>(null)
-  // F2: id em loading durante restore (botao mostra spinner)
-  const [restoringId, setRestoringId] = useState<number | null>(null)
+  // F2: ids em loading durante restore (botao mostra spinner).
+  // Usa Set pra permitir restaurar varios users em paralelo sem que o
+  // spinner do segundo apague o do primeiro (sugestao do audit #148).
+  const [restoringIds, setRestoringIds] = useState<Set<number>>(() => new Set())
   const [restoreError, setRestoreError] = useState<string | null>(null)
 
   async function handleRestore(u: AdminUsuarioListado) {
-    setRestoringId(u.id)
+    setRestoringIds((prev) => {
+      const next = new Set(prev)
+      next.add(u.id)
+      return next
+    })
     setRestoreError(null)
     try {
       await restaurarUsuario(u.id)
@@ -61,7 +67,12 @@ export default function AdminUsuariosPage() {
         `Falha ao restaurar ${u.nome}: ${e?.response?.data?.detail || e?.message || 'erro desconhecido'}`,
       )
     } finally {
-      setRestoringId(null)
+      setRestoringIds((prev) => {
+        if (!prev.has(u.id)) return prev
+        const next = new Set(prev)
+        next.delete(u.id)
+        return next
+      })
     }
   }
 
@@ -202,7 +213,7 @@ export default function AdminUsuariosPage() {
 
           {usuariosFiltrados.map((u) => {
             const isDeleted = u.deleted_at != null
-            const isRestoring = restoringId === u.id
+            const isRestoring = restoringIds.has(u.id)
             return (
               <div
                 key={u.id}
