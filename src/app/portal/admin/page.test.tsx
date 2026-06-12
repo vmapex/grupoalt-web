@@ -108,6 +108,8 @@ vi.mock('@/components/admin/DeleteUsuarioModal', () => ({
 interface ConfirmDeleteModalMockProps {
   target: { nome: string } | null
   title: string
+  idPrefix: string
+  confirmLabel?: string
   errorMessages?: Record<number, string>
   onConfirm: (...args: unknown[]) => unknown
   onSuccess: () => void
@@ -305,6 +307,7 @@ describe('AdminPage portal — lifecycle de usuarios', () => {
     expect(screen.getByRole('button', { name: /Excluir Ana Ativa/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Excluir Bruno Deletado$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Restaurar Ana Ativa/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Apagar Ana Ativa em definitivo/i })).toBeNull()
   })
 
   it('guard de auto-delete: nenhum botao de acao para o proprio admin', async () => {
@@ -368,6 +371,8 @@ describe('AdminPage portal — lifecycle de usuarios', () => {
 
     const props = confirmDeleteModalProps.mock.calls.at(-1)![0] as ConfirmDeleteModalMockProps
     expect(props.title).toMatch(/definitivo/i)
+    expect(props.idPrefix).toBe('permanent-delete-usuario')
+    expect(props.confirmLabel).toBe('Apagar definitivo')
     expect(props.errorMessages?.[409]).toMatch(/soft-delete/i)
 
     // onConfirm da pagina e o permanentDeleteUsuario do hook

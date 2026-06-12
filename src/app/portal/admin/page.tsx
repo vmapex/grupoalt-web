@@ -338,7 +338,7 @@ export default function AdminPage() {
                     </div>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
                   </button>
-                  {currentUserId !== user.id && (
+                  {currentUserId != null && currentUserId !== user.id && (
                     isSoftDeleted ? (
                       <>
                         <button
@@ -702,6 +702,7 @@ export default function AdminPage() {
       <ConfirmDeleteModal
         target={permanentDeletingUsuario}
         title="Apagar usuário em definitivo"
+        confirmLabel="Apagar definitivo"
         idPrefix="permanent-delete-usuario"
         warningContent={
           permanentDeletingUsuario ? (
