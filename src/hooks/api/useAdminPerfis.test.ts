@@ -6,6 +6,7 @@ import {
   useAdminUsuarios,
   deleteUsuario,
   restaurarUsuario,
+  permanentDeleteUsuario,
   type AdminUsuarioListado,
 } from './useAdminPerfis'
 
@@ -18,6 +19,8 @@ import {
  *   - AdminUsuarioListado.deleted_at carrega ISO 8601 ou null.
  *   - deleteUsuario chama DELETE /admin/usuarios/{id} com body correto.
  *   - restaurarUsuario chama POST /admin/usuarios/{id}/restore.
+ *   - permanentDeleteUsuario chama DELETE /admin/usuarios/{id}/permanent
+ *     com a mesma confirmacao tripla (senha + nome) e propaga 409/403.
  */
 
 
@@ -125,5 +128,29 @@ describe('restaurarUsuario', () => {
     const err = { response: { status: 404, data: {} } }
     apiPostMock.mockRejectedValueOnce(err)
     await expect(restaurarUsuario(9999)).rejects.toEqual(err)
+  })
+})
+
+
+describe('permanentDeleteUsuario', () => {
+  it('chama DELETE /admin/usuarios/{id}/permanent com body senha_admin + nome_usuario', async () => {
+    apiDeleteMock.mockResolvedValueOnce({ status: 204 })
+    await permanentDeleteUsuario(42, 'minhaSenha', 'Maria da Silva')
+    expect(apiDeleteMock).toHaveBeenCalledWith(
+      '/admin/usuarios/42/permanent',
+      { data: { senha_admin: 'minhaSenha', nome_usuario: 'Maria da Silva' } },
+    )
+  })
+
+  it('propaga erro 409 (hard delete sem soft-delete previo)', async () => {
+    const err = { response: { status: 409, data: { detail: 'Hard delete exige soft-delete previo' } } }
+    apiDeleteMock.mockRejectedValueOnce(err)
+    await expect(permanentDeleteUsuario(1, 'senha', 'Fulano')).rejects.toEqual(err)
+  })
+
+  it('propaga erro 403 (senha ou nome errado)', async () => {
+    const err = { response: { status: 403, data: { detail: 'Senha do admin nao confere' } } }
+    apiDeleteMock.mockRejectedValueOnce(err)
+    await expect(permanentDeleteUsuario(1, 'errada', 'Fulano')).rejects.toEqual(err)
   })
 })
