@@ -121,8 +121,25 @@ export async function deleteUsuario(
 
 
 /** Reverte soft delete. 409 se nao estava deletado, 404 se nao existe.
- *  Por enquanto a UI nao expoe restore (escopo do PR cobre so delete);
- *  hook fica disponivel pra um PR de UI de restauracao no futuro. */
+ *  Consumido pela tela de administracao do Portal (botao Restaurar). */
 export async function restaurarUsuario(usuarioId: number) {
   await api.post(`/admin/usuarios/${usuarioId}/restore`)
+}
+
+
+/** Hard delete (apagar em definitivo). IRREVERSIVEL. Exige soft-delete
+ *  previo + senha do admin + nome exato (mesma confirmacao tripla do soft
+ *  delete). Status do backend (mapeados no ConfirmDeleteModal):
+ *  - 204: sucesso
+ *  - 403: senha/nome errado, ou auto-delete
+ *  - 404: nao encontrado
+ *  - 409: ainda nao esta soft-deletado (Excluir antes) */
+export async function permanentDeleteUsuario(
+  usuarioId: number,
+  senhaAdmin: string,
+  nomeUsuario: string,
+) {
+  await api.delete(`/admin/usuarios/${usuarioId}/permanent`, {
+    data: { senha_admin: senhaAdmin, nome_usuario: nomeUsuario },
+  })
 }
