@@ -6,11 +6,17 @@ import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
+import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
 import { restoreEmpresa } from '@/hooks/api/useAdminEmpresas'
 import { describeAxiosError } from '@/lib/errorPresentation'
+import { useAuthStore } from '@/store/authStore'
+import { ConfirmDeleteModal } from '@/components/admin/ConfirmDeleteModal'
+import { restaurarUsuario, permanentDeleteUsuario } from '@/hooks/api/useAdminPerfis'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean
+  /** ISO 8601 quando soft-deletado; null/undefined quando ativo. */
+  deleted_at?: string | null
   empresas: { id: number; nome: string; role: string }[]
   permissoes: { id: number; modulo: string; acao: string; empresa_id: number | null }[]
   unidades: { id: number; nome: string; empresa_id: number }[]
@@ -41,6 +47,7 @@ const TABS = ['Usuários', 'Empresas', 'Unidades'] as const
 
 export default function AdminPage() {
   const adminAccess = useRequireAdmin()
+  const currentUserId = useAuthStore((s) => s.user?.id)
   const [tab, setTab] = useState<typeof TABS[number]>('Usuários')
   const [usuarios, setUsuarios] = useState<UserData[]>([])
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([])
@@ -56,6 +63,13 @@ export default function AdminPage() {
   const [testing, setTesting] = useState<number | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
+  const [deletingUsuario, setDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
+  const [permanentDeletingUsuario, setPermanentDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
+  // /gestao/usuarios sempre inclui soft-deletados (deleted_at preenchido);
+  // o filtro é client-side. Default oculta — mesmo espírito do toggle F2
+  // do /bi/financeiro/admin/usuarios, sem refetch.
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [restoringUsuarioIds, setRestoringUsuarioIds] = useState<Set<number>>(() => new Set())
   // Usa Set pra permitir restaurar varias empresas em paralelo sem que
   // o spinner do segundo apague o do primeiro. Mesmo pattern do
   // /bi/financeiro/admin/usuarios (PR #152).
@@ -88,6 +102,32 @@ export default function AdminPage() {
         if (!prev.has(emp.id)) return prev
         const next = new Set(prev)
         next.delete(emp.id)
+        return next
+      })
+    }
+  }
+
+  const handleRestoreUsuario = async (user: UserData) => {
+    setRestoringUsuarioIds((prev) => {
+      const next = new Set(prev)
+      next.add(user.id)
+      return next
+    })
+    try {
+      await restaurarUsuario(user.id)
+      showToast('success', `Usuário "${user.nome}" restaurado`)
+      loadData()
+    } catch (err: unknown) {
+      const presentation = describeAxiosError(err, {
+        entity: 'usuário',
+        prefix: `Falha ao restaurar "${user.nome}"`,
+      })
+      showToast('error', presentation.message)
+    } finally {
+      setRestoringUsuarioIds((prev) => {
+        if (!prev.has(user.id)) return prev
+        const next = new Set(prev)
+        next.delete(user.id)
         return next
       })
     }
@@ -252,29 +292,85 @@ export default function AdminPage() {
       {/* ═══ TAB: USUÁRIOS ═══ */}
       {tab === 'Usuários' && (
         <div className="space-y-3">
-          {usuarios.map(user => {
+          {usuarios.some(u => !!u.deleted_at) && (
+            <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={e => setShowDeleted(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-[#CCA000] cursor-pointer"
+              />
+              Mostrar usuários deletados ({usuarios.filter(u => !!u.deleted_at).length})
+            </label>
+          )}
+          {usuarios.filter(u => showDeleted || !u.deleted_at).map(user => {
             const isExpanded = expandedUser === user.id
+            const isSoftDeleted = !!user.deleted_at
+            const deletedAtLabel = user.deleted_at
+              ? new Date(user.deleted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : null
+            const isRestoring = restoringUsuarioIds.has(user.id)
             return (
-              <div key={user.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-                <button onClick={() => setExpandedUser(isExpanded ? null : user.id)} className="w-full flex items-center gap-4 p-5 hover:bg-zinc-800/50 transition-colors text-left">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CCA000] to-[#E0B82E] flex items-center justify-center text-zinc-900 text-xs font-bold flex-shrink-0">
-                    {user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white">{user.nome}</span>
-                      {user.is_admin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#CCA000]/20 text-[#E0B82E] font-medium">ADMIN</span>}
-                      {!user.ativo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">INATIVO</span>}
+              <div key={user.id} className={`bg-zinc-900 border rounded-2xl overflow-hidden ${isSoftDeleted ? 'border-red-900/40 opacity-70' : 'border-zinc-800'}`}>
+                <div className="flex items-center gap-2 p-5 hover:bg-zinc-800/50 transition-colors">
+                  <button
+                    onClick={() => setExpandedUser(isExpanded ? null : user.id)}
+                    className="flex-1 flex items-center gap-4 text-left min-w-0"
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Recolher' : 'Expandir'} ${user.nome}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CCA000] to-[#E0B82E] flex items-center justify-center text-zinc-900 text-xs font-bold flex-shrink-0">
+                      {user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
-                    <span className="text-xs text-zinc-500">{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{user.empresas.length}</span>
-                    <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{user.permissoes.length}</span>
-                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{user.unidades.length}</span>
-                  </div>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
-                </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">{user.nome}</span>
+                        {user.is_admin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#CCA000]/20 text-[#E0B82E] font-medium">ADMIN</span>}
+                        {!user.ativo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">INATIVO</span>}
+                        {isSoftDeleted && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium whitespace-nowrap">DELETADO{deletedAtLabel ? ` ${deletedAtLabel}` : ''}</span>}
+                      </div>
+                      <span className="text-xs text-zinc-500">{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-zinc-500">
+                      <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{user.empresas.length}</span>
+                      <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{user.permissoes.length}</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{user.unidades.length}</span>
+                    </div>
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+                  </button>
+                  {currentUserId != null && currentUserId !== user.id && (
+                    isSoftDeleted ? (
+                      <>
+                        <button
+                          onClick={() => handleRestoreUsuario(user)}
+                          disabled={isRestoring}
+                          aria-label={`Restaurar ${user.nome}`}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          {isRestoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                          Restaurar
+                        </button>
+                        <button
+                          onClick={() => setPermanentDeletingUsuario({ id: user.id, nome: user.nome, email: user.email })}
+                          aria-label={`Apagar ${user.nome} em definitivo`}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-600/20 border border-red-600/40 text-red-300 hover:bg-red-600/30 transition-all flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Apagar definitivo
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setDeletingUsuario({ id: user.id, nome: user.nome, email: user.email })}
+                        aria-label={`Excluir ${user.nome}`}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Excluir
+                      </button>
+                    )
+                  )}
+                </div>
                 {isExpanded && (
                   <div className="border-t border-zinc-800 p-5 space-y-6">
                     <div className="flex items-center justify-between">
@@ -588,6 +684,44 @@ export default function AdminPage() {
         onClose={() => setDeletingEmpresa(null)}
         onSuccess={() => {
           showToast('success', `Empresa "${deletingEmpresa?.nome}" marcada como deletada`)
+          loadData()
+        }}
+      />
+
+      {/* Modal de soft delete de usuario (Bug #4) — triple-confirm via /admin/usuarios/{id} */}
+      <DeleteUsuarioModal
+        usuario={deletingUsuario}
+        onClose={() => setDeletingUsuario(null)}
+        onSuccess={() => {
+          showToast('success', `Usuário "${deletingUsuario?.nome}" marcado como deletado`)
+          loadData()
+        }}
+      />
+
+      {/* Modal de hard delete (apagar em definitivo) — IRREVERSIVEL, exige soft-delete previo */}
+      <ConfirmDeleteModal
+        target={permanentDeletingUsuario}
+        title="Apagar usuário em definitivo"
+        confirmLabel="Apagar definitivo"
+        idPrefix="permanent-delete-usuario"
+        warningContent={
+          permanentDeletingUsuario ? (
+            <>
+              Esta ação <strong>APAGA PERMANENTEMENTE</strong> o usuário{' '}
+              <strong>{permanentDeletingUsuario.nome}</strong> ({permanentDeletingUsuario.email}){' '}
+              e todos os seus vínculos, perfis e permissões. <strong>NÃO pode ser desfeita.</strong>{' '}
+              Os logs de auditoria são preservados (sem o vínculo ao usuário).
+            </>
+          ) : null
+        }
+        onConfirm={permanentDeleteUsuario}
+        errorMessages={{
+          404: 'Usuário não encontrado (pode já ter sido apagado).',
+          409: 'O apagar definitivo exige soft-delete prévio (use Excluir antes).',
+        }}
+        onClose={() => setPermanentDeletingUsuario(null)}
+        onSuccess={() => {
+          showToast('success', `Usuário "${permanentDeletingUsuario?.nome}" apagado em definitivo`)
           loadData()
         }}
       />

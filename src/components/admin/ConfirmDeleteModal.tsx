@@ -48,6 +48,10 @@ export interface ConfirmDeleteModalProps {
   }
   onClose: () => void
   onSuccess: () => void
+  /** Label do botao destrutivo. Default "Excluir"; callers de hard delete
+   *  devem reforcar a irreversibilidade no ponto de commit da acao
+   *  (ex: "Apagar definitivo"). */
+  confirmLabel?: string
 }
 
 
@@ -60,6 +64,7 @@ export function ConfirmDeleteModal({
   errorMessages,
   onClose,
   onSuccess,
+  confirmLabel = 'Excluir',
 }: ConfirmDeleteModalProps) {
   const t = useThemeStore((s) => s.tokens)
   const [senha, setSenha] = useState('')
@@ -334,7 +339,7 @@ export function ConfirmDeleteModal({
             }}
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-            Excluir
+            {confirmLabel}
           </button>
         </div>
       </div>
