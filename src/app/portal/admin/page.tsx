@@ -65,6 +65,10 @@ export default function AdminPage() {
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
   const [deletingUsuario, setDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
   const [permanentDeletingUsuario, setPermanentDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
+  // /gestao/usuarios sempre inclui soft-deletados (deleted_at preenchido);
+  // o filtro é client-side. Default oculta — mesmo espírito do toggle F2
+  // do /bi/financeiro/admin/usuarios, sem refetch.
+  const [showDeleted, setShowDeleted] = useState(false)
   const [restoringUsuarioIds, setRestoringUsuarioIds] = useState<Set<number>>(() => new Set())
   // Usa Set pra permitir restaurar varias empresas em paralelo sem que
   // o spinner do segundo apague o do primeiro. Mesmo pattern do
@@ -288,7 +292,18 @@ export default function AdminPage() {
       {/* ═══ TAB: USUÁRIOS ═══ */}
       {tab === 'Usuários' && (
         <div className="space-y-3">
-          {usuarios.map(user => {
+          {usuarios.some(u => !!u.deleted_at) && (
+            <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={e => setShowDeleted(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-[#CCA000] cursor-pointer"
+              />
+              Mostrar usuários deletados ({usuarios.filter(u => !!u.deleted_at).length})
+            </label>
+          )}
+          {usuarios.filter(u => showDeleted || !u.deleted_at).map(user => {
             const isExpanded = expandedUser === user.id
             const isSoftDeleted = !!user.deleted_at
             const deletedAtLabel = user.deleted_at
