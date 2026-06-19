@@ -30,13 +30,15 @@ const themeBootstrap = `
 })();
 `
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Step 10 — Fase 4: nonce gerado pelo middleware. O Next aplica
   // automaticamente em seus scripts internos quando o request header
   // `x-nonce` está presente; aqui propagamos para o nosso script inline
   // do bootstrap de tema. Usar `headers()` força o RootLayout a ser
   // dinâmico — trade-off aceito (portal autenticado/admin/BI).
-  const nonce = headers().get('x-nonce') ?? undefined
+  // Next 16: `headers()` é assíncrono (async request API) — RootLayout vira async.
+  const requestHeaders = await headers()
+  const nonce = requestHeaders.get('x-nonce') ?? undefined
 
   return (
     // suppressHydrationWarning: the boot script intentionally mutates

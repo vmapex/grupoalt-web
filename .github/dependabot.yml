@@ -22,26 +22,23 @@ updates:
       patch-updates:
         update-types:
           - "patch"
-    # Bloqueios explícitos:
-    # - "next" 14 → 16 é EXC-001 (plano próprio, issue #56). Major bloqueado.
-    # - "date-fns" não é importado em src/ (dep morta). Removida do
-    #   package.json em PR-7 e ignorada aqui para não voltar via Dependabot.
-    # - "recharts" major (3.x) requer migração visual dedicada — bloqueado
-    #   até a migração ser planejada em sprint específica.
-    # - "eslint" major (9+/10): incompatível com
-    #   eslint-config-next@14.x (peer "^7.23.0 || ^8.0.0"). PR #79
-    #   confirmou eresolve failure. Destrava quando Next 14→16 (EXC-001).
-    # - "tailwindcss" major (4.x): mudança brutal de config (novo
-    #   PostCSS, remove autoprefixer, migration manual). PR #80
-    #   confirmou CI fail. Aguardar migração dedicada após Next 16.
-    # - "typescript" major (6.x): peer conflict com eslint-config-next e
-    #   provável surfacing de type errors. PR #82 confirmou CI fail.
-    #   Destrava com Next 16.
-    # - "react" / "react-dom" major (19.x): Next 14.x exige peer
-    #   `react@^18.2.0` / `react-dom@^18.2.0`. PR #88 confirmou eresolve.
-    #   Destrava com Next 16.
-    # - "@types/react" / "@types/react-dom" major (19.x): seguem a react
-    #   correspondente (não faz sentido subir types antes da runtime).
+    # Bloqueios explícitos (atualizados no PR-4 — baseline agora Next 16 +
+    # React 19 + ESLint 9). EXC-001 (Next 14→16, issue #56) RESOLVIDO pelo PR-4.
+    # Política mantida: bumps MAJOR são upgrades COORDENADOS (um PR único que
+    # sobe runtime + peers + config juntos), nunca PR solo do Dependabot — os
+    # PRs #164/#171 (eslint-config-next 16 sozinho) e #79/#80/#82/#88 provaram
+    # que o bump isolado quebra o CI (ERESOLVE / type errors). Por isso os
+    # majors abaixo seguem ignorados, agora como "fazer via PR coordenado":
+    # - "next" major (17+): próximo salto de framework — coordenado.
+    # - "react" / "react-dom" major (20+, futuro): seguem o suporte do Next.
+    # - "@types/react" / "@types/react-dom" major: seguem a runtime react.
+    # - "eslint" major (10+): eslint-config-next@16 traz
+    #   eslint-plugin-react-hooks@7, cujo peer inicial limita a ^9 — major
+    #   coordenado quando o plugin acompanhar.
+    # - "typescript" major (6.x): provável surfacing de type errors — coordenado.
+    # - "recharts" major (3.x): rewrite interno (Redux) — migração visual dedicada.
+    # - "tailwindcss" major (4.x): novo PostCSS, remove autoprefixer — migração dedicada.
+    # - "date-fns": não é importado em src/ (dep morta) — ignorada p/ não voltar.
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
