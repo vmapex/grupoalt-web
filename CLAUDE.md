@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-05-06 (Step 17 — Homologação final, GO técnico)
+> Última atualização: 2026-06-30 (Fase 5.G — DRE backend fonte única; PR-6 #176 em revisão)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -529,15 +529,77 @@ migrations não destrutivas.
 - Cumprir checklist operacional da Seção 9 do relatório do Step 17
   antes de cada deploy de produção.
 
-## Estado atual do build (2026-05-24)
+## Sessão 2026-06-18 — Janela A (Soak DRE Backend)
+
+**Status: JANELA A 100% COMPLETA (soak iniciado 2026-06-18 17:35)**
+
+### Etapa 5.A — Convergência DRE Backend
+✅ **Diagnóstico divergência:** cf +15,3K constante em 30/60/91d → causa raiz: `/dre` não filtrava `ContaCorrente.incluir_bi/is_projecao`.
+✅ **Fix (api #134):** `_query_dre_from_db` com semântica idêntica ao `/extrato` + `DRE_CACHE_SCHEMA_VERSION=v2` + M1 (PATCH de flags invalida namespace "dre"). Audit 95/100 APPROVE.
+✅ **Merges:** api #134 + 6 dependabot seguros + web #165 + redis #128 adiado com justificativa (RESP3 default + socket timeouts).
+
+### Etapa 5.B — Validação Production DRE
+✅ **Sentry:** DSN da API testado; web preenchido em prod; evento chegando.
+✅ **Flag virada:** `NEXT_PUBLIC_USE_BACKEND_DRE=true` em Vercel Production 2026-06-18 17:35.
+✅ **Paridade:** números idênticos aos pré-virada em 2–3 meses validados.
+✅ **1h monitoramento pós-flip:** Sentry limpo, Railway logs OK, taxa de 403 normal, zero anomalia.
+
+**Soak timeline:**
+- **D** = 2026-06-18 17:35 (flag virada + soak iniciado)
+- **D+1** → **D+6**: monitoramento contínuo (7 dias, mín ≥ 7 de intervalo)
+- **D+7** = 2026-06-25 17:35 (gate para PR-6 Fase 5.G = ponto-de-não-retorno do DRE)
+
+**Próximos passos (cronograma Fase 5 final):**
+- **OP-1 (soak D→D+7):** Monitorar DRE backend (zero regressão números, 403 taxa normal, Sentry limpo). Rollback instant (<2min) se anomalia.
+- **Janela B (após 24–48h soak estável):** OP-3 marcar categorias de repasse como NEUTRO (com sign-off controladoria escrito); validar RNOP/DNOP limpos.
+- **PR-4 (Next 16) em paralelo durante soak:** Branch `chore/upgrade-next-16-eslint-9` em desenvolvimento; CI verde + CSP Preview validado antes do merge (nunca mergear em Janela A).
+- **Janela C (pós-soak, fora de horário comercial):** OP-4 ligar `RBAC_ENFORCE=true` (requer api #132/#133 em prod + rbac_preflight.py exit 0).
+- **Janela D (após Janela C):** PR-4 merge + smoke completo + 1h monitoramento CSP sem violations.
+- **PR-6 (5.G, após D+7 gate):** Remove calcularDRE local (~−700 LOC), fecha issue #56 Next16, consolida Fase 5 (ponto final deste plano).
+
+## Sessão 2026-06-29/30 — Soak DRE concluído + paridade SALDO (#142) + PR-6 (Fase 5.G)
+
+**Soak DRE: GO.** Em D+11 (2026-06-29) o backend `/dre` foi validado como **fonte de verdade**
+(bate com o banco). A divergência da GRUPO ALT (+76K em CV no range amplo) foi diagnosticada via
+query read-only no DB e **NÃO era bug de backend** — era o cálculo **LOCAL** subcontando ~0,2%
+(artefato do `ComparativoDRE` dev-only). Detalhe em
+`docs/plano-acao-seguranca/soak-dre-monitoring-log.md`.
+
+**api #142 — paridade fina SALDO (MERGEADO + deployado):** `get_dre` passa a pular marcadores de
+saldo (`favorecido ∈ {SALDO, SALDO ANTERIOR, SALDO INICIAL}`), espelhando `extrato.py:242-245` +
+bump `DRE_CACHE_SCHEMA_VERSION v2→v3`. A premissa (haver registros SALDO) foi **refutada** por
+query (0 registros) → **no-op nos números**; mantido como hardening defensivo. Audit 94/100.
+
+**web #176 — PR-6 / Fase 5.G (DRAFT, NÃO mergeado):** remove o cálculo DRE local agora que o
+backend é a fonte única. Branch `chore/pr6-remove-local-dre`, commit `f592df6`, **−894 LOC**:
+- **Remove:** `calcularDRE`/`calcularDREPorMes`/`calcularNeutros` (planoContas.ts), `featureFlags.ts`
+  (flag `useBackendDRE` + `useDREComparativo`), `ComparativoDRE.tsx`, harness TS do oracle
+  (`tests/oracle/{oracle.test.ts,loader.ts,types.ts}`).
+- **Mantém:** `CATEGORIAS`/`getGrupoDRE`/`getCategoriaInfo`/`buildCategoriasFromAPI`, `caixaBuilder.ts`
+  (gráficos + `buildDREMatrix`), `useCategoriasMap`, e as **fixtures do oracle** (fonte de verdade
+  sincronizada p/ o backend via `grupoalt-api/scripts/sync_oracle_fixtures.py`).
+- 5 call sites → `useDRE` direto; `AnaliseIAView` usa `EMPTY_DRE` (objeto-zero) como guarda de loading.
+- Audit adversarial **97/100 APPROVE** (`docs/audit/pr6-remove-local-dre/review.md`).
+- **Pendência conhecida (não bloqueia):** `buildDREMatrix` (DRE mês-a-mês N2/N3) segue local — sem
+  endpoint backend com esse breakdown; micro-divergência ~0,2% aceita.
+- **Merge em janela própria** (fora de horário) + smoke + remover env vars
+  `NEXT_PUBLIC_USE_BACKEND_DRE`/`NEXT_PUBLIC_DRE_COMPARATIVO` do Vercel. **Ponto final da Fase 5.**
+- ADR-001 atualizado com a Fase 5.G executada.
+
+**Pendente (não-código):** Janela B (NEUTRO) aguarda **sign-off escrito da controladoria**;
+Janela C (`RBAC_ENFORCE`) e Janela D (PR-4 Next 16 — #172) pós-soak.
+
+## Estado atual do build (2026-06-30)
 
 Referências de "50 rotas" nas seções históricas dos Steps 16/17 estão
-congeladas no tempo. Após a auditoria production-ready + roadmap
-pós-Fase B, o build atual é:
+congeladas no tempo. Estado corrente:
 
 - **44 rotas** geradas (`npm run build`)
-- Suite de testes: ~308 testes em ~20 arquivos
-- Bundle: 0 credenciais (`npm run audit:bundle` cobre 84 arquivos JS)
+- Suite de testes: **357 em `main`**; **335 na branch do PR-6** (#176) após remover os testes de
+  `calcularDRE`/`calcularDREPorMes`/`calcularNeutros` + o harness TS do oracle
+- Bundle: 0 credenciais (`npm run audit:bundle` cobre 85 arquivos JS)
+- **DRE backend = fonte única validada** (soak concluído D+11). PR-6 (#176, draft) remove o cálculo
+  local; após o merge a flag `NEXT_PUBLIC_USE_BACKEND_DRE` deixa de existir (backend sempre).
 
 Componentes compartilhados adicionados pós-Step 17:
 - `<PermissionGate>`, `usePermission`, `usePermissoesAtivas` (Fase A RBAC)
