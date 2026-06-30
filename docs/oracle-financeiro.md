@@ -51,12 +51,10 @@ financeiro a sinalizar, não um cálculo a fazer. O sistema mascara o
 erro (somando o módulo) para evitar números absurdos na DRE — não
 o consagra como dado válido.
 
-> **Pendência menor:** a docstring atual de `calcularDRE` em
-> `planoContas.ts:198-205` ainda diz "limitação conhecida" e o teste
-> `planoContas.test.ts:40-50` ainda diz "(limitacao conhecida)". A
-> redação está desalinhada com a decisão homologada. PR futuro
-> dedicado a docstring (~5 linhas alteradas, sem mudança de
-> comportamento).
+> ~~**Pendência menor:** docstring/teste desalinhados com a decisão.~~
+> **Resolvida** em `bffcf3b` (docs(planoContas): Math.abs é tratamento
+> defensivo, não limitação) — docstring de `calcularDRE` e nome do
+> teste já refletem a decisão homologada.
 
 ### Pergunta 2 — Parciais (PARCIAL)
 
@@ -149,12 +147,13 @@ dado real de mês fechado) devem entrar nesta tabela com:
 - Causa provável
 - PR de correção
 
-## Documentação desalinhada (a corrigir em PR separado)
+## Documentação desalinhada (RESOLVIDA)
 
-- [planoContas.ts:198-205](../src/lib/planoContas.ts#L198-L205) — docstring de `calcularDRE` ainda diz que `Math.abs` é "limitação conhecida". Decisão homologada confirma que é tratamento defensivo, não bug. Atualizar para refletir o que ficou em [#bloco-c-respondido-2026-05-13](#bloco-c-respondido-2026-05-13).
-- [planoContas.test.ts:40-50](../src/lib/planoContas.test.ts#L40-L50) — nome do teste `'valor negativo em receita e somado como positivo (limitacao conhecida)'` deve ler `(comportamento defensivo contra erro de classificacao no input)`.
+Corrigida em `bffcf3b` — `docs(planoContas): Math.abs é tratamento
+defensivo, não limitação`:
 
-PR separado (≤ 50 linhas, zero mudança de comportamento) — não bloqueia esta entrega.
+- [planoContas.ts:198-215](../src/lib/planoContas.ts#L198-L215) — docstring de `calcularDRE` documenta a regra de sinal homologada (estornos via categoria própria; `Math.abs` como tratamento defensivo contra anti-padrão de input).
+- [planoContas.test.ts:44](../src/lib/planoContas.test.ts#L44) — teste renomeado para `'valor negativo em receita e somado em modulo (tratamento defensivo)'`.
 
 ## Tolerâncias
 
@@ -243,5 +242,5 @@ os próximos.
 - [Handoff §5.6 — Necessidade de oracle financeiro](AUDITORIA_HANDOFF_PRODUCTION_READY.md)
 - [Handoff §5.7 — Motor de cálculo sem fonte única](AUDITORIA_HANDOFF_PRODUCTION_READY.md)
 - [ADR-001 — Localização do motor de DRE](adr/001-dre-localizacao.md)
-- [planoContas.ts:198-205 — docstring do bug Math.abs (a atualizar)](../src/lib/planoContas.ts#L198-L205)
-- [planoContas.test.ts:40-50 — comentário a atualizar](../src/lib/planoContas.test.ts#L40-L50)
+- [planoContas.ts:198-215 — docstring da regra de sinal (atualizada em bffcf3b)](../src/lib/planoContas.ts#L198-L215)
+- [planoContas.test.ts:44 — teste do tratamento defensivo](../src/lib/planoContas.test.ts#L44)

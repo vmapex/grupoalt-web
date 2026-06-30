@@ -140,6 +140,31 @@ hoje. Se virar, abre-se ADR-004 específico.
 - Math.abs como tratamento defensivo já documentado (PR #93) — não
   vai haver "mudança silenciosa de número" pro gestor.
 
+## Atualização — Fase 5.G executada (2026-06-29)
+
+A mitigação "manter `calcularDRE` no front em modo fallback (feature flag),
+removível após validação em prod" foi **executada** (PR-6). Após o soak do DRE
+backend em produção (D = 2026-06-18 → D+11 = 2026-06-29), confirmou-se que o
+`/dre` é a fonte de verdade (bate com o banco); o cálculo local subcontava ~0,2%
+em CV na GRUPO ALT — artefato do `ComparativoDRE` dev-only, **não** bug de backend.
+
+PR-6 remove do front:
+- `calcularDRE`, `calcularDREPorMes`, `calcularNeutros` (`src/lib/planoContas.ts`);
+- a flag `useBackendDRE` / `NEXT_PUBLIC_USE_BACKEND_DRE` + `useDREComparativo`
+  (`src/lib/featureFlags.ts`, arquivo deletado);
+- o `ComparativoDRE` (dev-only) e o harness TS do oracle (`tests/oracle/oracle.test.ts`,
+  `loader.ts`, `types.ts`).
+
+**Mantidos** (load-bearing — NÃO são o motor DRE): `CATEGORIAS`, `getGrupoDRE`,
+`getCategoriaInfo`, `buildCategoriasFromAPI` (`planoContas.ts`); `caixaBuilder.ts`
+(gráficos + `buildDREMatrix`); `useCategoriasMap`. As fixtures do oracle
+(`tests/oracle/fixtures/`) permanecem como fonte de verdade sincronizada para o
+oracle do backend (`grupoalt-api/scripts/sync_oracle_fixtures.py`).
+
+Pendência conhecida (não bloqueia): `buildDREMatrix` (tabela DRE mês-a-mês N2/N3)
+segue local — não há endpoint backend com esse breakdown. Micro-divergência de
+~0,2% entre a tabela e o card consolidado (backend) é aceita até sub-fase futura.
+
 ## Links
 
 - Handoff: [docs/AUDITORIA_HANDOFF_PRODUCTION_READY.md](../AUDITORIA_HANDOFF_PRODUCTION_READY.md) §4 (P1-17), §5.6, §5.7
