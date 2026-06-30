@@ -3,7 +3,6 @@ import { useState, useCallback, useMemo } from 'react'
 import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
-import { calcularDRE } from '@/lib/planoContas'
 import { buildQuarterly, buildMonthly, buildWeekly, buildBreakdownByFavorecido, buildBreakdownByCategoria } from '@/lib/caixaBuilder'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
@@ -17,8 +16,6 @@ import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { useBackendDRE } from '@/lib/featureFlags'
-import { ComparativoDRE } from '@/components/caixa/ComparativoDRE'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -45,13 +42,9 @@ export default function PageCaixa() {
   // Plano de contas dinâmico (com overrides da empresa)
   const { map: categoriaMap } = useCategoriasMap(empresaId)
 
-  // Fase 5.F.2 (ADR-001): backend assume o motor DRE quando flag ligada.
+  // Fase 5.G (ADR-001): backend e a fonte unica do DRE.
   // Portal mirror nao filtra por projetos (sem useUnidadeStore aqui).
-  const useBackend = useBackendDRE()
-  const { data: dreBackend } = useDRE(
-    useBackend ? empresaId : null,
-    useBackend ? { dt_inicio: dateFrom, dt_fim: dateTo } : undefined,
-  )
+  const { data: dreBackend } = useDRE(empresaId, { dt_inicio: dateFrom, dt_fim: dateTo })
 
   const lancamentos = extratoRaw?.lancamentos ?? []
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
@@ -78,41 +71,16 @@ export default function PageCaixa() {
     return { entradas, saidas, saldoFinal }
   }, [lancamentos, saldoInicial])
 
-  // DRE local (sempre computado pro fallback + ComparativoDRE dev-only).
-  const dreLocal = useMemo(() => {
-    if (!lancamentos.length) return null
-    const dre = calcularDRE(
-      (lancamentos as any[]).map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
-      categoriaMap,
-    )
-    return {
-      rob: dre.RoB, tdcf: dre.TDCF, cv: dre.CV, cf: dre.CF, mc: dre.MC,
-      rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
-    }
-  }, [lancamentos, categoriaMap])
-
-  // dreData efetivo: backend quando flag ON e respondeu; senao local.
+  // dreData efetivo: vem do backend (fonte única). `null` enquanto carrega —
+  // a UI abaixo é null-safe.
   const dreData = useMemo(() => {
-    if (useBackend && dreBackend) {
-      const s = dreBackend.subtotais
-      return {
-        rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF, mc: s.MC,
-        rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
-      }
-    }
-    return dreLocal
-  }, [useBackend, dreBackend, dreLocal])
-
-  // Comparativo dev-only.
-  const dreBackendSubtotais = dreBackend?.subtotais ?? null
-  const dreLocalForComparativo = useMemo(() => {
-    if (!dreLocal) return null
+    if (!dreBackend) return null
+    const s = dreBackend.subtotais
     return {
-      RoB: dreLocal.rob, TDCF: dreLocal.tdcf, CV: dreLocal.cv,
-      MC: dreLocal.mc, CF: dreLocal.cf, EBT1: dreLocal.ebt1,
-      RNOP: dreLocal.rnop, DNOP: dreLocal.dnop, EBT2: dreLocal.ebt2,
+      rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF, mc: s.MC,
+      rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
     }
-  }, [dreLocal])
+  }, [dreBackend])
 
   // Breakdowns para DetailPanel
   const breakdowns = useMemo(
@@ -302,9 +270,6 @@ export default function PageCaixa() {
           </div>
         </div>
       )}
-
-      {/* Fase 5.F.2: comparativo DRE local vs backend (dev/staging only) */}
-      <ComparativoDRE local={dreLocalForComparativo} backend={dreBackendSubtotais} />
     </div>
   )
 }
