@@ -22,6 +22,7 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -95,7 +96,7 @@ function DashboardExecutivo() {
 
   // Fase 5.G (ADR-001): backend e a fonte unica do DRE. `null` enquanto
   // carrega — os consumidores abaixo sao null-safe (`dreData?.ebt2 ?? 0`).
-  const { data: dreBackend } = useDRE(empresaId, {
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, {
     dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds,
   })
 
@@ -269,6 +270,8 @@ function DashboardExecutivo() {
         pending={extratoResponse?.sync_pending}
         onComplete={refetchExtrato}
       />
+      {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+      <DREErrorBanner error={dreError} onRetry={refetchDre} />
       {/* ── KPI Strip ────────────────────────── */}
       <div className="grid grid-cols-6 gap-3">
         {kpis.map((kpi) => (

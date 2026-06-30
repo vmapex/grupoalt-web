@@ -10,6 +10,7 @@ import { DrillBar } from '@/components/caixa/DrillBar'
 import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useDRE } from '@/hooks/useDRE'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
@@ -44,7 +45,7 @@ export default function PageCaixa() {
 
   // Fase 5.G (ADR-001): backend e a fonte unica do DRE.
   // Portal mirror nao filtra por projetos (sem useUnidadeStore aqui).
-  const { data: dreBackend } = useDRE(empresaId, { dt_inicio: dateFrom, dt_fim: dateTo })
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, { dt_inicio: dateFrom, dt_fim: dateTo })
 
   const lancamentos = extratoRaw?.lancamentos ?? []
   const saldoInicial = extratoRaw?.saldo_inicial ?? 0
@@ -189,6 +190,9 @@ export default function PageCaixa() {
 
       {caixaView === 'dashboard' && !detailView && (
         <>
+          {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+          <DREErrorBanner error={dreError} onRetry={refetchDre} className="mx-5 mt-3" />
+
           {/* KPI Strip */}
           <KPIStrip
             items={[

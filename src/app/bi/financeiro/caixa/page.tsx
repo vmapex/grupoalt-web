@@ -11,6 +11,7 @@ import { DrillBar } from '@/components/caixa/DrillBar'
 import { ChartGrid } from '@/components/caixa/ChartGrid'
 import { DRESidebar } from '@/components/caixa/DRESidebar'
 import { DetailPanel } from '@/components/caixa/DetailPanel'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useDRE } from '@/hooks/useDRE'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
@@ -45,7 +46,7 @@ export default function PageCaixa() {
   const { map: categoriaMap } = useCategoriasMap(empresaId)
 
   // Fase 5.G (ADR-001): backend e a fonte unica do DRE.
-  const { data: dreBackend } = useDRE(empresaId, {
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, {
     dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds,
   })
 
@@ -148,6 +149,9 @@ export default function PageCaixa() {
 
       {!detailView && (
         <>
+          {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+          <DREErrorBanner error={dreError} onRetry={refetchDre} className="mx-5 mt-3" />
+
           {/* KPI Strip */}
           <KPIStrip
             items={[
