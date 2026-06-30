@@ -12,6 +12,7 @@ import { useDRE } from '@/hooks/useDRE'
 import { buildDREMatrix, type DREMesMatrix } from '@/lib/caixaBuilder'
 import { fmtK } from '@/lib/formatters'
 import { GlowLine } from '@/components/ui/GlowLine'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -75,7 +76,7 @@ export default function DREMensalPage() {
   // `buildDREMatrix` (tabela mês-a-mês N2/N3) continua local — ainda não há
   // endpoint backend com esse breakdown; risco conhecido de micro-divergência
   // (~0,2%) entre a tabela local e o card consolidado (backend).
-  const { data: dreBackend } = useDRE(empresaId, {
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, {
     dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds,
   })
 
@@ -174,6 +175,9 @@ export default function DREMensalPage() {
           {dt_inicio} — {dt_fim}
         </span>
       </div>
+
+      {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+      <DREErrorBanner error={dreError} onRetry={refetchDre} className="mx-5 mt-3" />
 
       {loading && (
         <div className="flex-1 flex items-center justify-center" style={{ color: t.muted }}>

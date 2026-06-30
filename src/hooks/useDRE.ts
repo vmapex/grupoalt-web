@@ -170,8 +170,16 @@ export function useDRE(
       })
       .catch((err) => {
         if (!ctrl.signal.aborted) {
+          // `detail` do FastAPI e string em 4xx/5xx comuns, mas em 422 do
+          // Pydantic vem como ARRAY de objetos. Como axios `data` e `any`, o
+          // tipo `string | null` deste hook nao garante string em runtime —
+          // entao so aceita string (senao cai no message/fallback). Evita o
+          // banner renderizar um array (React: "Objects are not valid...").
+          const detail = err?.response?.data?.detail
           setError(
-            err?.response?.data?.detail || err.message || 'Erro ao carregar DRE',
+            (typeof detail === 'string' && detail) ||
+              err?.message ||
+              'Erro ao carregar DRE',
           )
           setLoading(false)
         }

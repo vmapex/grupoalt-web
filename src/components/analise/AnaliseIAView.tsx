@@ -10,6 +10,7 @@ import { useDRE, type DRESubtotais } from '@/hooks/useDRE'
 import { fmtK, fmtBRL } from '@/lib/formatters'
 import { transformCPCR } from '@/lib/transformers'
 import { GlowLine } from '@/components/ui/GlowLine'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 
 function isoToDMY(iso: string): string {
@@ -63,7 +64,7 @@ export function AnaliseIAView() {
 
   // Fase 5.G (ADR-001): backend e a fonte unica do DRE. Enquanto a resposta
   // nao chega, usa EMPTY_DRE pra nao crashar nos acessos diretos (dre.RoB).
-  const { data: dreBackend } = useDRE(empresaId, { dt_inicio: dateFrom, dt_fim: dateTo })
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, { dt_inicio: dateFrom, dt_fim: dateTo })
   const dre = dreBackend?.subtotais ?? EMPTY_DRE
 
   // CP/CR data for context
@@ -223,8 +224,14 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
         className="flex flex-col gap-3.5 p-5 overflow-y-auto min-h-0 h-full"
         style={{ borderRight: `1px solid ${t.border}` }}
       >
+        {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+        <DREErrorBanner error={dreError} onRetry={refetchDre} />
+
         {/* KPI Strip */}
-        <div className="grid grid-cols-4" style={{ borderBottom: `1px solid ${t.border}`, margin: '-20px -20px 0', padding: '0' }}>
+        {/* marginTop negativo cancela o p-5 só quando o strip é o 1º filho;
+            com o DREErrorBanner acima (estado de erro), zera o top pra não
+            sobrepor o banner — mantém o bleed horizontal (-20px). */}
+        <div className="grid grid-cols-4" style={{ borderBottom: `1px solid ${t.border}`, margin: dreError ? '0 -20px' : '-20px -20px 0', padding: '0' }}>
           {kpis.map((kpi, i) => (
             <div
               key={kpi.label}
