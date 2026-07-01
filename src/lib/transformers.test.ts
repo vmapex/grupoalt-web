@@ -6,6 +6,7 @@ import {
   transformConcilMovimento,
   buildContaMap,
 } from './transformers'
+import { nextBusinessDay } from './sla'
 import type {
   ExtratoAPI,
   SaldoAPI,
@@ -282,35 +283,39 @@ describe('transformSaldos', () => {
 })
 
 describe('transformConcilMovimento', () => {
+  // P1-2 Camada 2.2b: a API manda `data` em ISO "YYYY-MM-DD". A chave do
+  // dicionário e o campo `date` ficam em ISO — o calendário (conciliacao/
+  // page.tsx:91) casa entries[isoKey] e new Date(date)/nextBusinessDay/
+  // fmtDateBR esperam ISO.
   it('marca conciliado=true quando |diferenca| < 0.01', () => {
     const items: ConcilMovimentoAPI[] = [
-      { data: '01/04/2026', extrato: 1000, saldo_banco: 1000, diferenca: 0, status: 'ok', banco: 'Itaú' },
-      { data: '02/04/2026', extrato: 1000, saldo_banco: 1000.005, diferenca: 0.005, status: 'ok', banco: 'Itaú' },
+      { data: '2026-04-01', extrato: 1000, saldo_banco: 1000, diferenca: 0, status: 'ok', banco: 'Itaú' },
+      { data: '2026-04-02', extrato: 1000, saldo_banco: 1000.005, diferenca: 0.005, status: 'ok', banco: 'Itaú' },
     ]
     const result = transformConcilMovimento(items)
-    expect(result['01/04/2026'].conciliado).toBe(true)
-    expect(result['02/04/2026'].conciliado).toBe(true)
+    expect(result['2026-04-01'].conciliado).toBe(true)
+    expect(result['2026-04-02'].conciliado).toBe(true)
   })
 
   it('marca conciliado=false quando |diferenca| >= 0.01', () => {
     const items: ConcilMovimentoAPI[] = [
-      { data: '01/04/2026', extrato: 1000, saldo_banco: 1001, diferenca: 1, status: 'diverge', banco: 'Itaú' },
+      { data: '2026-04-01', extrato: 1000, saldo_banco: 1001, diferenca: 1, status: 'diverge', banco: 'Itaú' },
     ]
-    expect(transformConcilMovimento(items)['01/04/2026'].conciliado).toBe(false)
+    expect(transformConcilMovimento(items)['2026-04-01'].conciliado).toBe(false)
   })
 
   it('diferenca negativa tambem usa Math.abs para classificar', () => {
     const items: ConcilMovimentoAPI[] = [
-      { data: '01/04/2026', extrato: 1000, saldo_banco: 999, diferenca: -1, status: 'diverge', banco: 'Itaú' },
+      { data: '2026-04-01', extrato: 1000, saldo_banco: 999, diferenca: -1, status: 'diverge', banco: 'Itaú' },
     ]
-    expect(transformConcilMovimento(items)['01/04/2026'].conciliado).toBe(false)
+    expect(transformConcilMovimento(items)['2026-04-01'].conciliado).toBe(false)
   })
 
   it('preserva extrato e saldoBanco sem alteracao', () => {
     const items: ConcilMovimentoAPI[] = [
-      { data: '01/04/2026', extrato: 1234.56, saldo_banco: 1234.55, diferenca: 0.01, status: 'diverge', banco: 'BB' },
+      { data: '2026-04-01', extrato: 1234.56, saldo_banco: 1234.55, diferenca: 0.01, status: 'diverge', banco: 'BB' },
     ]
-    const r = transformConcilMovimento(items)['01/04/2026']
+    const r = transformConcilMovimento(items)['2026-04-01']
     expect(r.extrato).toBe(1234.56)
     expect(r.saldoBanco).toBe(1234.55)
     expect(r.dif).toBe(0.01)
@@ -321,12 +326,36 @@ describe('transformConcilMovimento', () => {
     expect(transformConcilMovimento([])).toEqual({})
   })
 
-  it('chave do dicionario e a data do movimento', () => {
+  it('chave e `date` ficam em ISO YYYY-MM-DD (casa o lookup do calendário)', () => {
     const items: ConcilMovimentoAPI[] = [
-      { data: '15/04/2026', extrato: 100, saldo_banco: 100, diferenca: 0, status: 'ok', banco: 'X' },
+      { data: '2026-04-15', extrato: 100, saldo_banco: 100, diferenca: 0, status: 'ok', banco: 'X' },
     ]
     const result = transformConcilMovimento(items)
-    expect(Object.keys(result)).toEqual(['15/04/2026'])
+    // Regressão P1-2: NÃO pode ser '15/04/2026' (DMY) — o calendário procura
+    // entries['2026-04-15'] e new Date() precisa parsear.
+    expect(Object.keys(result)).toEqual(['2026-04-15'])
+    expect(result['2026-04-15'].date).toBe('2026-04-15')
+    expect(isNaN(new Date(result['2026-04-15'].date).getTime())).toBe(false)
+    // Contrato end-to-end transform→sla: nextBusinessDay (split('-')) precisa
+    // de ISO. Com DMY quebraria (new Date(NaN)) — oráculo mais forte que o
+    // `new Date` acima, que ainda aceitaria '15/04/2026' em alguns ambientes.
+    const slaDate = nextBusinessDay(result['2026-04-15'].date)
+    expect(isNaN(slaDate.getTime())).toBe(false)
+  })
+
+  it('normaliza data com hora para a parte ISO (slice 10)', () => {
+    const items: ConcilMovimentoAPI[] = [
+      { data: '2026-04-15T00:00:00Z', extrato: 100, saldo_banco: 100, diferenca: 0, status: 'ok', banco: 'X' },
+    ]
+    expect(Object.keys(transformConcilMovimento(items))).toEqual(['2026-04-15'])
+  })
+
+  it('ignora movimento com data nula/vazia', () => {
+    const items = [
+      { data: null, extrato: 100, saldo_banco: 100, diferenca: 0, status: 'ok', banco: 'X' },
+      { data: '', extrato: 50, saldo_banco: 50, diferenca: 0, status: 'ok', banco: 'X' },
+    ] as unknown as ConcilMovimentoAPI[]
+    expect(transformConcilMovimento(items)).toEqual({})
   })
 })
 

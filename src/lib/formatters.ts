@@ -52,6 +52,36 @@ export function parseIso(iso: string | null | undefined): Date | null {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
 
+/** Parse de data CRUA da API → Date local, ou `null` se inválida.
+ *
+ *  Aceita ISO "YYYY-MM-DD" (canônico pós-P1-2, com ou sem componente de hora
+ *  "T...") e o legado "DD/MM/YYYY". Valida a faixa (mês 1-12, dia 1-31) para
+ *  NÃO rebucketar via overflow do `new Date` (ex.: mês 13 → ano seguinte).
+ *
+ *  Fonte ÚNICA de parsing de data crua no front — caixaBuilder, dashboards e
+ *  qualquer consumidor de campo de data não-transformado devem usar isto, em
+ *  vez de `split('/')`/`parseDMY` próprios (que quebram silenciosamente com ISO). */
+export function parseApiDate(s: string | null | undefined): Date | null {
+  if (!s) return null
+  let y: number
+  let mo: number
+  let d: number
+  if (s.includes('-')) {
+    // ISO; slice(0,10) descarta um eventual "T..." de datetime
+    const [yy, mm, dd] = s.slice(0, 10).split('-')
+    y = Number(yy)
+    mo = Number(mm)
+    d = Number(dd)
+  } else {
+    const [dd, mm, yy] = s.split('/')
+    d = Number(dd)
+    mo = Number(mm)
+    y = Number(yy)
+  }
+  if (!y || !mo || !d || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  return new Date(y, mo - 1, d)
+}
+
 /** Generic sort toggle */
 export function toggleSort(prev: SortState, field: string): SortState {
   if (prev.field === field) return { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
