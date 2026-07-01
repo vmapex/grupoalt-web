@@ -4,6 +4,7 @@
  */
 
 import { CATEGORIAS, getGrupoDRE as getGrupoDREPrefix, type CategoriaInfo } from './planoContas'
+import { parseApiDate } from './formatters'
 import type { CaixaLevelData } from './mocks/caixaData'
 
 interface Lancamento {
@@ -13,11 +14,6 @@ interface Lancamento {
 }
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-
-function parseDMY(s: string): Date {
-  const [d, m, y] = s.split('/')
-  return new Date(Number(y), Number(m) - 1, Number(d))
-}
 
 /** Resolve o grupo DRE de uma categoria usando o mapa dinâmico (overrides
  *  da empresa) se fornecido, senão cai no mapa estático + prefixo.
@@ -46,8 +42,8 @@ function groupBy(
   const groups: Record<string, Record<string, number>> = {}
   for (const l of lancamentos) {
     if (!l.data_lancamento) continue
-    const dt = parseDMY(l.data_lancamento)
-    if (isNaN(dt.getTime())) continue
+    const dt = parseApiDate(l.data_lancamento)
+    if (!dt) continue
     const key = keyFn(dt)
     const grupo = resolveGrupoDRE(l.categoria, categoriaMap)
     if (!grupo) continue
@@ -112,8 +108,8 @@ export function buildWeekly(
   const year = 2000 + Number(y)
   const filtered = lancamentos.filter((l) => {
     if (!l.data_lancamento) return false
-    const dt = parseDMY(l.data_lancamento)
-    return dt.getMonth() === mIdx && dt.getFullYear() === year
+    const dt = parseApiDate(l.data_lancamento)
+    return dt !== null && dt.getMonth() === mIdx && dt.getFullYear() === year
   })
 
   const groups = groupBy(filtered, (dt) => {
@@ -287,12 +283,9 @@ export interface DREMesMatrix {
 const MESES_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 function mesKey(dtStr: string): string | null {
-  const parts = (dtStr || '').split('/')
-  if (parts.length < 3) return null
-  const mIdx = parseInt(parts[1]) - 1
-  if (mIdx < 0 || mIdx > 11) return null
-  const yr = (parts[2] || '').slice(-2)
-  return `${MESES_ABBR[mIdx]}/${yr}`
+  const dt = parseApiDate(dtStr)
+  if (!dt) return null
+  return `${MESES_ABBR[dt.getMonth()]}/${String(dt.getFullYear()).slice(-2)}`
 }
 
 function sortMeses(meses: string[]): string[] {

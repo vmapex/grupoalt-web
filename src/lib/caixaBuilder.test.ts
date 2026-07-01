@@ -6,6 +6,7 @@ import {
   buildQuarterly,
   buildBreakdownByCategoria,
   buildBreakdownByFavorecido,
+  buildDREMatrix,
 } from './caixaBuilder'
 
 /**
@@ -326,5 +327,90 @@ describe('buildBreakdownByFavorecido (Step 14)', () => {
     ], map)
     const total = [...result.RoB, ...result.RNOP, ...result.CV, ...result.CF, ...result.TDCF, ...result.DNOP]
     expect(total).toEqual([])
+  })
+})
+
+/**
+ * Regressão P1-2 (Camada 2.2b) — a API passou a mandar `data_lancamento` em
+ * ISO "YYYY-MM-DD" (era "DD/MM/YYYY"). Os call sites (caixa/page.tsx, portal,
+ * dre-mensal) passam os lançamentos CRUS pro caixaBuilder, então o parser
+ * tem que aceitar ISO — senão `new Date(NaN)` descartava TODOS os lançamentos
+ * e os gráficos/DRE-mês-a-mês zeravam (KPIs continuavam OK pois só usam valor).
+ */
+describe('caixaBuilder — datas ISO (P1-2 Camada 2.2b)', () => {
+  it('buildMonthly bucketiza datas ISO YYYY-MM-DD (formato real da API)', () => {
+    const result = buildMonthly([
+      { data_lancamento: '2026-01-31', valor: 1000, categoria: '1.01.01' }, // RoB Jan
+      { data_lancamento: '2026-02-15', valor: 500, categoria: '1.01.01' },  // RoB Fev
+    ])
+    expect(result.labels).toEqual(['Jan/26', 'Fev/26'])
+    expect(result.RB).toEqual([1000, 500])
+  })
+
+  it('ISO e DMY produzem o mesmo resultado (paridade do parser)', () => {
+    const iso = buildMonthly([{ data_lancamento: '2026-04-30', valor: 750, categoria: '2.03.01' }]) // CV
+    const dmy = buildMonthly([{ data_lancamento: '30/04/2026', valor: 750, categoria: '2.03.01' }])
+    expect(iso).toEqual(dmy)
+    expect(iso.CV).toEqual([750])
+  })
+
+  it('buildQuarterly aceita ISO', () => {
+    const result = buildQuarterly([
+      { data_lancamento: '2026-06-30', valor: 300, categoria: '1.01.01' }, // Q2
+    ])
+    expect(result.labels).toEqual(['Q2/26'])
+    expect(result.RB).toEqual([300])
+  })
+
+  it('buildWeekly aceita ISO (dia 31 → S5)', () => {
+    const result = buildWeekly([
+      { data_lancamento: '2026-01-31', valor: 1000, categoria: '1.01.01' },
+    ], 'Jan/26')
+    const idx = result.labels.indexOf('S5·Jan')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    expect(result.RB[idx]).toBe(1000)
+  })
+
+  it('buildDREMatrix (mesKey) aceita ISO', () => {
+    // buildDREMatrix resolve grupo via CATEGORIAS[cat] (sem fallback de prefixo),
+    // então passamos um map explícito.
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'Venda', nivel2: 'Receita', nivel1: 'R', grupoDRE: 'RoB', op: '+' },
+    }
+    const matrix = buildDREMatrix([
+      { data_lancamento: '2026-03-10', valor: 1000, categoria: '1.01.01' },
+      { data_lancamento: '2026-04-10', valor: 500, categoria: '1.01.01' },
+    ], map)
+    expect(matrix.meses).toEqual(['Mar/26', 'Abr/26'])
+    expect(matrix.grupos.RoB?.porMes['Mar/26']).toBe(1000)
+    expect(matrix.grupos.RoB?.porMes['Abr/26']).toBe(500)
+  })
+
+  it('data ISO com componente de hora é bucketizada (slice 10)', () => {
+    const result = buildMonthly([
+      { data_lancamento: '2026-05-15T00:00:00Z', valor: 200, categoria: '1.01.01' },
+    ])
+    expect(result.labels).toEqual(['Mai/26'])
+    expect(result.RB).toEqual([200])
+  })
+
+  it('datas fora de faixa são descartadas (sem rollover) e batem entre buildMonthly e buildDREMatrix', () => {
+    // Regressão: new Date(2026,12,15) rolaria pra Jan/2027; new Date(2026,5,32)
+    // pra Jul. parseApiDate rejeita → o lançamento some (não migra de mês).
+    const map: Record<string, CategoriaInfo> = {
+      '1.01.01': { codigo: '1.01.01', nome: 'Venda', nivel2: 'Receita', nivel1: 'R', grupoDRE: 'RoB', op: '+' },
+    }
+    const lanc = [
+      { data_lancamento: '2026-13-15', valor: 100, categoria: '1.01.01' }, // mês 13
+      { data_lancamento: '2026-06-32', valor: 100, categoria: '1.01.01' }, // dia 32
+      { data_lancamento: '2026-00-15', valor: 100, categoria: '1.01.01' }, // mês 0
+      { data_lancamento: '2026-05-15', valor: 200, categoria: '1.01.01' }, // válido
+    ]
+    const monthly = buildMonthly(lanc)
+    expect(monthly.labels).toEqual(['Mai/26'])
+    expect(monthly.RB).toEqual([200])
+    // buildDREMatrix (mesKey) descarta os mesmos inválidos — paridade travada.
+    const matrix = buildDREMatrix(lanc, map)
+    expect(matrix.meses).toEqual(['Mai/26'])
   })
 })

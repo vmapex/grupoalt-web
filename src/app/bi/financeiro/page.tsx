@@ -9,7 +9,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
+import { fmtK, fmtBRL, sortByMonthYear, formatIsoToBr, parseApiDate } from '@/lib/formatters'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato } from '@/hooks/api/useExtrato'
@@ -139,10 +139,11 @@ function DashboardExecutivo() {
     const months: Record<string, { receita: number; custos: number }> = {}
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     for (const l of lancamentos) {
-      const d = l.data_lancamento
-      if (!d) continue
-      const [dd, mm, yy] = d.split('/')
-      const key = `${monthNames[Number(mm) - 1]}/${yy?.slice(2)}`
+      // P1-2 Camada 2.2b: data_lancamento é ISO "YYYY-MM-DD" (parseApiDate
+      // aceita ISO + DMY legado e descarta inválidas).
+      const dt = parseApiDate(l.data_lancamento)
+      if (!dt) continue
+      const key = `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
       if (!months[key]) months[key] = { receita: 0, custos: 0 }
       if (l.valor > 0) months[key].receita += l.valor
       else months[key].custos += Math.abs(l.valor)
@@ -236,13 +237,15 @@ function DashboardExecutivo() {
     const sorted = [...source].sort((a, b) => {
       const dA = (a as any).data_lancamento || ''
       const dB = (b as any).data_lancamento || ''
-      // Parse DD/MM/YYYY → comparable
-      const pA = dA.split('/').reverse().join('')
-      const pB = dB.split('/').reverse().join('')
+      // P1-2: data_lancamento é ISO "YYYY-MM-DD" (lexicograficamente ordenável).
+      // O legado DMY vira "YYYYMMDD" via reverse; ambos ordenam cronologicamente.
+      const pA = dA.includes('-') ? dA : dA.split('/').reverse().join('')
+      const pB = dB.includes('-') ? dB : dB.split('/').reverse().join('')
       return pB.localeCompare(pA)
     })
     return sorted.slice(0, 5).map((l) => ({
-      data_lancamento: (l as any).data_lancamento || '',
+      // Exibição em DD/MM/YYYY (a API manda ISO pós-P1-2).
+      data_lancamento: formatIsoToBr((l as any).data_lancamento || ''),
       favorecido: (l as any).favorecido || (l as any).descricao || '',
       valor: (l as any).valor || 0,
       banco: (l as any).banco || '',

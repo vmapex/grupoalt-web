@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import Link from 'next/link'
 import api from '@/lib/api'
+import { parseApiDate } from '@/lib/formatters'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Receipt, BarChart3, Users, FileText,
@@ -231,11 +232,12 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-0">
                 {data.proximos_vencimentos.slice(0, 6).map((v, i) => {
-                  const parts = v.data_vcto.split('/')
-                  const dia = parts[0] || '--'
-                  const mesNum = parseInt(parts[1] || '0')
+                  // P1-2 Camada 2.2b: data_vcto vem como ISO "YYYY-MM-DD" (date
+                  // nativo do backend). parseApiDate aceita ISO + DMY legado.
+                  const dt = parseApiDate(v.data_vcto)
                   const meses = ['', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
-                  const mes = meses[mesNum] || '--'
+                  const dia = dt ? String(dt.getDate()).padStart(2, '0') : '--'
+                  const mes = dt ? meses[dt.getMonth() + 1] : '--'
                   const isAtrasado = v.status === 'ATRASADO'
                   const color = isAtrasado ? '#F87171' : '#FBBF24'
                   const bg = isAtrasado ? 'rgba(248,113,113,0.1)' : 'rgba(251,191,36,0.1)'
