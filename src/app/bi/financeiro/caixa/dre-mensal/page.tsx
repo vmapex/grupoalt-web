@@ -10,10 +10,9 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useDRE } from '@/hooks/useDRE'
 import { buildDREMatrix, type DREMesMatrix } from '@/lib/caixaBuilder'
-import { calcularDRE } from '@/lib/planoContas'
-import { useBackendDRE } from '@/lib/featureFlags'
 import { fmtK } from '@/lib/formatters'
 import { GlowLine } from '@/components/ui/GlowLine'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -73,30 +72,16 @@ export default function DREMensalPage() {
     return { rl, mc, ebt1, ebt2 }
   }, [matrix])
 
-  // Fase 5.F.2 (ADR-001): consolidado vem do backend quando flag ligada.
-  // `buildDREMatrix` continua local porque a tabela mes-a-mes ainda nao
-  // tem endpoint backend equivalente (Fase 5.E entrega granularity total,
-  // mas a matriz aqui inclui breakdown por nivel2/nivel3 que precisa de
-  // novo endpoint -- ficou para 5.G ou sub-fase futura).
-  const useBackend = useBackendDRE()
-  const { data: dreBackend } = useDRE(
-    useBackend ? empresaId : null,
-    useBackend
-      ? { dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds }
-      : undefined,
-  )
+  // Fase 5.G (ADR-001): consolidado do período vem do backend (fonte única).
+  // `buildDREMatrix` (tabela mês-a-mês N2/N3) continua local — ainda não há
+  // endpoint backend com esse breakdown; risco conhecido de micro-divergência
+  // (~0,2%) entre a tabela local e o card consolidado (backend).
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, {
+    dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds,
+  })
 
-  /** Consolidado do período. Local (calcularDRE) ou backend (subtotais). */
-  const consolidadoLocal = useMemo(() => {
-    if (!lancamentos.length) return null
-    return calcularDRE(
-      lancamentos.map((l: any) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
-      categoriaMap,
-    )
-  }, [lancamentos, categoriaMap])
-
-  // Backend response tem o mesmo shape (`subtotais` com RoB/TDCF/RL/CV/MC/CF/EBT1/RNOP/DNOP/SNOP/EBT2/IRPJ/CSLL/RES_LIQ).
-  const consolidado = useBackend && dreBackend ? dreBackend.subtotais : consolidadoLocal
+  // Subtotais consolidados (RoB/TDCF/RL/CV/MC/CF/EBT1/RNOP/DNOP/SNOP/EBT2/IRPJ/CSLL/RES_LIQ).
+  const consolidado = dreBackend?.subtotais ?? null
 
   /** Estado de expansão: grupo expandido → mostra N2; N2 expandido → mostra N3. */
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set())
@@ -190,6 +175,9 @@ export default function DREMensalPage() {
           {dt_inicio} — {dt_fim}
         </span>
       </div>
+
+      {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+      <DREErrorBanner error={dreError} onRetry={refetchDre} className="mx-5 mt-3" />
 
       {loading && (
         <div className="flex-1 flex items-center justify-center" style={{ color: t.muted }}>

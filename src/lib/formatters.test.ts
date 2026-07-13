@@ -1,6 +1,6 @@
 /* @vitest-environment node */
 import { describe, expect, it } from 'vitest'
-import { formatIsoToBr, parseIso, parseDMY } from './formatters'
+import { formatIsoToBr, parseIso, parseDMY, parseApiDate } from './formatters'
 
 describe('formatIsoToBr (P1-2 Camada 2.2b.2)', () => {
   it('converte ISO YYYY-MM-DD para DD/MM/YYYY', () => {
@@ -56,5 +56,51 @@ describe('parseDMY (legado, pre-P1-2)', () => {
     expect(d.getFullYear()).toBe(2026)
     expect(d.getMonth()).toBe(2)
     expect(d.getDate()).toBe(15)
+  })
+})
+
+describe('parseApiDate (fonte unica de data crua — P1-2)', () => {
+  const ymd = (d: Date) => [d.getFullYear(), d.getMonth(), d.getDate()]
+
+  it('parseia ISO YYYY-MM-DD', () => {
+    expect(ymd(parseApiDate('2026-06-30')!)).toEqual([2026, 5, 30])
+    expect(ymd(parseApiDate('2026-01-01')!)).toEqual([2026, 0, 1])
+  })
+
+  it('parseia ISO com componente de hora (slice 10)', () => {
+    expect(ymd(parseApiDate('2026-06-30T12:00:00Z')!)).toEqual([2026, 5, 30])
+    expect(ymd(parseApiDate('2026-06-30T00:00:00.000Z')!)).toEqual([2026, 5, 30])
+  })
+
+  it('parseia o legado DD/MM/YYYY', () => {
+    expect(ymd(parseApiDate('30/06/2026')!)).toEqual([2026, 5, 30])
+  })
+
+  it('ISO e DMY do mesmo dia produzem a mesma Date', () => {
+    expect(parseApiDate('2026-06-30')!.getTime()).toBe(parseApiDate('30/06/2026')!.getTime())
+  })
+
+  it('retorna null para null/undefined/vazio', () => {
+    expect(parseApiDate(null)).toBeNull()
+    expect(parseApiDate(undefined)).toBeNull()
+    expect(parseApiDate('')).toBeNull()
+  })
+
+  it('rejeita mes fora de 1-12 (sem rollover do new Date)', () => {
+    // Regressao: new Date(2026,12,15) rolaria pra Jan/2027 silenciosamente.
+    expect(parseApiDate('2026-13-15')).toBeNull()
+    expect(parseApiDate('2026-00-15')).toBeNull()
+    expect(parseApiDate('15/13/2026')).toBeNull()
+  })
+
+  it('rejeita dia fora de 1-31 (sem rollover do new Date)', () => {
+    expect(parseApiDate('2026-06-32')).toBeNull()
+    expect(parseApiDate('2026-06-00')).toBeNull()
+  })
+
+  it('rejeita lixo / formato invalido', () => {
+    expect(parseApiDate('foo')).toBeNull()
+    expect(parseApiDate('2026-ab-cd')).toBeNull()
+    expect(parseApiDate('XX/YY/ZZZZ')).toBeNull()
   })
 })

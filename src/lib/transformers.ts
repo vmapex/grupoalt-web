@@ -113,15 +113,26 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
 
 // ── Conciliação movimentação → ConcilEntry ────────────────────
 
-/** P1-2 Camada 2.2b.2: m.data agora vem como ISO "YYYY-MM-DD" do backend
- *  (era DD/MM/YYYY). Convertemos para manter shape interno do front.
+/** P1-2 Camada 2.2b.2: m.data vem como ISO "YYYY-MM-DD" do backend.
+ *
+ *  Chave e `date` ficam em ISO: o calendário (conciliacao/page.tsx:91) casa
+ *  `entries[isoKey]`, e os consumidores `new Date(date)`, `nextBusinessDay`
+ *  e `fmtDateBR` (sla.ts: `key.split('-')`) TODOS esperam ISO. A exibição
+ *  DD/MM/YYYY acontece via `fmtDateBR` no render — NÃO aqui.
+ *
+ *  Bug fix (regressão de 18/mai, P1-2): a versão anterior chaveava por
+ *  `formatIsoToBr(m.data)` (DMY), o que nunca casava com o lookup ISO do
+ *  calendário → heatmap sem cores e dias não-clicáveis. (A contagem da tabela
+ *  usa `Object.values`, indiferente à chave; tabela vazia = `/movimentacao`
+ *  sem dados, causa separada.)
  */
 export function transformConcilMovimento(items: ConcilMovimentoAPI[]): Record<string, ConcilEntry> {
   const data: Record<string, ConcilEntry> = {}
   for (const m of items) {
-    const dataBr = formatIsoToBr(m.data)
-    data[dataBr] = {
-      date: dataBr,
+    if (!m.data) continue
+    const iso = m.data.slice(0, 10)
+    data[iso] = {
+      date: iso,
       extrato: m.extrato,
       saldoBanco: m.saldo_banco,
       dif: m.diferenca,

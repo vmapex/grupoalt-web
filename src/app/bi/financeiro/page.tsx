@@ -9,8 +9,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
-import { calcularDRE } from '@/lib/planoContas'
+import { fmtK, fmtBRL, sortByMonthYear, formatIsoToBr, parseApiDate } from '@/lib/formatters'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato } from '@/hooks/api/useExtrato'
@@ -19,12 +18,11 @@ import { useConcilResumo } from '@/hooks/api/useConciliacao'
 import { useFluxoCaixa } from '@/hooks/api/useFluxo'
 import { useDRE } from '@/hooks/useDRE'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore } from '@/store/unidadeStore'
-import { useBackendDRE } from '@/lib/featureFlags'
 import { transformCPCR } from '@/lib/transformers'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
+import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -84,9 +82,6 @@ function DashboardExecutivo() {
   // O backend ignora `data_fim` e sempre retorna a janela [hoje, hoje+30].
   const { data: fluxoAPI } = useFluxoCaixa(empresaId, undefined, projetoIds, 30)
 
-  // Plano de contas dinâmico (com overrides da empresa) — refetch ao voltar pra aba
-  const { map: categoriaMap } = useCategoriasMap(empresaId)
-
   // Transform API or fallback
   const cpData = useMemo(() => (cpRaw?.dados ? transformCPCR(cpRaw.dados, 'CP') : []), [cpRaw])
   const crData = useMemo(() => (crRaw?.dados ? transformCPCR(crRaw.dados, 'CR') : []), [crRaw])
@@ -99,39 +94,20 @@ function DashboardExecutivo() {
   /* ── Computed values ──────────────────────── */
   const saldoCaixa = extratoResponse?.saldo_atual ?? 0
 
-  // Fase 5.F.2 (ADR-001): backend assume o motor DRE quando flag ligada.
-  const useBackend = useBackendDRE()
-  const { data: dreBackend } = useDRE(
-    useBackend ? empresaId : null,
-    useBackend
-      ? { dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds }
-      : undefined,
-  )
+  // Fase 5.G (ADR-001): backend e a fonte unica do DRE. `null` enquanto
+  // carrega — os consumidores abaixo sao null-safe (`dreData?.ebt2 ?? 0`).
+  const { data: dreBackend, error: dreError, refetch: refetchDre } = useDRE(empresaId, {
+    dt_inicio: dateFrom, dt_fim: dateTo, projeto_omie_ids: projetoIds,
+  })
 
-  // Calcular DRE local (fallback). Shape: lowercase ('rob/tdcf/...').
-  const dreLocal = useMemo(() => {
-    if (!lancamentos.length) return null
-    const dre = calcularDRE(
-      lancamentos.map((l) => ({ valor: l.valor, categoria: l.categoria, origem: l.origem ?? undefined })),
-      categoriaMap,
-    )
-    return {
-      rob: dre.RoB, tdcf: dre.TDCF, cv: dre.CV, cf: dre.CF,
-      rnop: dre.RNOP, dnop: dre.DNOP, ebt1: dre.EBT1, ebt2: dre.EBT2,
-    }
-  }, [lancamentos, categoriaMap])
-
-  // dreData efetivo: backend quando flag ON e respondeu; senao local.
   const dreData = useMemo(() => {
-    if (useBackend && dreBackend) {
-      const s = dreBackend.subtotais
-      return {
-        rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF,
-        rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
-      }
+    if (!dreBackend) return null
+    const s = dreBackend.subtotais
+    return {
+      rob: s.RoB, tdcf: s.TDCF, cv: s.CV, cf: s.CF,
+      rnop: s.RNOP, dnop: s.DNOP, ebt1: s.EBT1, ebt2: s.EBT2,
     }
-    return dreLocal
-  }, [useBackend, dreBackend, dreLocal])
+  }, [dreBackend])
 
   const ebt2 = dreData?.ebt2 ?? 0
 
@@ -163,10 +139,11 @@ function DashboardExecutivo() {
     const months: Record<string, { receita: number; custos: number }> = {}
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     for (const l of lancamentos) {
-      const d = l.data_lancamento
-      if (!d) continue
-      const [dd, mm, yy] = d.split('/')
-      const key = `${monthNames[Number(mm) - 1]}/${yy?.slice(2)}`
+      // P1-2 Camada 2.2b: data_lancamento é ISO "YYYY-MM-DD" (parseApiDate
+      // aceita ISO + DMY legado e descarta inválidas).
+      const dt = parseApiDate(l.data_lancamento)
+      if (!dt) continue
+      const key = `${monthNames[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`
       if (!months[key]) months[key] = { receita: 0, custos: 0 }
       if (l.valor > 0) months[key].receita += l.valor
       else months[key].custos += Math.abs(l.valor)
@@ -260,13 +237,15 @@ function DashboardExecutivo() {
     const sorted = [...source].sort((a, b) => {
       const dA = (a as any).data_lancamento || ''
       const dB = (b as any).data_lancamento || ''
-      // Parse DD/MM/YYYY → comparable
-      const pA = dA.split('/').reverse().join('')
-      const pB = dB.split('/').reverse().join('')
+      // P1-2: data_lancamento é ISO "YYYY-MM-DD" (lexicograficamente ordenável).
+      // O legado DMY vira "YYYYMMDD" via reverse; ambos ordenam cronologicamente.
+      const pA = dA.includes('-') ? dA : dA.split('/').reverse().join('')
+      const pB = dB.includes('-') ? dB : dB.split('/').reverse().join('')
       return pB.localeCompare(pA)
     })
     return sorted.slice(0, 5).map((l) => ({
-      data_lancamento: (l as any).data_lancamento || '',
+      // Exibição em DD/MM/YYYY (a API manda ISO pós-P1-2).
+      data_lancamento: formatIsoToBr((l as any).data_lancamento || ''),
       favorecido: (l as any).favorecido || (l as any).descricao || '',
       valor: (l as any).valor || 0,
       banco: (l as any).banco || '',
@@ -294,6 +273,8 @@ function DashboardExecutivo() {
         pending={extratoResponse?.sync_pending}
         onComplete={refetchExtrato}
       />
+      {/* Erro do DRE backend — sem fallback local (Fase 5.G), evita zeros mudos */}
+      <DREErrorBanner error={dreError} onRetry={refetchDre} />
       {/* ── KPI Strip ────────────────────────── */}
       <div className="grid grid-cols-6 gap-3">
         {kpis.map((kpi) => (
