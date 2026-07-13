@@ -15,37 +15,34 @@ para remover ou atualizar a entrada com nova justificativa.
 
 ## Excecoes ativas
 
-### EXC-001 — Next.js 14.x: cinco advisories (DoS / smuggling)
+> **EXC-001 (Next.js 14.x — 5 advisories high) RESOLVIDA em 2026-06-19 pelo PR-4**
+> (upgrade Next 14.2.35 → 16.2.9 + React 19 + ESLint 9). Os 5 GHSAs da serie 14.x
+> (`GHSA-9g9p-9gw9-jx7f`, `-h25m-26qc-wcjf`, `-ggv3-7p47-pfv8`, `-3x4c-7xq6-9pq8`,
+> `-q4gf-8mx6-v5v3`) nao aparecem mais em `npm audit --omit=dev --audit-level=high`.
+> Entrada removida conforme a politica ("remova a entrada no mesmo PR que faz o
+> upgrade"). Issue [#56](https://github.com/vmapex/grupoalt-web/issues/56) fecha com o PR-4.
+>
+> O HIGH transitivo `form-data` (`GHSA-hmw2-7cc7-3qxx`, via axios) que apareceu na
+> nova arvore de deps foi corrigido no mesmo PR via `npm audit fix` (form-data
+> 4.0.5 → 4.0.6, so lockfile) — nao precisa de excecao.
 
-- **Pacote**: `next`
-- **Versao atual**: 14.2.35 (ultima patch da serie 14.x)
-- **Severidade**: high
-- **Advisories**:
-  - `GHSA-9g9p-9gw9-jx7f` — DoS via Image Optimizer remotePatterns (self-hosted)
-  - `GHSA-h25m-26qc-wcjf` — HTTP request deserialization (RSC) DoS
-  - `GHSA-ggv3-7p47-pfv8` — HTTP request smuggling em rewrites
-  - `GHSA-3x4c-7xq6-9pq8` — Unbounded next/image disk cache (self-hosted)
-  - `GHSA-q4gf-8mx6-v5v3` — DoS com Server Components
-- **Fix disponivel**: upgrade para Next 16.x (breaking).
-- **Mitigacoes ativas**:
-  - Hospedagem em Vercel — duas das cinco advisories sao especificas para self-hosted (image optimizer e disk cache) e nao se aplicam.
-  - CSP restritiva em vigor (Step 10) com `unsafe-eval` removido e nonce dinamico.
-  - Rate limit no backend protege contra DoS por exaustao.
-- **Dono**: Vinicius Menezes (@VinnyMMHH).
-- **Plano**: avaliar upgrade de Next durante Step 16 ou abrir step proprio.
-- **Revisao**: 2026-07-31 (~3 meses do registro da excecao).
-- **Issue de tracking**: [#56](https://github.com/vmapex/grupoalt-web/issues/56).
+### EXC-002 — postcss <8.5.10: XSS via Stringify (vendorizado DENTRO do Next 16)
 
-### EXC-002 — postcss <8.5.10: XSS via Stringify (transitivo de Next 14.x)
-
-- **Pacote**: `postcss`
+- **Pacote**: `postcss` — **NAO** o nosso dep direto (que e `^8.5.15`, ja corrigido).
+  A copia vulneravel vive em `node_modules/next/node_modules/postcss`, vendorizada
+  pelo proprio Next 16.2.9.
 - **Severidade**: moderate
 - **Advisory**: `GHSA-qx2v-qp2m-jg93`
-- **Fix disponivel**: presente em Next 16.x. Em Next 14.x, postcss e dependencia transitiva fixada.
-- **Mitigacoes**: o portal nao gera CSS dinamico a partir de input do usuario; postcss roda apenas em build-time.
-- **Dono**: Vinicius Menezes (@VinnyMMHH) — herda de EXC-001.
-- **Revisao**: junto com EXC-001 (resolve no upgrade do Next).
-- **Issue de tracking**: [#56](https://github.com/vmapex/grupoalt-web/issues/56) (mesma de EXC-001).
+- **Fix disponivel**: nao por nos. `npm audit fix --force` so "resolve" instalando
+  `next@9.3.3` (downgrade absurdo). Depende do Next publicar patch que atualize o
+  postcss vendorizado para >= 8.5.10.
+- **Mitigacoes**: o portal nao gera CSS dinamico a partir de input do usuario;
+  postcss roda apenas em build-time (nunca no runtime de producao). Nao exploravel.
+- **Dono**: Vinicius Menezes (@VinnyMMHH).
+- **Plano**: acompanhar releases do Next 16.x; remover quando o postcss vendorizado
+  estiver >= 8.5.10.
+- **Revisao**: 2026-09-19 (~90 dias).
+- **Issue de tracking**: abrir nova issue (a #56 fecha com o PR-4). Ate la, vale esta entrada.
 
 ## Dev-only (nao bloqueia merge)
 
