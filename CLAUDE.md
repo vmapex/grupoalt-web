@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-06-30 (Fase 5.G — DRE backend fonte única; PR-6 #176 em revisão)
+> Última atualização: 2026-07-01 (Fase 5 concluída: #176/#178 mergeados; fix datas P1-2 #179 + api #143; Janela B fechada)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -607,3 +607,39 @@ Componentes compartilhados adicionados pós-Step 17:
 - `<EmpresaSelector>` (Bug #1/2 da Fase B)
 - `<DeleteUsuarioModal>` (Bug #4 backend + frontend)
 - `<AdminSubNav>` (refactor E1: dedup de sub-nav nas 5 páginas admin)
+
+## Sessão 2026-06-30/07-01 — Fase 5 encerrada + fallout de datas P1-2 + Janela B
+
+**Fase 5.G (DRE) — CONCLUÍDA (tudo mergeado):**
+- **web #176 (PR-6)**: removido o cálculo DRE local (`calcularDRE`/`calcularDREPorMes`/
+  `calcularNeutros`, `featureFlags.ts`, `ComparativoDRE`). Backend `/dre` = fonte única.
+- **web #178**: `<DREErrorBanner>` (`components/ui/`) nos 5 consumidores do `useDRE` — sem fallback
+  local, uma falha do `/dre` mostrava **zeros silenciosos**; agora banner `role="alert"` + retry.
+  `useDRE` coage `detail` a string (422 array-safe). +8 testes.
+- Env vars `NEXT_PUBLIC_USE_BACKEND_DRE`/`NEXT_PUBLIC_DRE_COMPARATIVO` removidas do Vercel.
+
+**Fallout da migração de datas P1-2 (bug de ~mai/2026, achado no smoke — NÃO era da Fase 5):**
+- Backend migrou datas `DD/MM/YYYY` → ISO `YYYY-MM-DD`; consumidores de data **crua** no front
+  quebraram em silêncio: Caixa/DRE-mensal (gráficos zerados), Dashboard "Receita vs Custos",
+  Conciliação (calendário sem cores), Portal `/grupo` (badges de vencimento).
+- **web #179**: novo **`parseApiDate`** (fonte única — ISO + datetime + DMY + bounds) em
+  `formatters.ts`; `caixaBuilder`/dashboard/`portal/grupo` roteados por ele; `transformConcilMovimento`
+  volta a chavear por **ISO**. Novo `sla.test.ts`.
+- **api #143**: **500** no `/conciliacao/movimentacao` — `float += Decimal` (coluna `valor` Numeric);
+  extrai `_build_movimentacao_rows` + coage valor→float. A conciliação precisava dos **dois** PRs
+  (#179 alinha a chave ISO do heatmap; #143 devolve os dados).
+
+**Janela B (NEUTRO) — CONCLUÍDA sem alteração (controladoria 2026-07-01):** revisados os candidatos
+da GRUPO ALT (`empresa_id 2`); só **REPASSE UNIDADES** fica NEUTRO (`1.02.96`/`2.13.83`, já estava).
+**Mútuos/empréstimos NÃO** (financeiros reais em RNOP/DNOP); **custo-matriz** = rateio descontinuado.
+Nenhum `bulk-override` aplicado — RNOP/DNOP já corretos. Runbook `janela-b-neutro-runbook.md` marcado
+como concluído + Passo 4 corrigido (sem `ComparativoDRE`).
+
+**Pendências de roadmap:** Janela C (`RBAC_ENFORCE`) e Janela D (PR-4 Next 16 — #172).
+
+## Estado atual do build (2026-07-01)
+
+- **44 rotas**; testes **368 em `main`** (pós #178/#179); bundle 0 credenciais (`audit:bundle`).
+- DRE **100% backend** (a flag `NEXT_PUBLIC_USE_BACKEND_DRE` não existe mais). Parsing de data crua
+  da API **centralizado em `parseApiDate`** (`formatters.ts`) — não usar `split('/')`/`parseDMY`
+  próprios em campo de data cru.

@@ -1,5 +1,17 @@
 # Janela B — Marcar categorias de repasse como NEUTRO (OP-2) — Runbook
 
+> ## ✅ STATUS: CONCLUÍDA — 2026-07-01 (sem alterações aplicadas)
+>
+> A controladoria revisou os candidatos e decidiu que **apenas o par REPASSE UNIDADES fica NEUTRO**
+> (`1.02.96` (+), `2.13.83` (−)) — que **já estava** marcado. **NÃO** neutralizar:
+> - **MÚTUOS** (`1.02.01` RNOP / `2.13.98` DNOP) e **EMPRÉSTIMOS** (`1.02.02` RNOP / `2.13.91` DNOP)
+>   → operações financeiras reais, ficam visíveis em RNOP/DNOP.
+> - **CUSTO MATRIZ** (`2.10.94`) → rateio descontinuado (categoria dormida) → sem ação.
+> - Transferências `0.01.*` → entre contas próprias (prefixo `0`, já fora do DRE) → não são alvo.
+>
+> **Resultado:** nenhum `bulk-override` aplicado; RNOP/DNOP da GRUPO ALT já corretos. Janela B foi
+> *validação*, não *correção*. O runbook abaixo fica como **referência** caso a política mude.
+
 > Objetivo: marcar as categorias de **repasse / mútuo / transferência intra-grupo**
 > como `NEUTRO`, para que sejam **excluídas dos cálculos de DRE e indicadores**
 > (RNOP/DNOP/EBT) mas continuem visíveis em extrato/conciliação para auditoria.
@@ -8,8 +20,8 @@
 > 1. Soak do DRE backend **estável por 24–48h** (ver `soak-dre-monitoring-log.md`).
 > 2. **Sign-off escrito da controladoria** sobre a lista exata de categorias de repasse.
 >
-> **Empresa-alvo:** Grupo ALT. Descubra o `EMPRESA_ID` na aba **Network** do DevTools —
-> a requisição `.../empresas/{id}/categorias` traz o id na URL.
+> **Empresa-alvo:** Grupo ALT — **`EMPRESA_ID = 2`** (confirmado). Se precisar reconferir, veja na
+> aba **Network** do DevTools: a requisição `.../empresas/{id}/categorias` traz o id na URL.
 
 ## Contexto técnico (verificado no código)
 
@@ -20,7 +32,9 @@
 - Endpoints (`useCategoriasAPI.ts`):
   - `GET  /empresas/{id}/categorias` → `Record<codigo, { descricao, nivel1, nivel2, grupo_dre }>` (`grupo_dre` = override; `null` = inferido por prefixo).
   - `POST /empresas/{id}/categorias/bulk-override` body `{ codigos: string[], grupo_dre: string|null }` → `{ updated, grupo_dre, nao_encontradas }` (`grupo_dre:null` **remove** o override).
-- `NEUTRO` já é integrado em `calcularDRE`, `caixaBuilder.resolveGrupoDRE`, `buildBreakdownByCategoria` e no backend `/dre`. Marcar uma categoria como NEUTRO a tira de RNOP/DNOP.
+- `NEUTRO` é integrado no backend **`/dre`** (fonte única do DRE pós-PR-6 / Fase 5.G) e no
+  `caixaBuilder` (gráficos + `buildDREMatrix`). Marcar uma categoria como NEUTRO a tira de RNOP/DNOP.
+  (Nota: `calcularDRE`/`ComparativoDRE` locais foram **removidos no PR-6** — o DRE vem 100% do backend.)
 
 > ⚠️ Reversível: o **Passo 1 (snapshot)** é o seguro de rollback. **Não pule.**
 
@@ -32,7 +46,7 @@ Logado no portal, na tela de Plano de Contas, abra o **Console** (F12) e cole:
 
 ```js
 // === SNAPSHOT — baixa o estado atual de TODOS os overrides ===
-const EMPRESA_ID = 1; // <-- AJUSTE: id da Grupo ALT (veja na aba Network, URL .../empresas/{id}/categorias)
+const EMPRESA_ID = 2; // Grupo ALT (confirmado)
 const res = await fetch(`/api/proxy/v1/empresas/${EMPRESA_ID}/categorias`, { credentials: 'include' });
 if (!res.ok) throw new Error('Falha ao buscar categorias: HTTP ' + res.status);
 const data = await res.json();
@@ -87,12 +101,18 @@ Confira `nao_encontradas` vazio e `updated` == tamanho da lista.
 
 ## Passo 4 — Validar RNOP/DNOP limpos
 
+> Pós-PR-6 (Fase 5.G) o `ComparativoDRE` foi **removido** — o DRE vem 100% do backend `/dre`
+> (que já trata NEUTRO). A validação agora é **visual, direto na UI** (sem o comparativo dev-only):
+
 - Volte à aba (o `useCategoriasMap` tem auto-refetch em `visibilitychange`) e abra
-  **Caixa** / **Análise IA**.
-- Rode o **`ComparativoDRE`** (em dev, ou Preview com `NEXT_PUBLIC_DRE_COMPARATIVO=true`)
-  na Grupo ALT, janelas de 30/60/91 dias: as categorias NEUTRO devem **sumir de RNOP/DNOP**
-  e os neutros aparecerem na nota cinza (total movimentado + count). Local e backend devem
-  continuar batendo (0 flagged) — o NEUTRO é tratado igual nos dois.
+  **Análise IA** (`/bi/financeiro` → toggle "Análise IA") e **Caixa Realizado**.
+- Na **Análise IA**: a nota cinza **"🚫 N categorias neutras excluídas do DRE"** deve listar as
+  categorias marcadas + total movimentado (vem de `dreBackend.neutros`), e **RNOP/DNOP** na cascata /
+  tabela de indicadores devem **cair** pelo valor dessas categorias.
+- No **Caixa** (sidebar "DRE REALIZADO") e no **Dashboard** (KPI/waterfall): confira que RNOP/DNOP
+  refletem só o operacional real.
+- O `bulk-override` **invalida o cache `/dre`** (namespaces `dre/extrato/cp/cr/dashboard_v3`), então
+  os números atualizam já no próximo load — um **F5 basta**.
 - Confirme com a controladoria que RNOP/DNOP agora refletem só o operacional real.
 
 ## Passo 5 — Rollback (se a controladoria discordar)
