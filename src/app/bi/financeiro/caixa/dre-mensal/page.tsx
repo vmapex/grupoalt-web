@@ -10,7 +10,7 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useDRE } from '@/hooks/useDRE'
 import { buildDREMatrix, type DREMesMatrix } from '@/lib/caixaBuilder'
-import { fmtK } from '@/lib/formatters'
+import { fmtInt } from '@/lib/formatters'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
 
@@ -255,7 +255,7 @@ export default function DREMensalPage() {
                             return (
                               <td key={m} className="px-3 py-2 text-right font-mono" style={{ color: cellCor }}>
                                 <div className="flex items-baseline justify-end gap-1.5">
-                                  <span>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtK(v)}</span>
+                                  <span>{meta.sign === -1 && v !== 0 ? '−' : ''}{fmtInt(v)}</span>
                                   <span className="text-[8px]" style={{ color: t.muted }}>
                                     {fmtPctSigned(pct, meta.sign)}
                                   </span>
@@ -272,7 +272,7 @@ export default function DREMensalPage() {
                                 <div className="flex items-baseline justify-end gap-1.5">
                                   <span>
                                     {meta.sign === -1 && cons !== 0 ? '−' : ''}
-                                    {fmtK(cons)}
+                                    {fmtInt(cons)}
                                   </span>
                                   <span className="text-[8px] font-normal" style={{ color: t.muted }}>
                                     {fmtPctSigned(getPctRoB(cons, null), meta.sign)}
@@ -304,7 +304,7 @@ export default function DREMensalPage() {
                                   return (
                                     <td key={m} className="px-3 py-1.5 text-right font-mono text-[10px]" style={{ color: t.textSec }}>
                                       <div className="flex items-baseline justify-end gap-1.5">
-                                        <span>{fmtK(v)}</span>
+                                        <span>{fmtInt(v)}</span>
                                         <span className="text-[8px]" style={{ color: t.muted }}>
                                           {fmtPctSigned(getPctRoB(v, m), meta.sign)}
                                         </span>
@@ -315,7 +315,7 @@ export default function DREMensalPage() {
                                 <td className="px-3.5 py-1.5 text-right font-mono text-[10px]"
                                   style={{ color: t.textSec, borderLeft: `1px solid ${t.border}` }}>
                                   <div className="flex items-baseline justify-end gap-1.5">
-                                    <span>{fmtK(n2.consolidado)}</span>
+                                    <span>{fmtInt(n2.consolidado)}</span>
                                     <span className="text-[8px]" style={{ color: t.muted }}>
                                       {fmtPctSigned(getPctRoB(n2.consolidado, null), meta.sign)}
                                     </span>
@@ -334,7 +334,7 @@ export default function DREMensalPage() {
                                     return (
                                       <td key={m} className="px-3 py-1 text-right font-mono text-[9px]" style={{ color: t.muted }}>
                                         <div className="flex items-baseline justify-end gap-1.5">
-                                          <span>{fmtK(v)}</span>
+                                          <span>{fmtInt(v)}</span>
                                           <span className="text-[8px]" style={{ color: t.mutedDim }}>
                                             {fmtPctSigned(getPctRoB(v, m), meta.sign)}
                                           </span>
@@ -345,7 +345,7 @@ export default function DREMensalPage() {
                                   <td className="px-3.5 py-1 text-right font-mono text-[9px]"
                                     style={{ color: t.muted, borderLeft: `1px solid ${t.border}` }}>
                                     <div className="flex items-baseline justify-end gap-1.5">
-                                      <span>{fmtK(cat.consolidado)}</span>
+                                      <span>{fmtInt(cat.consolidado)}</span>
                                       <span className="text-[8px]" style={{ color: t.mutedDim }}>
                                         {fmtPctSigned(getPctRoB(cat.consolidado, null), meta.sign)}
                                       </span>
@@ -398,7 +398,7 @@ export default function DREMensalPage() {
                     <div className="font-mono text-sm" style={{ color: k.c }}>
                       {(k as any).isPct
                         ? (k.v >= 0 ? '' : '−') + Math.abs(k.v).toFixed(1).replace('.', ',') + '%'
-                        : (k.sign === -1 && k.v !== 0 ? '−' : '') + fmtK(k.v)}
+                        : (k.sign === -1 && k.v !== 0 ? '−' : '') + fmtInt(k.v)}
                     </div>
                   </div>
                 ))}
