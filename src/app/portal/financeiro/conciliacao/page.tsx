@@ -6,7 +6,7 @@ import { useThemeStore } from '@/store/themeStore'
 import type { ThemeTokens } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { KPICard } from '@/components/ui/KPICard'
-import { fmtBRL, fmtK, toggleSort, sortRows, type SortState } from '@/lib/formatters'
+import { fmtBRL, fmtInt, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
 import type { ConcilEntry } from '@/lib/mocks/concilData'
 import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/api/useConciliacao'
@@ -300,14 +300,14 @@ export default function PageConciliacao() {
         />
         <KPICard
           label="Diferencas Abertas"
-          value={`R$ ${fmtK(stats.sumDif)}`}
+          value={`R$ ${fmtInt(stats.sumDif)}`}
           color={t.red}
           accent={t.red}
           sub="Soma absoluta pendentes"
         />
         <KPICard
           label="Maior Diferenca"
-          value={`R$ ${fmtK(stats.maiorDif)}`}
+          value={`R$ ${fmtInt(stats.maiorDif)}`}
           color={t.amber}
           accent={t.amber}
         />
@@ -320,7 +320,7 @@ export default function PageConciliacao() {
         />
         <KPICard
           label="Media Diaria Extrato"
-          value={`R$ ${fmtK(stats.mediaExtrato)}`}
+          value={`R$ ${fmtInt(stats.mediaExtrato)}`}
           color={t.blue}
           accent={t.blue}
           borderRight={false}
@@ -598,7 +598,7 @@ export default function PageConciliacao() {
         />
         <FooterMetric
           label="Movimentacao Total"
-          value={`R$ ${fmtK(slaInfo.movTotal)}`}
+          value={`R$ ${fmtInt(slaInfo.movTotal)}`}
           color={t.blue}
           t={t}
         />

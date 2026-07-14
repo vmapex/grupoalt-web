@@ -4,7 +4,7 @@ import { Search, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { ConcilBadge } from '@/components/ui/ConcilBadge'
-import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
+import { fmtBRL, fmtInt, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
@@ -104,28 +104,28 @@ export default function PageExtrato() {
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saldo Inicial</div>
             <div className="font-mono text-[17px]" style={{ color: saldoInicial >= 0 ? t.blue : t.red }}>
-              {saldoInicial < 0 ? '−' : ''}{fmtK(Math.abs(saldoInicial))}
+              {saldoInicial < 0 ? '−' : ''}{fmtInt(Math.abs(saldoInicial))}
             </div>
           </div>
           {/* Entradas */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Entradas</div>
-            <div className="font-mono text-[17px]" style={{ color: t.green }}>{fmtK(totEnt)}</div>
+            <div className="font-mono text-[17px]" style={{ color: t.green }}>{fmtInt(totEnt)}</div>
           </div>
           {/* Saídas */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: t.muted }}>Saídas</div>
-            <div className="font-mono text-[17px]" style={{ color: t.red }}>{fmtK(totSai)}</div>
+            <div className="font-mono text-[17px]" style={{ color: t.red }}>{fmtInt(totSai)}</div>
           </div>
           {/* Resultado: Saldo Final + Balanço */}
           <div className="px-4 py-3.5" style={{ borderRight: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.muted }}>Saldo Final</div>
             <div className="font-mono text-[15px]" style={{ color: saldoFinal >= 0 ? t.green : t.red }}>
-              {saldoFinal < 0 ? '−' : ''}{fmtK(Math.abs(saldoFinal))}
+              {saldoFinal < 0 ? '−' : ''}{fmtInt(Math.abs(saldoFinal))}
             </div>
             <div className="text-[8px] uppercase tracking-wider mt-1.5 mb-0.5" style={{ color: t.muted }}>Balanço</div>
             <div className="font-mono text-[13px]" style={{ color: balanco >= 0 ? t.green : t.red }}>
-              {balanco >= 0 ? '+' : '−'}{fmtK(Math.abs(balanco))}
+              {balanco >= 0 ? '+' : '−'}{fmtInt(Math.abs(balanco))}
             </div>
           </div>
           {/* Lançamentos */}
