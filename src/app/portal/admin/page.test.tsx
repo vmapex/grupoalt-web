@@ -174,8 +174,12 @@ describe('AdminPage portal — race condition restore empresa', () => {
     })
 
     // Vai para aba Empresas
+    // findByRole (com retry) — getByRole sincrono flakava no CI: o waitFor
+    // acima so garante a CHAMADA a API, nao o re-render pos-loading que
+    // monta a barra de abas (falhou no run 29280030222 do PR #184).
+    const tabEmpresas = await screen.findByRole('button', { name: /^Empresas$/i })
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Empresas$/i }))
+      fireEvent.click(tabEmpresas)
     })
 
     const btnAlfa = await screen.findByRole('button', { name: /Restaurar Empresa Alfa/i })
@@ -218,8 +222,12 @@ describe('AdminPage portal — race condition restore empresa', () => {
       expect(apiGetMock).toHaveBeenCalledWith('/admin/empresas')
     })
 
+    // findByRole (com retry) — getByRole sincrono flakava no CI: o waitFor
+    // acima so garante a CHAMADA a API, nao o re-render pos-loading que
+    // monta a barra de abas (falhou no run 29280030222 do PR #184).
+    const tabEmpresas = await screen.findByRole('button', { name: /^Empresas$/i })
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Empresas$/i }))
+      fireEvent.click(tabEmpresas)
     })
 
     const btnAlfa = await screen.findByRole('button', { name: /Restaurar Empresa Alfa/i })
