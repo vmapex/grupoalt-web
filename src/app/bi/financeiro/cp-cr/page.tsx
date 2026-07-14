@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   ComposedChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
@@ -86,6 +86,16 @@ export default function PageCPCR() {
   const dt_inicio = isoToDMY(dateFrom)
   const dt_fim = isoToDMY(dateTo)
   const [tab, setTab] = useState<'CP' | 'CR'>('CP')
+
+  // ?tab=cr abre direto em Contas a Receber (links do /portal/grupo e o
+  // redirect da rota antiga /portal/financeiro/cr apontam pra ca — L1 do
+  // audit kill-portal-financeiro-mirror). useEffect em vez de
+  // useSearchParams evita o requisito de Suspense boundary do App Router
+  // pra um caso one-shot de montagem.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if ((params.get('tab') || '').toLowerCase() === 'cr') setTab('CR')
+  }, [])
   const [view, setView] = useState<'lanc' | 'temp' | 'repr'>('lanc')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('TODOS')

@@ -6,7 +6,7 @@ describe('safeInternalRoute (Step 09)', () => {
     it.each([
       '/portal',
       '/portal/grupo',
-      '/portal/financeiro/cp',
+      '/portal/documentos',
       '/bi/financeiro',
       '/bi/financeiro/caixa',
       '/bi/financeiro/admin/categorias',
