@@ -1,6 +1,6 @@
 /* @vitest-environment node */
 import { describe, expect, it } from 'vitest'
-import { formatIsoToBr, parseIso, parseDMY, parseApiDate } from './formatters'
+import { formatIsoToBr, parseIso, parseDMY, parseApiDate, fmtInt } from './formatters'
 
 describe('formatIsoToBr (P1-2 Camada 2.2b.2)', () => {
   it('converte ISO YYYY-MM-DD para DD/MM/YYYY', () => {
@@ -102,5 +102,27 @@ describe('parseApiDate (fonte unica de data crua — P1-2)', () => {
     expect(parseApiDate('foo')).toBeNull()
     expect(parseApiDate('2026-ab-cd')).toBeNull()
     expect(parseApiDate('XX/YY/ZZZZ')).toBeNull()
+  })
+})
+
+describe('fmtInt', () => {
+  it('agrupa milhares no padrao pt-BR', () => {
+    expect(fmtInt(4774031.94)).toBe('4.774.032')
+    expect(fmtInt(1000)).toBe('1.000')
+  })
+
+  it('preserva sinal com − (minus tipografico, igual fmtK)', () => {
+    expect(fmtInt(-22800000)).toBe('−22.800.000')
+  })
+
+  it('arredonda para inteiro', () => {
+    expect(fmtInt(999.5)).toBe('1.000')
+    expect(fmtInt(-0.4)).toBe('0')
+  })
+
+  it('zero e falsy viram 0 sem sinal', () => {
+    expect(fmtInt(0)).toBe('0')
+    expect(fmtInt(-0)).toBe('0')
+    expect(fmtInt(NaN)).toBe('0')
   })
 })

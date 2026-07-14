@@ -4,7 +4,7 @@ import { BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 import { buildQuarterly, buildMonthly, buildWeekly, buildBreakdownByFavorecido, buildBreakdownByCategoria } from '@/lib/caixaBuilder'
-import { fmtK, fmtBRL } from '@/lib/formatters'
+import { fmtInt, fmtBRL } from '@/lib/formatters'
 import { KPIStrip } from '@/components/caixa/KPIStrip'
 import { DrillBar } from '@/components/caixa/DrillBar'
 import { ChartGrid } from '@/components/caixa/ChartGrid'
@@ -197,10 +197,10 @@ export default function PageCaixa() {
           <KPIStrip
             items={[
               { label: 'Saldo Inicial', value: fmtBRL(saldoInicial), color: saldoInicial >= 0 ? t.blue : t.red, accent: t.blue, sub: 'Base do período' },
-              { label: 'Entradas', value: kpiValues ? fmtK(kpiValues.entradas) : '0', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
-              { label: 'Saídas', value: kpiValues ? fmtK(kpiValues.saidas) : '0', color: t.red, accent: t.red, sub: 'Custos + despesas' },
-              { label: 'Saldo Final', value: kpiValues ? fmtK(kpiValues.saldoFinal) : '0', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: 'Posição atual' },
-              { label: 'Resultado (EBT2)', value: dreData ? fmtK(dreData.ebt2) : '0', color: dreData ? (dreData.ebt2 >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: dreData ? `${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
+              { label: 'Entradas', value: kpiValues ? fmtInt(kpiValues.entradas) : '0', color: t.green, accent: t.green, sub: 'Receitas realizadas' },
+              { label: 'Saídas', value: kpiValues ? fmtInt(kpiValues.saidas) : '0', color: t.red, accent: t.red, sub: 'Custos + despesas' },
+              { label: 'Saldo Final', value: kpiValues ? fmtInt(kpiValues.saldoFinal) : '0', color: kpiValues ? (kpiValues.saldoFinal >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: 'Posição atual' },
+              { label: 'Resultado (EBT2)', value: dreData ? fmtInt(dreData.ebt2) : '0', color: dreData ? (dreData.ebt2 >= 0 ? t.green : t.red) : t.text, accent: t.green, sub: dreData ? `${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
             ]}
           />
 
@@ -242,10 +242,10 @@ export default function PageCaixa() {
           {/* Footer strip */}
           <div className="grid grid-cols-5 shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
             {[
-              { l: 'Resultado Líquido', v: dreData ? fmtK(dreData.ebt2) : '0', c: dreData && dreData.ebt2 >= 0 ? t.green : t.red, sub: dreData ? `EBT2 = ${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% RoB` : '' },
-              { l: 'Margem Contribuição', v: dreData ? fmtK(dreData.mc) : '0', c: t.blue, sub: dreData ? `${((dreData.mc / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
-              { l: 'Cobertura CF (EBT1)', v: dreData ? fmtK(dreData.ebt1) : '0', c: dreData && dreData.ebt1 >= 0 ? t.green : t.red, sub: dreData ? `${((dreData.ebt1 / (dreData.rob || 1)) * 100).toFixed(1)}%` : '' },
-              { l: 'Receitas NOP', v: dreData ? fmtK(dreData.rnop - dreData.dnop) : '0', c: dreData && (dreData.rnop - dreData.dnop) >= 0 ? t.green : t.red, sub: 'Saldo não operacional' },
+              { l: 'Resultado Líquido', v: dreData ? fmtInt(dreData.ebt2) : '0', c: dreData && dreData.ebt2 >= 0 ? t.green : t.red, sub: dreData ? `EBT2 = ${((dreData.ebt2 / (dreData.rob || 1)) * 100).toFixed(1)}% RoB` : '' },
+              { l: 'Margem Contribuição', v: dreData ? fmtInt(dreData.mc) : '0', c: t.blue, sub: dreData ? `${((dreData.mc / (dreData.rob || 1)) * 100).toFixed(1)}% sobre RoB` : '' },
+              { l: 'Cobertura CF (EBT1)', v: dreData ? fmtInt(dreData.ebt1) : '0', c: dreData && dreData.ebt1 >= 0 ? t.green : t.red, sub: dreData ? `${((dreData.ebt1 / (dreData.rob || 1)) * 100).toFixed(1)}%` : '' },
+              { l: 'Receitas NOP', v: dreData ? fmtInt(dreData.rnop - dreData.dnop) : '0', c: dreData && (dreData.rnop - dreData.dnop) >= 0 ? t.green : t.red, sub: 'Saldo não operacional' },
               { l: 'Taxa TDCF', v: dreData ? `${((dreData.tdcf / (dreData.rob || 1)) * 100).toFixed(1)}%` : '0%', c: t.amber, sub: 'Sobre receita bruta' },
             ].map((f, i) => (
               <div

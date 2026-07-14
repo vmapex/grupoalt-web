@@ -9,7 +9,7 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { BarLabelVar } from '@/components/charts/BarLabelVar'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK } from '@/lib/formatters'
+import { fmtInt, fmtK } from '@/lib/formatters'
 import type { CaixaLevelData, DetailDef } from '@/lib/mocks/caixaData'
 import type { DREBreakdowns, CatBreakdowns } from '@/lib/caixaBuilder'
 
@@ -44,10 +44,10 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
       receita: {
         title: 'Receita Bruta', key: 'RB', color: t.blue,
         kpis: [
-          { l: 'Total Período', v: fmtK(sum(d.RB)), c: t.blue },
-          { l: 'Média Mensal', v: fmtK(sum(d.RB) / Math.max(d.labels.length, 1)), c: t.text },
-          { l: 'Melhor Mês', v: fmtK(Math.max(...d.RB)), c: t.green },
-          { l: 'Pior Mês', v: fmtK(Math.min(...d.RB.filter(v => v > 0)) || 0), c: t.amber },
+          { l: 'Total Período', v: fmtInt(sum(d.RB)), c: t.blue },
+          { l: 'Média Mensal', v: fmtInt(sum(d.RB) / Math.max(d.labels.length, 1)), c: t.text },
+          { l: 'Melhor Mês', v: fmtInt(Math.max(...d.RB)), c: t.green },
+          { l: 'Pior Mês', v: fmtInt(Math.min(...d.RB.filter(v => v > 0)) || 0), c: t.amber },
         ],
         breakdown: breakdownSource?.RoB ?? [],
         clientes: breakdowns?.RoB ?? [],
@@ -55,10 +55,10 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
       tdcf: {
         title: 'T.D.C.F. (Deduções)', key: 'TD', color: t.amber,
         kpis: [
-          { l: 'Total Deduções', v: fmtK(sum(d.TD)), c: t.amber },
+          { l: 'Total Deduções', v: fmtInt(sum(d.TD)), c: t.amber },
           { l: '% sobre RoB', v: '14,8%', c: t.text },
-          { l: 'PIS/COFINS', v: fmtK(sum(d.TD) * 0.72), c: t.amber },
-          { l: 'ISS/ICMS', v: fmtK(sum(d.TD) * 0.28), c: t.amber },
+          { l: 'PIS/COFINS', v: fmtInt(sum(d.TD) * 0.72), c: t.amber },
+          { l: 'ISS/ICMS', v: fmtInt(sum(d.TD) * 0.28), c: t.amber },
         ],
         breakdown: breakdownSource?.TDCF ?? [],
         clientes: breakdowns?.TDCF ?? [],
@@ -66,10 +66,10 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
       cv: {
         title: 'Custo Variável', key: 'CV', color: t.red,
         kpis: [
-          { l: 'Total CV', v: fmtK(sum(d.CV)), c: t.red },
+          { l: 'Total CV', v: fmtInt(sum(d.CV)), c: t.red },
           { l: '% sobre RoB', v: '73,2%', c: t.text },
-          { l: 'Diesel', v: fmtK(sum(d.CV) * 0.45), c: t.red },
-          { l: 'Pedágios', v: fmtK(sum(d.CV) * 0.12), c: t.amber },
+          { l: 'Diesel', v: fmtInt(sum(d.CV) * 0.45), c: t.red },
+          { l: 'Pedágios', v: fmtInt(sum(d.CV) * 0.12), c: t.amber },
         ],
         breakdown: breakdownSource?.CV ?? [],
         clientes: breakdowns?.CV ?? [],
@@ -77,10 +77,10 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
       cf: {
         title: 'Custo Fixo', key: 'CF', color: t.orange,
         kpis: [
-          { l: 'Total CF', v: fmtK(sum(d.CF)), c: t.orange },
+          { l: 'Total CF', v: fmtInt(sum(d.CF)), c: t.orange },
           { l: '% sobre RoB', v: '42,9%', c: t.text },
-          { l: 'Folha', v: fmtK(sum(d.CF) * 0.52), c: t.orange },
-          { l: 'Aluguel/Infra', v: fmtK(sum(d.CF) * 0.18), c: t.amber },
+          { l: 'Folha', v: fmtInt(sum(d.CF) * 0.52), c: t.orange },
+          { l: 'Aluguel/Infra', v: fmtInt(sum(d.CF) * 0.18), c: t.amber },
         ],
         breakdown: breakdownSource?.CF ?? [],
         clientes: breakdowns?.CF ?? [],
@@ -88,9 +88,9 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
       saldoNop: {
         title: 'Saldo NOP', key: null, color: t.purple,
         kpis: [
-          { l: 'Saldo NOP', v: fmtK(sum(d.RN) - sum(d.DN)), c: sum(d.RN) - sum(d.DN) >= 0 ? t.green : t.red },
-          { l: 'Receita NOP', v: fmtK(sum(d.RN)), c: t.green },
-          { l: 'Despesa NOP', v: fmtK(sum(d.DN)), c: t.red },
+          { l: 'Saldo NOP', v: fmtInt(sum(d.RN) - sum(d.DN)), c: sum(d.RN) - sum(d.DN) >= 0 ? t.green : t.red },
+          { l: 'Receita NOP', v: fmtInt(sum(d.RN)), c: t.green },
+          { l: 'Despesa NOP', v: fmtInt(sum(d.DN)), c: t.red },
           { l: '% sobre RoB', v: ((sum(d.RN) - sum(d.DN)) / sum(d.RB) * 100).toFixed(1) + '%', c: t.text },
         ],
         breakdown: breakdownSource?.RNOP ?? [],
@@ -182,7 +182,7 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
               {defKey === 'receita' ? 'Ranking por Cliente' : defKey === 'tdcf' ? 'Composição por Tributo' : 'Ranking por Fornecedor'}
             </div>
             <span className="text-[9px] font-mono" style={{ color: t.mutedDim }}>
-              {sorted.length} itens · {fmtK(totalCli)} total
+              {sorted.length} itens · {fmtInt(totalCli)} total
             </span>
           </div>
           {sorted.map((c, i) => {
@@ -195,7 +195,7 @@ export function DetailPanel({ defKey, d, breakdowns, catBreakdowns, catBreakdown
                     <span style={{ color: t.text }}>{c.nome}</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <span className="font-mono" style={{ color: t.text }}>{fmtK(c.valor)}</span>
+                    <span className="font-mono" style={{ color: t.text }}>{fmtInt(c.valor)}</span>
                     <span className="font-mono min-w-[40px] text-right text-[10px]" style={{ color: def.color }}>{pctCli.toFixed(1)}%</span>
                   </div>
                 </div>
@@ -289,7 +289,7 @@ function BreakdownTable({ title, items, color }: { title: string; items: Array<{
           <div className="flex justify-between text-[10px] mb-0.5">
             <span style={{ color: t.text }}>{r.item}</span>
             <div className="flex gap-2.5">
-              <span className="font-mono" style={{ color: t.textSec }}>{fmtK(r.valor)}</span>
+              <span className="font-mono" style={{ color: t.textSec }}>{fmtInt(r.valor)}</span>
               <span className="font-mono min-w-[36px] text-right" style={{ color }}>{r.pct}%</span>
             </div>
           </div>
