@@ -52,10 +52,10 @@ const kpiConfig = [
 ]
 
 const quickActions = [
-  { icon: Receipt, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', title: 'Contas a Pagar', desc: 'Gestao CP', href: '/portal/financeiro/cp' },
-  { icon: FileText, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Contas a Receber', desc: 'Gestao CR', href: '/portal/financeiro/cr' },
-  { icon: BarChart3, color: '#CCA000', bg: 'rgba(204,160,0,0.1)', title: 'Extrato', desc: 'Extrato bancario', href: '/portal/financeiro/extrato' },
-  { icon: Users, color: '#A1A1AA', bg: 'rgba(161,161,170,0.1)', title: 'Fluxo de Caixa', desc: 'Projecao futura', href: '/portal/financeiro/fluxo' },
+  { icon: Receipt, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', title: 'Contas a Pagar', desc: 'Gestao CP', href: '/bi/financeiro/cp-cr' },
+  { icon: FileText, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Contas a Receber', desc: 'Gestao CR', href: '/bi/financeiro/cp-cr' },
+  { icon: BarChart3, color: '#CCA000', bg: 'rgba(204,160,0,0.1)', title: 'Extrato', desc: 'Extrato bancario', href: '/bi/financeiro/extrato' },
+  { icon: Users, color: '#A1A1AA', bg: 'rgba(161,161,170,0.1)', title: 'Fluxo de Caixa', desc: 'Projecao futura', href: '/bi/financeiro/fluxo' },
 ]
 
 export default function DashboardPage() {
@@ -168,7 +168,7 @@ export default function DashboardPage() {
           {/* CP and CR cards side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Contas a Pagar */}
-            <Link href="/portal/financeiro/cp" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            <Link href="/bi/financeiro/cp-cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <h3 className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: t.muted }}>Contas a Pagar</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-baseline">
@@ -195,7 +195,7 @@ export default function DashboardPage() {
             </Link>
 
             {/* Contas a Receber */}
-            <Link href="/portal/financeiro/cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            <Link href="/bi/financeiro/cp-cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <h3 className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: t.muted }}>Contas a Receber</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-baseline">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
           <div className="rounded-2xl p-6" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-semibold" style={{ color: t.text }}>Proximos Vencimentos</h3>
-              <Link href="/portal/financeiro/cp" className="text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
+              <Link href="/bi/financeiro/cp-cr" className="text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
                 Ver todos
               </Link>
             </div>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
             <h3 className="text-base font-semibold mb-3" style={{ color: t.text }}>Contas Bancarias</h3>
             <div className="text-3xl font-semibold font-mono mb-1" style={{ color: t.text }}>{data.total_contas}</div>
             <p className="text-xs" style={{ color: t.muted }}>contas ativas no Omie</p>
-            <Link href="/portal/financeiro/extrato" className="inline-block mt-3 text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
+            <Link href="/bi/financeiro/extrato" className="inline-block mt-3 text-xs text-[#E0B82E] hover:text-[#CCA000] font-medium transition-colors">
               Ver extrato completo
             </Link>
           </div>

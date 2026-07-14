@@ -20,9 +20,12 @@ const nextConfig = {
     ]
   },
   async redirects() {
-    // Step 12: rotas /dashboard/* sao legado. Mantemos compatibilidade de URLs
-    // antigas redirecionando para a nova experiencia em /portal/financeiro/*.
-    // Server-side (308) elimina o flash do redirect client-side anterior.
+    // Step 12: /dashboard/* e legado -> redireciona pra /portal/financeiro/*,
+    // que por sua vez (unificacao 2026-07-14) redireciona pra /bi/financeiro/*.
+    // O espelho /portal/financeiro foi REMOVIDO: o BI e a unica implementacao
+    // das telas financeiras (a Sidebar ja apontava pra ele). Encadear 308s e
+    // ok — o browser segue; regras especificas (cp/cr -> cp-cr) vem ANTES do
+    // catch-all porque o Next avalia na ordem.
     return [
       {
         source: '/dashboard',
@@ -32,6 +35,26 @@ const nextConfig = {
       {
         source: '/dashboard/:path*',
         destination: '/portal/financeiro/:path*',
+        permanent: true,
+      },
+      {
+        source: '/portal/financeiro/cp',
+        destination: '/bi/financeiro/cp-cr',
+        permanent: true,
+      },
+      {
+        source: '/portal/financeiro/cr',
+        destination: '/bi/financeiro/cp-cr',
+        permanent: true,
+      },
+      {
+        source: '/portal/financeiro',
+        destination: '/bi/financeiro',
+        permanent: true,
+      },
+      {
+        source: '/portal/financeiro/:path*',
+        destination: '/bi/financeiro/:path*',
         permanent: true,
       },
     ]
