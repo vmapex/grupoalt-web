@@ -3,7 +3,8 @@
 import { useState, useRef, type ChangeEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Settings, Upload, Trash2, Pencil, Plus, X } from 'lucide-react'
+import { Settings, Upload, Trash2, Pencil, Plus, X, RefreshCw } from 'lucide-react'
+import api from '@/lib/api'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore, type Empresa } from '@/store/empresaStore'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -169,6 +170,49 @@ export default function PageAdmin() {
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditFormData>({ nome: '', cnpj: '', cor: '' })
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
+  // Resync extrato: Set permite disparos em empresas diferentes sem que o
+  // spinner de uma apague o da outra (mesmo pattern do restore de usuarios).
+  const [resyncingIds, setResyncingIds] = useState<Set<string>>(() => new Set())
+  const [resyncMsg, setResyncMsg] = useState<{ kind: 'ok' | 'info' | 'error'; text: string } | null>(null)
+
+  const handleResync = async (emp: Empresa) => {
+    const aviso =
+      `Resync do extrato de ${emp.nome}:\n\n` +
+      'APAGA todos os lançamentos bancários e re-baixa ~2 anos da Omie. ' +
+      'O processo leva de 10 a 20 minutos e o BI mostra dados parciais ' +
+      'enquanto roda (o Dashboard exibe o progresso).\n\nContinuar?'
+    if (!confirm(aviso)) return
+    setResyncingIds((prev) => new Set(prev).add(emp.id))
+    setResyncMsg(null)
+    try {
+      const { data } = await api.post(`/sync/empresas/${Number(emp.id)}/resync-extrato`)
+      setResyncMsg({
+        kind: 'ok',
+        text: `${emp.nome}: resync concluído — ${data?.deleted ?? '?'} removidos, ` +
+          `${data?.lancamentos_synced ?? '?'} lançamentos re-sincronizados.`,
+      })
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      // O endpoint e sincrono e demorado: timeout do edge (504) ou queda de
+      // rede NAO significam falha — o servidor continua processando.
+      if (!status || status === 502 || status === 504) {
+        setResyncMsg({
+          kind: 'info',
+          text: `${emp.nome}: a chamada excedeu o tempo de resposta, mas o resync ` +
+            'continua em segundo plano. Acompanhe o progresso no Dashboard (~10-20 min).',
+        })
+      } else {
+        const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        setResyncMsg({ kind: 'error', text: `${emp.nome}: falha ao iniciar resync — ${detail || `HTTP ${status}`}` })
+      }
+    } finally {
+      setResyncingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(emp.id)
+        return next
+      })
+    }
+  }
 
   if (adminAccess === 'loading') {
     return (
@@ -239,6 +283,29 @@ export default function PageAdmin() {
           Adicionar Empresa
         </button>
       </div>
+
+      {/* Resultado do resync (ok = verde, info = ambar, error = vermelho) */}
+      {resyncMsg && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 12,
+            background: resyncMsg.kind === 'ok' ? t.greenDim : resyncMsg.kind === 'info' ? t.amberDim : t.redDim,
+            border: `1px solid ${resyncMsg.kind === 'ok' ? t.green : resyncMsg.kind === 'info' ? t.amber : t.red}33`,
+            color: resyncMsg.kind === 'ok' ? t.green : resyncMsg.kind === 'info' ? t.amber : t.red,
+          }}
+        >
+          <span style={{ flex: 1 }}>{resyncMsg.text}</span>
+          <button
+            onClick={() => setResyncMsg(null)}
+            aria-label="Fechar mensagem"
+            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* Company cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -392,6 +459,32 @@ export default function PageAdmin() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
+                    {(() => {
+                      const resyncing = resyncingIds.has(emp.id)
+                      return (
+                        <button
+                          onClick={() => handleResync(emp)}
+                          disabled={resyncing}
+                          aria-label={`Resync extrato ${emp.nome}`}
+                          title="Apaga e re-sincroniza todos os lançamentos bancários da Omie (~10-20 min)"
+                          style={{
+                            background: t.surface,
+                            border: `1px solid ${t.border}`,
+                            borderRadius: 6,
+                            padding: '6px 10px',
+                            cursor: resyncing ? 'wait' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            color: resyncing ? t.muted : t.amber,
+                            fontSize: 12,
+                          }}
+                        >
+                          <RefreshCw size={14} className={resyncing ? 'animate-spin' : undefined} />
+                          {resyncing ? 'Sincronizando...' : 'Resync extrato'}
+                        </button>
+                      )
+                    })()}
                     <button
                       onClick={() => startEdit(emp)}
                       aria-label={`Editar ${emp.nome}`}
