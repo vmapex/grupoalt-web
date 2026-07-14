@@ -7,7 +7,7 @@ import { useExtrato } from '@/hooks/api/useExtrato'
 import { useCPAll, useCRAll } from '@/hooks/api/useCPCR'
 import { useFluxoCaixa } from '@/hooks/api/useFluxo'
 import { useDRE, type DRESubtotais } from '@/hooks/useDRE'
-import { fmtK, fmtBRL } from '@/lib/formatters'
+import { fmtK, fmtInt, fmtBRL } from '@/lib/formatters'
 import { transformCPCR } from '@/lib/transformers'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
@@ -194,7 +194,7 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
       suggestions.push(`O negócio depende ${rnopPct.toFixed(1)}% de RNOP — isso é um risco?`)
     }
     if (cpAtrasado > 0) {
-      suggestions.push(`Temos R$ ${fmtK(cpAtrasado)} em CP atrasado. Qual o impacto e priorização?`)
+      suggestions.push(`Temos R$ ${fmtInt(cpAtrasado)} em CP atrasado. Qual o impacto e priorização?`)
     }
     suggestions.push(`Crie um resumo executivo do resultado de ${monthLabel} para o diretor.`)
 
@@ -241,7 +241,7 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
               <div className="text-[9px] uppercase tracking-widest mb-1.5 font-mono" style={{ color: t.muted }}>{kpi.label}</div>
-              <div className="text-xl font-mono font-medium" style={{ color: kpi.color }}>{fmtK(kpi.value)}</div>
+              <div className="text-xl font-mono font-medium" style={{ color: kpi.color }}>{fmtInt(kpi.value)}</div>
               <div className="text-[9px] mt-0.5" style={{ color: t.muted }}>{kpi.sub}</div>
             </div>
           ))}
@@ -253,7 +253,7 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
             <GlowLine color={t.blue} />
             <div className="text-[9px] uppercase tracking-widest mb-2.5 font-mono" style={{ color: t.muted }}>EBT2 (Resultado Final)</div>
             <div className="text-[22px] font-mono font-medium mb-1" style={{ color: dre.EBT2 >= 0 ? t.green : t.red }}>
-              {dre.EBT2 >= 0 ? '+' : ''}{fmtK(dre.EBT2)}
+              {dre.EBT2 >= 0 ? '+' : ''}{fmtInt(dre.EBT2)}
             </div>
             <div className="text-[9px]" style={{ color: t.muted }}>
               {dre.RoB > 0 ? `${dre.EBT2 >= 0 ? '+' : ''}${((dre.EBT2 / dre.RoB) * 100).toFixed(1).replace('.', ',')}% sobre RoB` : ''}
@@ -262,7 +262,7 @@ Seja conciso, prático e focado em ação. Máximo 200 palavras por resposta.`
           <div className="relative rounded-xl p-4 overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <GlowLine color={t.red} />
             <div className="text-[9px] uppercase tracking-widest mb-2.5 font-mono" style={{ color: t.muted }}>TDCF (Deduções)</div>
-            <div className="text-[22px] font-mono font-medium mb-1" style={{ color: t.amber }}>{fmtK(dre.TDCF)}</div>
+            <div className="text-[22px] font-mono font-medium mb-1" style={{ color: t.amber }}>{fmtInt(dre.TDCF)}</div>
             <div className="text-[9px]" style={{ color: t.muted }}>
               {dre.RoB > 0 ? `${((dre.TDCF / dre.RoB) * 100).toFixed(1).replace('.', ',')}% da RoB` : ''}
             </div>

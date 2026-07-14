@@ -9,7 +9,7 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { DetailBtn } from '@/components/ui/DetailBtn'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK } from '@/lib/formatters'
+import { fmtInt } from '@/lib/formatters'
 import type { CaixaLevelData } from '@/lib/mocks/caixaData'
 
 type Level = 'quarterly' | 'monthly' | 'weekly'
@@ -54,7 +54,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               Receita Bruta
             </div>
             <div className="text-right">
-              <div className="font-mono text-base" style={{ color: t.text }}>{fmtK(sum(d.RB))}</div>
+              <div className="font-mono text-base" style={{ color: t.text }}>{fmtInt(sum(d.RB))}</div>
               <div className="text-[9px]" style={{ color: t.muted }}>Total período</div>
             </div>
           </div>
@@ -91,7 +91,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
           <GlowLine color={t.green} />
           <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: t.green }}>Receita Líquida</div>
           <div className="font-mono text-[28px] leading-none my-1" style={{ color: t.text }}>
-            {dreData ? fmtK(dreData.rob - dreData.tdcf) : '0'}
+            {dreData ? fmtInt(dreData.rob - dreData.tdcf) : '0'}
           </div>
           <div className="text-[9px] mb-2.5" style={{ color: t.muted }}>
             {dreData && dreData.rob
@@ -113,20 +113,20 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                 <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.blue }} />
                 Receita Bruta
               </div>
-              <span className="font-mono" style={{ color: t.text }}>{dreData ? fmtK(dreData.rob) : '0'}</span>
+              <span className="font-mono" style={{ color: t.text }}>{dreData ? fmtInt(dreData.rob) : '0'}</span>
             </div>
             <div className="flex justify-between text-[10px]">
               <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
                 <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.amber }} />
                 TDCF
               </div>
-              <span className="font-mono" style={{ color: t.amber }}>−{dreData ? fmtK(dreData.tdcf) : '0'}</span>
+              <span className="font-mono" style={{ color: t.amber }}>−{dreData ? fmtInt(dreData.tdcf) : '0'}</span>
             </div>
             <div className="flex justify-between text-[10px] pt-1.5 mt-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
               <div className="flex items-center gap-1.5" style={{ color: t.muted }}>
                 <div className="w-[5px] h-[5px] rounded-full" style={{ background: t.green }} /> Líquida
               </div>
-              <span className="font-mono" style={{ color: t.green }}>{dreData ? fmtK(dreData.rob - dreData.tdcf) : '0'}</span>
+              <span className="font-mono" style={{ color: t.green }}>{dreData ? fmtInt(dreData.rob - dreData.tdcf) : '0'}</span>
             </div>
           </div>
         </div>
@@ -147,7 +147,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               <div className="flex justify-between mb-2">
                 <div className="text-[9px] uppercase tracking-wider" style={{ color }}>{cd.title}</div>
                 <div className="text-right">
-                  <div className="font-mono text-sm" style={{ color }}>{fmtK(sum((d as any)[cd.key]))}</div>
+                  <div className="font-mono text-sm" style={{ color }}>{fmtInt(sum((d as any)[cd.key]))}</div>
                   <div className="text-[9px]" style={{ color: t.muted }}>{pctLabel}</div>
                 </div>
               </div>
@@ -182,8 +182,8 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
             <div>
               <div className="text-[9px] uppercase tracking-wider" style={{ color: t.purple }}>Saldo NOP</div>
               <div className="flex gap-2 mt-0.5 text-[8px] font-mono">
-                <span style={{ color: t.green }}>R: {fmtK(sum(d.RN))}</span>
-                <span style={{ color: t.red }}>D: {fmtK(sum(d.DN))}</span>
+                <span style={{ color: t.green }}>R: {fmtInt(sum(d.RN))}</span>
+                <span style={{ color: t.red }}>D: {fmtInt(sum(d.DN))}</span>
               </div>
             </div>
             <div className="text-right">
@@ -195,7 +195,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
                 return (
                   <>
                     <div className="font-mono text-sm" style={{ color: cardVal >= 0 ? t.green : t.red }}>
-                      {cardVal >= 0 ? '+' : ''}{fmtK(cardVal)}
+                      {cardVal >= 0 ? '+' : ''}{fmtInt(cardVal)}
                     </div>
                     <div className="text-[9px]" style={{ color: t.muted }}>{pctLabel}</div>
                   </>
@@ -266,7 +266,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
             className="font-mono text-2xl leading-none my-1.5"
             style={{ color: dreData && dreData.ebt2 < 0 ? t.red : t.green }}
           >
-            {dreData ? fmtK(dreData.ebt2) : '0'}
+            {dreData ? fmtInt(dreData.ebt2) : '0'}
           </div>
           <div className="text-[9px] mb-3" style={{ color: `${t.green}99` }}>
             {dreData && dreData.rob
@@ -280,7 +280,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
           ].map((r, i) => (
             <div key={i} className="flex justify-between text-[10px] py-1" style={{ borderBottom: `1px solid ${t.text}06` }}>
               <span style={{ color: t.muted }}>{r.n}</span>
-              <span className="font-mono" style={{ color: r.c }}>{r.v >= 0 ? '+' : ''}{fmtK(r.v)}</span>
+              <span className="font-mono" style={{ color: r.c }}>{r.v >= 0 ? '+' : ''}{fmtInt(r.v)}</span>
             </div>
           ))}
           <div className="flex justify-between text-[10px] pt-1.5 mt-0.5" style={{ borderTop: `1px solid ${t.green}33` }}>
@@ -289,7 +289,7 @@ export const ChartGrid = memo(function ChartGrid({ d, level, dreData, onDrillInt
               className="font-mono font-bold"
               style={{ color: dreData && dreData.ebt2 < 0 ? t.red : t.green }}
             >
-              {dreData ? (dreData.ebt2 >= 0 ? '+' : '') + fmtK(dreData.ebt2) : '0'}
+              {dreData ? (dreData.ebt2 >= 0 ? '+' : '') + fmtInt(dreData.ebt2) : '0'}
             </span>
           </div>
         </div>
