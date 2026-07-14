@@ -53,7 +53,7 @@ const kpiConfig = [
 
 const quickActions = [
   { icon: Receipt, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', title: 'Contas a Pagar', desc: 'Gestao CP', href: '/bi/financeiro/cp-cr' },
-  { icon: FileText, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Contas a Receber', desc: 'Gestao CR', href: '/bi/financeiro/cp-cr' },
+  { icon: FileText, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Contas a Receber', desc: 'Gestao CR', href: '/bi/financeiro/cp-cr?tab=cr' },
   { icon: BarChart3, color: '#CCA000', bg: 'rgba(204,160,0,0.1)', title: 'Extrato', desc: 'Extrato bancario', href: '/bi/financeiro/extrato' },
   { icon: Users, color: '#A1A1AA', bg: 'rgba(161,161,170,0.1)', title: 'Fluxo de Caixa', desc: 'Projecao futura', href: '/bi/financeiro/fluxo' },
 ]
@@ -195,7 +195,7 @@ export default function DashboardPage() {
             </Link>
 
             {/* Contas a Receber */}
-            <Link href="/bi/financeiro/cp-cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+            <Link href="/bi/financeiro/cp-cr?tab=cr" className="rounded-2xl p-6 transition-all group" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <h3 className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: t.muted }}>Contas a Receber</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-baseline">

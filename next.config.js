@@ -44,7 +44,7 @@ const nextConfig = {
       },
       {
         source: '/portal/financeiro/cr',
-        destination: '/bi/financeiro/cp-cr',
+        destination: '/bi/financeiro/cp-cr?tab=cr',
         permanent: true,
       },
       {
