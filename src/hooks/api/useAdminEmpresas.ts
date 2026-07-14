@@ -49,3 +49,20 @@ export async function restoreEmpresa(empresaId: number) {
   )
   return res.data
 }
+
+/** Hard delete REAL da empresa (IRREVERSIVEL): apaga a linha + cascade em
+ *  credenciais, vinculos, permissoes e TODOS os dados financeiros. Backend
+ *  exige defesa em profundidade tripla:
+ *  - empresa ja soft-deletada (senao 409)
+ *  - `senhaAdmin` valida (senao 403)
+ *  - `nomeEmpresa` match EXATO (senao 403)
+ *  Espelho do permanentDeleteUsuario (useAdminPerfis). */
+export async function permanentDeleteEmpresa(
+  empresaId: number,
+  senhaAdmin: string,
+  nomeEmpresa: string,
+) {
+  await api.delete(`/admin/empresas/${empresaId}/permanent`, {
+    data: { senha_admin: senhaAdmin, nome_empresa: nomeEmpresa },
+  })
+}
