@@ -68,12 +68,15 @@ function makeDeferred(): Deferred {
 
 const restoreDeferreds = new Map<number, Deferred>()
 
+const permanentDeleteEmpresaMock = vi.fn()
+
 vi.mock('@/hooks/api/useAdminEmpresas', () => ({
   restoreEmpresa: (id: number) => {
     const d = makeDeferred()
     restoreDeferreds.set(id, d)
     return d.promise
   },
+  permanentDeleteEmpresa: (...args: unknown[]) => permanentDeleteEmpresaMock(...args),
 }))
 
 // ── Mocks do lifecycle de usuarios ─────────────────────────────────────────
@@ -134,6 +137,7 @@ beforeEach(() => {
   restoreDeferreds.clear()
   usuarioRestoreDeferreds.clear()
   permanentDeleteMock.mockReset()
+  permanentDeleteEmpresaMock.mockReset()
   deleteUsuarioModalProps.mockReset()
   confirmDeleteModalProps.mockReset()
   apiGetMock.mockReset()
@@ -377,7 +381,12 @@ describe('AdminPage portal — lifecycle de usuarios', () => {
     const modal = screen.getByTestId('confirm-delete-modal')
     expect(modal.textContent).toContain('Bruno Deletado')
 
-    const props = confirmDeleteModalProps.mock.calls.at(-1)![0] as ConfirmDeleteModalMockProps
+    // Filtra por idPrefix: a pagina agora renderiza DOIS ConfirmDeleteModal
+    // (usuario + empresa) — o .at(-1) cru pegava o da empresa.
+    const usuarioCalls = confirmDeleteModalProps.mock.calls
+      .map((c) => c[0] as ConfirmDeleteModalMockProps)
+      .filter((p) => p.idPrefix === 'permanent-delete-usuario' && p.target)
+    const props = usuarioCalls[usuarioCalls.length - 1]
     expect(props.title).toMatch(/definitivo/i)
     expect(props.idPrefix).toBe('permanent-delete-usuario')
     expect(props.confirmLabel).toBe('Apagar definitivo')
@@ -401,5 +410,55 @@ describe('AdminPage portal — lifecycle de usuarios', () => {
     })
 
     expect(screen.getByTestId('delete-usuario-modal').textContent).toContain('Ana Ativa')
+  })
+})
+
+
+// ── Hard delete de EMPRESA (paridade com usuarios; follow-up TESTE/SMOKE) ───
+
+describe('AdminPage portal — apagar empresa em definitivo', () => {
+  it('empresa soft-deletada mostra Restaurar + Apagar definitivo', async () => {
+    render(<AdminPage />)
+    const tabEmpresas = await screen.findByRole('button', { name: /^Empresas$/i })
+    await act(async () => {
+      fireEvent.click(tabEmpresas)
+    })
+
+    expect(await screen.findByRole('button', { name: /Restaurar Empresa Alfa/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Apagar Empresa Alfa em definitivo/i })).toBeTruthy()
+  })
+
+  it('clique abre ConfirmDeleteModal com alvo, onConfirm e mapa 409; sucesso mostra toast', async () => {
+    render(<AdminPage />)
+    const tabEmpresas = await screen.findByRole('button', { name: /^Empresas$/i })
+    await act(async () => {
+      fireEvent.click(tabEmpresas)
+    })
+
+    const btn = await screen.findByRole('button', { name: /Apagar Empresa Alfa em definitivo/i })
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+
+    // Ultima chamada do mock com target preenchido e idPrefix de empresa
+    const calls = confirmDeleteModalProps.mock.calls
+      .map((c) => c[0] as ConfirmDeleteModalMockProps)
+      .filter((p) => p.idPrefix === 'permanent-delete-empresa' && p.target)
+    expect(calls.length).toBeGreaterThan(0)
+    const props = calls[calls.length - 1]
+    expect(props.target!.nome).toBe('Empresa Alfa')
+    expect(props.title).toMatch(/definitivo/i)
+    expect(props.confirmLabel).toBe('Apagar definitivo')
+    expect(props.errorMessages?.[409]).toMatch(/soft-delete/i)
+
+    // onConfirm do modal e o helper permanentDeleteEmpresa
+    props.onConfirm(10, 'senha', 'Empresa Alfa')
+    expect(permanentDeleteEmpresaMock).toHaveBeenCalledWith(10, 'senha', 'Empresa Alfa')
+
+    // onSuccess mostra toast
+    await act(async () => {
+      props.onSuccess()
+    })
+    expect(screen.getByText(/apagada em definitivo/i)).toBeTruthy()
   })
 })
