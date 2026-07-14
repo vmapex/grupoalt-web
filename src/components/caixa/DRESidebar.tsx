@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useThemeStore } from '@/store/themeStore'
 import { getDREColor } from '@/lib/mocks/caixaData'
-import { fmtK } from '@/lib/formatters'
+import { fmtInt } from '@/lib/formatters'
 
 interface DRERow {
   name: string
@@ -79,7 +79,7 @@ function DRERowItem({ row, index }: { row: DRERow; index: number }) {
             className="font-mono text-[10px]"
             style={{ color: row.val < 0 ? t.red : t.text }}
           >
-            {fmtK(row.val)}
+            {fmtInt(row.val)}
           </div>
           <div
             className="text-[9px]"

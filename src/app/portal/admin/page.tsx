@@ -7,7 +7,7 @@ import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
 import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
-import { restoreEmpresa } from '@/hooks/api/useAdminEmpresas'
+import { restoreEmpresa, permanentDeleteEmpresa } from '@/hooks/api/useAdminEmpresas'
 import { describeAxiosError } from '@/lib/errorPresentation'
 import { useAuthStore } from '@/store/authStore'
 import { ConfirmDeleteModal } from '@/components/admin/ConfirmDeleteModal'
@@ -65,6 +65,7 @@ export default function AdminPage() {
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
   const [deletingUsuario, setDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
   const [permanentDeletingUsuario, setPermanentDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
+  const [permanentDeletingEmpresa, setPermanentDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
   // /gestao/usuarios sempre inclui soft-deletados (deleted_at preenchido);
   // o filtro é client-side. Default oculta — mesmo espírito do toggle F2
   // do /bi/financeiro/admin/usuarios, sem refetch.
@@ -476,21 +477,31 @@ export default function AdminPage() {
                     </div>
                     {isExp ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
                   </button>
-                  {/* Action: restore (se soft-deletada) ou delete (caso contrario) */}
+                  {/* Action: restore + apagar definitivo (se soft-deletada) ou delete */}
                   {isSoftDeleted ? (
-                    <button
-                      onClick={() => handleRestoreEmpresa(emp)}
-                      disabled={restoringEmpresaIds.has(emp.id)}
-                      aria-label={`Restaurar ${emp.nome}`}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                    >
-                      {restoringEmpresaIds.has(emp.id) ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      )}
-                      Restaurar
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleRestoreEmpresa(emp)}
+                        disabled={restoringEmpresaIds.has(emp.id)}
+                        aria-label={`Restaurar ${emp.nome}`}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      >
+                        {restoringEmpresaIds.has(emp.id) ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        Restaurar
+                      </button>
+                      <button
+                        onClick={() => setPermanentDeletingEmpresa({ id: emp.id, nome: emp.nome })}
+                        aria-label={`Apagar ${emp.nome} em definitivo`}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-600/20 border border-red-600/40 text-red-300 hover:bg-red-600/30 transition-all flex-shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Apagar definitivo
+                      </button>
+                    </>
                   ) : (
                     <button
                       onClick={() => setDeletingEmpresa({ id: emp.id, nome: emp.nome })}
@@ -722,6 +733,38 @@ export default function AdminPage() {
         onClose={() => setPermanentDeletingUsuario(null)}
         onSuccess={() => {
           showToast('success', `Usuário "${permanentDeletingUsuario?.nome}" apagado em definitivo`)
+          loadData()
+        }}
+      />
+
+      {/* Modal de hard delete de EMPRESA — IRREVERSIVEL, cascade em credenciais,
+          vinculos, permissoes e TODOS os dados financeiros. Exige soft-delete
+          previo (409) + senha do admin + nome exato (403). */}
+      <ConfirmDeleteModal
+        target={permanentDeletingEmpresa}
+        title="Apagar empresa em definitivo"
+        confirmLabel="Apagar definitivo"
+        idPrefix="permanent-delete-empresa"
+        warningContent={
+          permanentDeletingEmpresa ? (
+            <>
+              Esta ação <strong>APAGA PERMANENTEMENTE</strong> a empresa{' '}
+              <strong>{permanentDeletingEmpresa.nome}</strong> e, em cascata,{' '}
+              credenciais Omie, vínculos, permissões e <strong>todos os dados
+              financeiros</strong> (lançamentos, CP/CR, baixas).{' '}
+              <strong>NÃO pode ser desfeita.</strong> Recomenda-se snapshot do
+              banco antes (Railway).
+            </>
+          ) : null
+        }
+        onConfirm={permanentDeleteEmpresa}
+        errorMessages={{
+          404: 'Empresa não encontrada (pode já ter sido apagada).',
+          409: 'O apagar definitivo exige soft-delete prévio (use Excluir antes).',
+        }}
+        onClose={() => setPermanentDeletingEmpresa(null)}
+        onSuccess={() => {
+          showToast('success', `Empresa "${permanentDeletingEmpresa?.nome}" apagada em definitivo`)
           loadData()
         }}
       />

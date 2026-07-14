@@ -13,7 +13,7 @@ import { KPICard } from '@/components/ui/KPICard'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { useBaixas, useCPAll, useCRAll, useCPResumo, useCRResumo } from '@/hooks/api/useCPCR'
-import { fmtBRL, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
+import { fmtBRL, fmtInt, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
@@ -303,11 +303,11 @@ export default function PageCPCR() {
       {/* KPI Strip */}
       <div className="grid grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
         {[
-          { label: isCP ? 'Total a Pagar' : 'Total a Receber', value: fmtK(totalAberto), color: accent, accent, sub: 'Em aberto' },
-          { label: 'A Vencer', value: fmtK(aVencer), color: t.text, accent: t.green, sub: 'Dentro do prazo' },
-          { label: 'Atrasado', value: fmtK(atrasado), color: atrasado > 0 ? t.red : t.text, accent: t.red, sub: atrasado > 0 ? 'Atenção necessária' : 'Nenhum em atraso' },
+          { label: isCP ? 'Total a Pagar' : 'Total a Receber', value: fmtInt(totalAberto), color: accent, accent, sub: 'Em aberto' },
+          { label: 'A Vencer', value: fmtInt(aVencer), color: t.text, accent: t.green, sub: 'Dentro do prazo' },
+          { label: 'Atrasado', value: fmtInt(atrasado), color: atrasado > 0 ? t.red : t.text, accent: t.red, sub: atrasado > 0 ? 'Atenção necessária' : 'Nenhum em atraso' },
           { label: 'Prazo Médio', value: `${pmDias} dias`, color: t.text, accent: t.amber, sub: isCP ? 'Pagamento' : 'Recebimento' },
-          { label: isCP ? 'Pago' : 'Recebido', value: fmtK(pago), color: t.muted, accent: t.blue, sub: `${resumo?.quantidade_realizado ?? 0} títulos` },
+          { label: isCP ? 'Pago' : 'Recebido', value: fmtInt(pago), color: t.muted, accent: t.blue, sub: `${resumo?.quantidade_realizado ?? 0} títulos` },
         ].map((k, i) => (
           <KPICard key={i} label={k.label} value={k.value} color={k.color} accent={k.accent} sub={k.sub} borderRight={i < 4} />
         ))}
@@ -354,9 +354,9 @@ export default function PageCPCR() {
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-2.5 px-4 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
                 {[
-                  { icon: '↑', label: isCP ? 'Pago' : 'Recebido', value: fmtK(pago), color: t.muted, bg: `${t.muted}12` },
-                  { icon: '⏳', label: 'Em aberto', value: fmtK(totalAberto), color: accent, bg: accentDim },
-                  { icon: '⚠', label: 'Atrasado', value: fmtK(atrasado), color: t.red, bg: t.redDim },
+                  { icon: '↑', label: isCP ? 'Pago' : 'Recebido', value: fmtInt(pago), color: t.muted, bg: `${t.muted}12` },
+                  { icon: '⏳', label: 'Em aberto', value: fmtInt(totalAberto), color: accent, bg: accentDim },
+                  { icon: '⚠', label: 'Atrasado', value: fmtInt(atrasado), color: t.red, bg: t.redDim },
                 ].map((s, i) => (
                   <div key={i} className="flex items-center gap-2.5 rounded-lg p-2.5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
                     <div className="w-7 h-7 rounded-md flex items-center justify-center text-[13px] shrink-0" style={{ background: s.bg }}>{s.icon}</div>
@@ -478,7 +478,7 @@ export default function PageCPCR() {
                     <div key={bucket}>
                       <div className="flex justify-between text-[10px] mb-1">
                         <span style={{ color: t.textSec }}>{bucket} dias</span>
-                        <span className="font-mono" style={{ color: t.text }}>{fmtK(val)}</span>
+                        <span className="font-mono" style={{ color: t.text }}>{fmtInt(val)}</span>
                       </div>
                       <div className="h-2 rounded-sm overflow-hidden" style={{ background: `${t.text}08` }}>
                         <div className="h-full rounded-sm transition-[width] duration-500" style={{ width: `${(val / agingMax) * 100}%`, background: accent, opacity: 0.6 }} />
@@ -505,7 +505,7 @@ export default function PageCPCR() {
                       <div className="flex justify-between text-[10px] mb-1">
                         <span style={{ color: t.textSec }}>{s.label}</span>
                         <div className="flex gap-2.5">
-                          <span className="font-mono" style={{ color: t.text }}>{fmtK(s.value)}</span>
+                          <span className="font-mono" style={{ color: t.text }}>{fmtInt(s.value)}</span>
                           <span className="font-mono" style={{ color: s.color }}>{((s.value / total) * 100).toFixed(0)}%</span>
                         </div>
                       </div>
@@ -536,7 +536,7 @@ export default function PageCPCR() {
                         <span style={{ color: t.text }}>{nome}</span>
                       </div>
                       <div className="flex gap-2.5">
-                        <span className="font-mono" style={{ color: t.text }}>{fmtK(valor)}</span>
+                        <span className="font-mono" style={{ color: t.text }}>{fmtInt(valor)}</span>
                         <span className="font-mono min-w-[36px] text-right" style={{ color: accent }}>{((valor / favTotal) * 100).toFixed(0)}%</span>
                       </div>
                     </div>
@@ -558,7 +558,7 @@ export default function PageCPCR() {
                     <div className="flex justify-between text-[10px] mb-1">
                       <span style={{ color: t.text }}>{nome}</span>
                       <div className="flex gap-2.5">
-                        <span className="font-mono" style={{ color: t.text }}>{fmtK(valor)}</span>
+                        <span className="font-mono" style={{ color: t.text }}>{fmtInt(valor)}</span>
                         <span className="font-mono min-w-[36px] text-right" style={{ color: t.amber }}>{((valor / catTotal) * 100).toFixed(0)}%</span>
                       </div>
                     </div>
@@ -580,7 +580,7 @@ export default function PageCPCR() {
             <div className="text-[9px] uppercase tracking-wider mb-2" style={{ color: t.muted }}>
               Posição {isCP ? 'Contas a Pagar' : 'Contas a Receber'}
             </div>
-            <div className="font-mono text-xl mb-0.5" style={{ color: accent }}>{fmtK(totalAberto)}</div>
+            <div className="font-mono text-xl mb-0.5" style={{ color: accent }}>{fmtInt(totalAberto)}</div>
             <div className="text-[9px]" style={{ color: t.muted }}>{aberto.length} títulos em aberto</div>
           </div>
 
@@ -596,7 +596,7 @@ export default function PageCPCR() {
             {favSorted.slice(0, 5).map(([nome, valor], i) => (
               <div key={i} className="flex justify-between text-[10px] py-1" style={{ borderBottom: i < 4 ? `1px solid ${t.text}06` : 'none' }}>
                 <span className="truncate max-w-[140px]" style={{ color: t.textSec }}>{nome}</span>
-                <span className="font-mono" style={{ color: t.text }}>{fmtK(valor)}</span>
+                <span className="font-mono" style={{ color: t.text }}>{fmtInt(valor)}</span>
               </div>
             ))}
           </div>
@@ -607,7 +607,7 @@ export default function PageCPCR() {
             {Object.entries(aging).map(([bucket, val]) => (
               <div key={bucket} className="flex justify-between text-[10px] py-1">
                 <span style={{ color: t.muted }}>{bucket}d</span>
-                <span className="font-mono" style={{ color: val > 0 ? t.text : t.mutedDim }}>{fmtK(val)}</span>
+                <span className="font-mono" style={{ color: val > 0 ? t.text : t.mutedDim }}>{fmtInt(val)}</span>
               </div>
             ))}
           </div>
@@ -628,7 +628,7 @@ export default function PageCPCR() {
                     <span className="truncate max-w-[120px]" style={{ color: t.textSec }}>{r.fav}</span>
                     <span className="font-mono text-[9px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</span>
                   </div>
-                  <span className="font-mono" style={{ color: accent }}>{fmtK(r.valor)}</span>
+                  <span className="font-mono" style={{ color: accent }}>{fmtInt(r.valor)}</span>
                 </div>
               ))}
           </div>

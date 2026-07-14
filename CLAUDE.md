@@ -643,3 +643,62 @@ como concluído + Passo 4 corrigido (sem `ComparativoDRE`).
 - DRE **100% backend** (a flag `NEXT_PUBLIC_USE_BACKEND_DRE` não existe mais). Parsing de data crua
   da API **centralizado em `parseApiDate`** (`formatters.ts`) — não usar `split('/')`/`parseDMY`
   próprios em campo de data cru.
+
+## Sessão 2026-07-12/14 — Janelas C+D fechadas + extrato limpo (fonte fiel ao caixa)
+
+**Janela C — RBAC_ENFORCE (CONCLUÍDA 2026-07-12):** flag `RBAC_ENFORCE=true` em prod (Railway)
+desde ~01/07, validada. Estado real da prod divergia do plano: Giovan e r.tonha **soft-deletados
+em 12/06** — só 2 admins ativos (bypass), risco de lock-out zero. Decisão: ligar como
+secure-by-default. ⚠️ **Usuário não-admin novo EXIGE perfil** (`/bi/financeiro/admin/usuarios`),
+senão 403 em todo o BI. Pré-flight via `railway connect` + `scripts/rbac_check.sql` (api).
+
+**Janela D — Next 16 (CONCLUÍDA 2026-07-13):** #172 mergeado (Next 16.2.9 + React 19.2 + ESLint 9
+flat config). Branch atualizada com main pós-Fase 5 (zero conflitos), gate re-rodado, CSP validada
+em Preview e produção (nonce, sem unsafe-*), issue #56 fechada. Dependabot destravado: #168/#169/
+#170/#173/#181 mergeados na sequência (CI verde era bloqueado pelo peer eslint>=9).
+
+**Saga do extrato contaminado (2026-07-13/14):** conferência fina do DRE vs Excel da controladoria
+(GRUPO ALT) achou Abr +3,2M / Mai CV +1,9M. Investigação em 5 rodadas de SQL read-only
+(`grupoalt-api/scripts/dre_divergencia*.sql`) isolou **3 mecanismos** contaminando `lancamentos_cc`:
+
+1. **Títulos em aberto como caixa** — Omie manda previsões (`Conta a Receber/Pagar`) no
+   `ListarExtrato`; sync ingeria. Fix **api #144** (skip `is_previsao` + cache DRE v4) + limpeza
+   one-time (DELETE 1113 linhas / ~15,7M — Jun/Jul correntes eram os mais poluídos).
+2. **Registros-fantasma** — Omie reemite baixa com `nCodLanc` NOVO ao conciliar/rebaixar; upsert
+   nunca deletava. Fix **api #145**: reconciliação de janela no sync (deleta o que a Omie parou de
+   devolver) + guarda M1 anti-resposta-truncada (mortos > max(50, 30%) aborta) + cache nos caminhos
+   que deletam. Audit 84→APPROVE pós-fix.
+3. **"Dupla camada" crédito+baixa** — inspeção do JSON cru (`inspect_extrato_raw.py`) provou que era
+   **subconjunto do mecanismo 2**: ao conciliar, a Omie SUBSTITUI crédito bancário + baixa antiga por
+   baixa nova; os "pares" no banco eram cadáveres. Resync-extrato purgou tudo.
+
+**Resultado:** 1.01.02 Abr 7,92M→4,75M (Excel: 4,77M), Mai 4,1M→2,58M (Excel: 2,60M), duplicatas 0,
+previsões 0. **DRE agora fiel ao caixa real**; higiene permanente = sync diário com reconciliação +
+financeiro conciliando na Omie. NOP nunca bate com Excel da controladoria **por design** (repasse é
+NEUTRO no portal). Regra de estorno (R-03/Math.abs) descartada como causa (query de sinais mistos vazia).
+
+**Frontend entregue na sequência:**
+- **#184**: `fmtInt` (inteiro pt-BR) na tabela DRE mês a mês — pedido da controladoria pra enxergar
+  distorção fina.
+- **#185**: `fmtInt` em TODAS as superfícies de leitura (KPI cards, DRESidebar, DetailPanel,
+  ChartGrid cards, tabelas de CP/CR/Extrato/Fluxo/Conciliação, Análise IA + espelhos portal).
+  **`fmtK` é EXCLUSIVO de gráficos** (tickFormatter, BarLabel/BarLabelVar, CustomTooltip, waterfall).
+- **#186**: botão **"Resync extrato"** por empresa em Configurações (era só via fetch manual no
+  console). 504/rede = info "continua em segundo plano" (endpoint síncrono e demorado), não erro.
+- **#187**: fix de flake no teste de race do portal/admin (`findByRole` — o `waitFor` só garantia a
+  chamada, não o re-render da aba).
+
+**api na mesma sessão:** #144, #145, #146 (fix falso-negativo do `rbac_preflight` — override
+letra-morta do vocabulário legado mascarava lock-out; + promove 8 scripts de diagnóstico read-only
+pra `scripts/`).
+
+**Pendências:** limpeza empresas TESTE(3)/SMOKE(4) em prod (operacional, via UI); unificação
+estrutural `bi/` ↔ `portal/` (~3500 LOC, único item grande restante).
+
+## Estado atual do build (2026-07-14)
+
+- **44 rotas**; testes **376 em `main`**; bundle 0 credenciais.
+- Formatação: **`fmtInt` para leitura, `fmtK` só em gráficos** — não reintroduzir `fmtK` em
+  card/tabela nova.
+- Extrato: sync com **reconciliação de janela** (deleta o que a Omie não devolve mais) e **sem
+  previsões**. Resync total por empresa disponível na tela admin de Configurações.

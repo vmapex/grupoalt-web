@@ -11,7 +11,7 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { KPICard } from '@/components/ui/KPICard'
 import { BarLabel } from '@/components/charts/BarLabel'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL, sortByMonthYear } from '@/lib/formatters'
+import { fmtK, fmtInt, fmtBRL, sortByMonthYear } from '@/lib/formatters'
 import type { ContaPagarReceber } from '@/lib/mocks/cpcrData'
 import { useFluxoCaixa } from '@/hooks/api/useFluxo'
 import { useCPAll, useCRAll } from '@/hooks/api/useCPCR'
@@ -227,10 +227,10 @@ export default function PageFluxo() {
 
       {/* KPI Strip */}
       <div className="grid grid-cols-5 shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-        <KPICard label="Saldo Atual" value={`R$ ${fmtK(saldoAtual)}`} color={t.blue} accent={t.blue} />
-        <KPICard label="Entradas Prev." value={`R$ ${fmtK(totalEnt)}`} color={t.green} accent={t.green} />
-        <KPICard label="Saidas Prev." value={`R$ ${fmtK(totalSai)}`} color={t.red} accent={t.red} />
-        <KPICard label="Saldo Projetado" value={`R$ ${fmtK(saldoProjetado)}`} color={saldoProjetado >= 0 ? t.green : t.red} accent={saldoProjetado >= 0 ? t.green : t.red} />
+        <KPICard label="Saldo Atual" value={`R$ ${fmtInt(saldoAtual)}`} color={t.blue} accent={t.blue} />
+        <KPICard label="Entradas Prev." value={`R$ ${fmtInt(totalEnt)}`} color={t.green} accent={t.green} />
+        <KPICard label="Saidas Prev." value={`R$ ${fmtInt(totalSai)}`} color={t.red} accent={t.red} />
+        <KPICard label="Saldo Projetado" value={`R$ ${fmtInt(saldoProjetado)}`} color={saldoProjetado >= 0 ? t.green : t.red} accent={saldoProjetado >= 0 ? t.green : t.red} />
         <KPICard label="Cobertura" value={`${cobertura.toFixed(1).replace('.', ',')}x`} color={cobertura >= 1 ? t.green : t.amber} accent={cobertura >= 1 ? t.green : t.amber} sub={cobertura >= 1 ? 'Saudavel' : 'Atencao'} borderRight={false} />
       </div>
 
@@ -292,7 +292,7 @@ export default function PageFluxo() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <TrendingUp size={12} style={{ color: t.amber }} />
-                    <span className="text-[9px] font-mono" style={{ color: t.amber }}>Final: R$ {fmtK(saldoProjetado)}</span>
+                    <span className="text-[9px] font-mono" style={{ color: t.amber }}>Final: R$ {fmtInt(saldoProjetado)}</span>
                   </div>
                 </div>
                 <div style={{ height: 280 }}>
@@ -332,7 +332,7 @@ export default function PageFluxo() {
             <div className="text-[9px] mt-1" style={{ color: t.muted }}>em {hz} dias ({HZ_OPTIONS.find((o) => o.days === hz)?.label})</div>
             <div className="flex items-center gap-1 mt-2">
               {saldoProjetado >= saldoAtual ? <ArrowUpRight size={11} style={{ color: t.green }} /> : <ArrowDownRight size={11} style={{ color: t.red }} />}
-              <span className="text-[9px] font-mono" style={{ color: saldoProjetado >= saldoAtual ? t.green : t.red }}>{fmtK(saldoProjetado - saldoAtual)} vs atual</span>
+              <span className="text-[9px] font-mono" style={{ color: saldoProjetado >= saldoAtual ? t.green : t.red }}>{fmtInt(saldoProjetado - saldoAtual)} vs atual</span>
             </div>
           </div>
 
@@ -344,7 +344,7 @@ export default function PageFluxo() {
                 <div key={i} className="rounded-lg p-3" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] truncate max-w-[140px]" style={{ color: t.textSec }}>{r.fav}</span>
-                    <span className="text-[10px] font-mono font-medium" style={{ color: t.green }}>{fmtK(r.valor)}</span>
+                    <span className="text-[10px] font-mono font-medium" style={{ color: t.green }}>{fmtInt(r.valor)}</span>
                   </div>
                   <div className="h-0.5 rounded-sm overflow-hidden" style={{ background: `${t.text}08` }}>
                     <div className="h-full rounded-sm" style={{ width: `${(r.valor / (topEntradas[0]?.valor || 1)) * 100}%`, background: t.green, opacity: 0.5 }} />
@@ -362,7 +362,7 @@ export default function PageFluxo() {
                 <div key={i} className="rounded-lg p-3" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] truncate max-w-[140px]" style={{ color: t.textSec }}>{r.fav}</span>
-                    <span className="text-[10px] font-mono font-medium" style={{ color: t.red }}>{fmtK(r.valor)}</span>
+                    <span className="text-[10px] font-mono font-medium" style={{ color: t.red }}>{fmtInt(r.valor)}</span>
                   </div>
                   <div className="h-0.5 rounded-sm overflow-hidden" style={{ background: `${t.text}08` }}>
                     <div className="h-full rounded-sm" style={{ width: `${(r.valor / (topSaidas[0]?.valor || 1)) * 100}%`, background: t.red, opacity: 0.5 }} />

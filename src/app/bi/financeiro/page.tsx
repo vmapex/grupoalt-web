@@ -9,7 +9,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { useBiViewStore } from '@/store/biViewStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtK, fmtBRL, sortByMonthYear, formatIsoToBr, parseApiDate } from '@/lib/formatters'
+import { fmtK, fmtInt, fmtBRL, sortByMonthYear, formatIsoToBr, parseApiDate } from '@/lib/formatters'
 import { AnaliseIAView } from '@/components/analise/AnaliseIAView'
 
 import { useExtrato } from '@/hooks/api/useExtrato'
@@ -125,12 +125,12 @@ function DashboardExecutivo() {
   const fluxo30d = fluxoAPI?.kpis?.saldo_projetado ?? 0
 
   const kpis: KPICardData[] = useMemo(() => [
-    { label: 'Saldo de Caixa', value: `R$ ${fmtK(saldoCaixa)}`, color: t.blue, dim: t.blueDim, route: '/bi/financeiro/extrato' },
-    { label: 'Resultado (EBT2)', value: `R$ ${fmtK(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/caixa' },
-    { label: 'CP Atrasado', value: `R$ ${fmtK(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, route: '/bi/financeiro/cp-cr' },
-    { label: 'CR Previsto', value: `R$ ${fmtK(crPrevisto)}`, color: t.green, dim: t.greenDim, route: '/bi/financeiro/cp-cr' },
+    { label: 'Saldo de Caixa', value: `R$ ${fmtInt(saldoCaixa)}`, color: t.blue, dim: t.blueDim, route: '/bi/financeiro/extrato' },
+    { label: 'Resultado (EBT2)', value: `R$ ${fmtInt(ebt2)}`, color: ebt2 >= 0 ? t.green : t.red, dim: ebt2 >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/caixa' },
+    { label: 'CP Atrasado', value: `R$ ${fmtInt(cpAtrasado)}`, color: cpAtrasado > 0 ? t.red : t.green, dim: cpAtrasado > 0 ? t.redDim : t.greenDim, route: '/bi/financeiro/cp-cr' },
+    { label: 'CR Previsto', value: `R$ ${fmtInt(crPrevisto)}`, color: t.green, dim: t.greenDim, route: '/bi/financeiro/cp-cr' },
     { label: 'Conciliacao', value: `${concilPct}%`, color: concilPct >= 80 ? t.green : t.amber, dim: concilPct >= 80 ? t.greenDim : t.amberDim, route: '/bi/financeiro/conciliacao' },
-    { label: 'Fluxo 30d', value: `R$ ${fmtK(fluxo30d)}`, color: fluxo30d >= 0 ? t.green : t.red, dim: fluxo30d >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/fluxo' },
+    { label: 'Fluxo 30d', value: `R$ ${fmtInt(fluxo30d)}`, color: fluxo30d >= 0 ? t.green : t.red, dim: fluxo30d >= 0 ? t.greenDim : t.redDim, route: '/bi/financeiro/fluxo' },
   ], [t, saldoCaixa, ebt2, cpAtrasado, crPrevisto])
 
   /* ── Receita vs Custos chart data (from extrato) ──── */
@@ -365,7 +365,7 @@ function DashboardExecutivo() {
                   className="text-[9px] font-mono font-medium"
                   style={{ color: item.color }}
                 >
-                  {fmtK(item.value)}
+                  {fmtInt(item.value)}
                 </div>
                 <div
                   className="w-full rounded-t-md transition-all"
@@ -519,7 +519,7 @@ function DashboardExecutivo() {
                     {bucket.label}
                   </span>
                   <span className="text-[10px] font-mono font-medium" style={{ color: t.text }}>
-                    {fmtK(bucket.total)}
+                    {fmtInt(bucket.total)}
                   </span>
                 </div>
                 <div
@@ -559,7 +559,7 @@ function DashboardExecutivo() {
                     {c.nome}
                   </span>
                   <span className="text-[10px] font-mono font-medium shrink-0" style={{ color: t.text }}>
-                    {fmtK(c.valor)}
+                    {fmtInt(c.valor)}
                   </span>
                 </div>
                 <div

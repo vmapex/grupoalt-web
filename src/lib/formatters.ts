@@ -6,6 +6,16 @@ export function fmtBRL(v: number): string {
   })
 }
 
+/** Inteiro pt-BR com separador de milhar e sinal (− U+2212). Ex.: −4.774.032.
+ *  Para tabelas/cards onde o valor completo importa — abreviação K/M (fmtK)
+ *  fica restrita a gráficos (eixos, rótulos de barra, tooltips). */
+export function fmtInt(v: number): string {
+  if (!v) return '0'
+  const r = Math.round(Math.abs(v))
+  if (r === 0) return '0'
+  return (v < 0 ? '−' : '') + r.toLocaleString('pt-BR')
+}
+
 /** Abbreviate to K/M with sign */
 export function fmtK(v: number): string {
   if (!v || v === 0) return '0'
