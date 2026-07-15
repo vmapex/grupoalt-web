@@ -52,6 +52,7 @@ const sections: NavSection[] = [
   {
     id: 'motor',
     label: 'Motor Fechamento v2.0',
+    modulo: 'fechamento',
     children: [
       { label: 'Motor Fechamento v2.0', href: '/portal/fechamento', icon: <GitCompare className="w-[18px] h-[18px]" /> },
     ],
@@ -87,7 +88,11 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
   const visibleSections = useMemo(() => sections.filter(s => {
     if (isAdmin) return true
     if (!s.modulo) return true
-    return hasPermissao(s.modulo, 'visualizar')
+    // Bug pré-existente (achado no plano do SSO): a ação era 'visualizar',
+    // que NÃO existe no vocabulário RBAC ('ver' — app/core/rbac.py ACOES).
+    // Nunca casava → para não-admin, toda seção com `modulo` sumia. Passou
+    // despercebido porque só havia admins (bypass) em produção.
+    return hasPermissao(s.modulo, 'ver')
   }), [isAdmin, hasPermissao])
 
   const userInitials = user?.nome

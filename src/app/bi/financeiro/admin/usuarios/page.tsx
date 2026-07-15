@@ -17,6 +17,7 @@ import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { AdminSubNav } from '@/components/admin/AdminSubNav'
 import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
+import { MotorAcessoSection } from '@/components/admin/MotorAcessoSection'
 import { describeAxiosError, type ErrorPresentation } from '@/lib/errorPresentation'
 import {
   useAdminUsuarios,
@@ -640,6 +641,12 @@ function DetalheUsuario({ user, perfis, empresas, t, isAutoDelete, isSoftDeleted
           )
         })}
       </div>
+
+      {/* Acesso ao Motor de Fechamento (SSO, 2026-07). Não renderiza pra
+          soft-deletado — o fluxo exige restaurar antes, igual atribuições. */}
+      {!isSoftDeleted && (
+        <MotorAcessoSection usuarioId={user.id} usuarioNome={user.nome} t={t} />
+      )}
     </div>
   )
 }
