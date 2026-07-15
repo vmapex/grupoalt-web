@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-07-01 (Fase 5 concluída: #176/#178 mergeados; fix datas P1-2 #179 + api #143; Janela B fechada)
+> Última atualização: 2026-07-15 (Fase 2 Motor↔Portal concluída: SSO em produção, gate + smoke E2E aprovados)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -702,3 +702,34 @@ estrutural `bi/` ↔ `portal/` (~3500 LOC, único item grande restante).
   card/tabela nova.
 - Extrato: sync com **reconciliação de janela** (deleta o que a Omie não devolve mais) e **sem
   previsões**. Resync total por empresa disponível na tela admin de Configurações.
+
+## Sessão 2026-07-14/15 — Fase 2 Motor↔Portal (SSO) mergeada e validada
+
+**web #191 (mergeado):** UI da integração SSO com o Motor de Fechamento:
+- `src/app/portal/fechamento/page.tsx` — página de entrada com botão SSO. Padrão
+  anti-popup-blocker: `window.open('', '_blank')` SÍNCRONO no clique, URL setada quando o
+  ticket chega; em erro a aba fecha e um banner explica (409 sem acesso / 403 sem permissão /
+  503 integração não configurada).
+- `src/components/admin/MotorAcessoSection.tsx` — seção "Acesso ao Motor de Fechamento" no
+  detalhe de usuário do admin BI (`/bi/financeiro/admin/usuarios`): conceder ou VINCULAR
+  existente (aviso azul), atualizar perfil/unidades, revogar (confirm + faixa vermelha),
+  aviso âmbar quando estado no Motor diverge do portal, linha informativa em 503.
+- `src/hooks/api/useMotorAcesso.ts` — hooks/endpoints `/motor/*`.
+- Sidebar: módulo `fechamento` + fix bug `'visualizar'→'ver'` (seções com módulo sumiam
+  pra não-admin).
+
+**Validação em produção (2026-07-15):** smoke E2E aprovado — provisionar, SSO abre logado
+sem senha (admin e operacional não-admin, escopo de unidades do Motor respeitado),
+revogar → banner 409 + sessão do Motor derrubada. Detalhes operacionais do gate e do
+diagnóstico vivem no CLAUDE.md do repo da api (privado).
+**Lição de UX do smoke:** uma sessão antiga do Motor no navegador MASCARA falha de SSO —
+a SPA abre o dashboard mesmo com `?sso_error=1` na URL; validar SSO pelo estado real,
+não pela tela aberta.
+
+**Backlog anotado (validação do usuário):**
+- Motor (`motor-fechamento-alt`): falta filtro de unidade nas telas operacionais pra quem
+  opera 2+ unidades (o escopo funciona; não dá pra filtrar entre as unidades permitidas).
+- Web: mover/duplicar gestão de usuários + "Acesso ao Motor" pro `/portal/admin` — hoje
+  vive só no admin do BI, e o admin do BI deveria ser só de BI. Toca na unificação
+  `bi/` ↔ `portal/`.
+- Fase D: KPIs do Motor no dashboard do portal.
