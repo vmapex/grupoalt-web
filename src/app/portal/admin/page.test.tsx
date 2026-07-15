@@ -108,6 +108,26 @@ vi.mock('@/components/admin/DeleteUsuarioModal', () => ({
   },
 }))
 
+// ── Stubs das seções de gestão migradas do BI (2026-07-15) ──────────────────
+// Cada seção tem teste próprio (PerfisRBACSection.test / MotorAcessoSection
+// .test); aqui só interessa QUANDO a página as renderiza e com quais props.
+
+const perfisSectionProps = vi.fn()
+vi.mock('@/components/admin/PerfisRBACSection', () => ({
+  PerfisRBACSection: (props: { usuarioId: number; isAdmin: boolean }) => {
+    perfisSectionProps(props)
+    return <div data-testid="perfis-rbac-section">perfis-{props.usuarioId}</div>
+  },
+}))
+
+const motorSectionProps = vi.fn()
+vi.mock('@/components/admin/MotorAcessoSection', () => ({
+  MotorAcessoSection: (props: { usuarioId: number; usuarioNome: string }) => {
+    motorSectionProps(props)
+    return <div data-testid="motor-acesso-section">motor-{props.usuarioId}</div>
+  },
+}))
+
 interface ConfirmDeleteModalMockProps {
   target: { nome: string } | null
   title: string
@@ -140,6 +160,8 @@ beforeEach(() => {
   permanentDeleteEmpresaMock.mockReset()
   deleteUsuarioModalProps.mockReset()
   confirmDeleteModalProps.mockReset()
+  perfisSectionProps.mockReset()
+  motorSectionProps.mockReset()
   apiGetMock.mockReset()
   apiPostMock.mockReset()
 
@@ -460,5 +482,88 @@ describe('AdminPage portal — apagar empresa em definitivo', () => {
       props.onSuccess()
     })
     expect(screen.getByText(/apagada em definitivo/i)).toBeTruthy()
+  })
+})
+
+
+// ── Gestão migrada do BI: Perfis RBAC + Acesso ao Motor (2026-07-15) ────────
+
+describe('AdminPage portal — seções Perfis RBAC e Acesso ao Motor', () => {
+  beforeEach(() => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === '/gestao/usuarios') {
+        return Promise.resolve({
+          data: [
+            { ...baseUser, id: 1, nome: 'Ana Ativa', email: 'ana@x.com', deleted_at: null },
+            { ...baseUser, id: 2, nome: 'Bruno Deletado', email: 'bruno@x.com', deleted_at: '2026-06-01T12:00:00Z' },
+          ],
+        })
+      }
+      if (url === '/admin/empresas') {
+        return Promise.resolve({
+          data: [
+            { id: 10, nome: 'Empresa Alfa', cnpj: null, deleted_at: null },
+            { id: 20, nome: 'Empresa Beta', cnpj: null, deleted_at: '2026-05-24T11:00:00Z' },
+          ],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+  })
+
+  it('expandir usuário ativo renderiza PerfisRBACSection (só empresas ativas) e MotorAcessoSection', async () => {
+    render(<AdminPage />)
+    await screen.findByText('Ana Ativa')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Expandir Ana Ativa/i }))
+    })
+
+    expect(screen.getByTestId('perfis-rbac-section')).toBeTruthy()
+    expect(screen.getByTestId('motor-acesso-section')).toBeTruthy()
+
+    const perfisProps = perfisSectionProps.mock.calls.at(-1)![0]
+    expect(perfisProps.usuarioId).toBe(1)
+    expect(perfisProps.isAdmin).toBe(false)
+    // Empresa soft-deletada não entra no dropdown de atribuição
+    expect(perfisProps.empresas).toEqual([
+      { id: 10, nome: 'Empresa Alfa', cnpj: null, deleted_at: null },
+    ])
+
+    const motorProps = motorSectionProps.mock.calls.at(-1)![0]
+    expect(motorProps.usuarioId).toBe(1)
+    expect(motorProps.usuarioNome).toBe('Ana Ativa')
+  })
+
+  it('usuário soft-deletado expandido NÃO renderiza as seções (restaurar antes)', async () => {
+    render(<AdminPage />)
+    await screen.findByText('Ana Ativa')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('checkbox', { name: /Mostrar usuários deletados/i }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Expandir Bruno Deletado/i }))
+    })
+
+    expect(screen.queryByTestId('perfis-rbac-section')).toBeNull()
+    expect(screen.queryByTestId('motor-acesso-section')).toBeNull()
+  })
+
+  it('busca por nome/email filtra a lista de usuários', async () => {
+    render(<AdminPage />)
+    await screen.findByText('Ana Ativa')
+
+    const busca = screen.getByRole('searchbox', { name: /Buscar usuário por nome ou email/i })
+    await act(async () => {
+      fireEvent.change(busca, { target: { value: 'bruno@x.com' } })
+    })
+    // Bruno existe mas está oculto (deletado, toggle off) — lista fica vazia
+    expect(screen.queryByText('Ana Ativa')).toBeNull()
+
+    await act(async () => {
+      fireEvent.change(busca, { target: { value: 'ana' } })
+    })
+    expect(screen.getByText('Ana Ativa')).toBeTruthy()
   })
 })

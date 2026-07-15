@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import Link from 'next/link'
-import { Settings, Tag, Landmark, Sparkles, Users } from 'lucide-react'
+import { Settings, Tag, Landmark, Sparkles } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 
 
@@ -25,7 +25,6 @@ export type AdminSubNavKey =
   | 'categorias'
   | 'contas'
   | 'orbit'
-  | 'usuarios'
 
 
 interface AdminSubNavItem {
@@ -36,14 +35,15 @@ interface AdminSubNavItem {
 }
 
 
-// Lista canonica das 5 paginas admin. Adicionar nova entrada aqui
+// Lista canonica das paginas admin do BI. Adicionar nova entrada aqui
 // propaga para todas as paginas automaticamente.
+// "Usuários" saiu em 2026-07-15: gestão de usuários (perfis RBAC +
+// Acesso ao Motor) agora vive em /portal/admin — admin do BI é só de BI.
 const ITEMS: readonly AdminSubNavItem[] = [
   { key: 'empresas',   label: 'Empresas',         href: '/bi/financeiro/admin',                  icon: <Settings size={12} /> },
   { key: 'categorias', label: 'Plano de Contas',  href: '/bi/financeiro/admin/categorias',       icon: <Tag size={12} /> },
   { key: 'contas',     label: 'Contas Bancárias', href: '/bi/financeiro/admin/contas-bancarias', icon: <Landmark size={12} /> },
   { key: 'orbit',      label: 'Orbit IA',         href: '/bi/financeiro/admin/orbit',            icon: <Sparkles size={12} /> },
-  { key: 'usuarios',   label: 'Usuários',         href: '/bi/financeiro/admin/usuarios',         icon: <Users size={12} /> },
 ] as const
 
 
