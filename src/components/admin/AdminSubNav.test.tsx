@@ -8,9 +8,12 @@ import { AdminSubNav } from './AdminSubNav'
  * E1 (2026-05-24) — testes do AdminSubNav compartilhado.
  *
  * Antes: 5 implementacoes diferentes da mesma sub-nav. Agora:
- * 1 componente unico. Tests garantem que (a) os 5 links existem,
+ * 1 componente unico. Tests garantem que (a) os links existem,
  * (b) o link "active" recebe aria-current="page", (c) styling
  * difere entre active e inativo.
+ *
+ * 2026-07-15: "Usuários" saiu da sub-nav — gestao de usuarios
+ * (perfis RBAC + Acesso ao Motor) migrou pro /portal/admin.
  */
 
 
@@ -26,18 +29,18 @@ vi.mock('@/store/themeStore', () => ({
 
 
 describe('<AdminSubNav />', () => {
-  it('renderiza os 5 links das paginas admin', () => {
+  it('renderiza os 4 links das paginas admin do BI (sem Usuários)', () => {
     render(<AdminSubNav active="empresas" />)
     expect(screen.getByRole('link', { name: /Empresas/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Plano de Contas/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Contas Bancárias/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Orbit IA/i })).toBeTruthy()
-    expect(screen.getByRole('link', { name: /Usuários/i })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /Usuários/i })).toBeNull()
   })
 
   it('marca o link ativo com aria-current="page"', () => {
-    render(<AdminSubNav active="usuarios" />)
-    const ativo = screen.getByRole('link', { name: /Usuários/i })
+    render(<AdminSubNav active="orbit" />)
+    const ativo = screen.getByRole('link', { name: /Orbit IA/i })
     expect(ativo.getAttribute('aria-current')).toBe('page')
     // Outros nao tem aria-current
     expect(screen.getByRole('link', { name: /Empresas/i }).getAttribute('aria-current')).toBeNull()
@@ -53,7 +56,6 @@ describe('<AdminSubNav />', () => {
       '/bi/financeiro/admin/categorias',
       '/bi/financeiro/admin/contas-bancarias',
       '/bi/financeiro/admin/orbit',
-      '/bi/financeiro/admin/usuarios',
     ])
   })
 
@@ -63,7 +65,7 @@ describe('<AdminSubNav />', () => {
   })
 
   it('cada key valida do tipo AdminSubNavKey resolve para link ativo', () => {
-    const keys = ['empresas', 'categorias', 'contas', 'orbit', 'usuarios'] as const
+    const keys = ['empresas', 'categorias', 'contas', 'orbit'] as const
     for (const k of keys) {
       const { unmount } = render(<AdminSubNav active={k} />)
       // Exatamente 1 link deve ter aria-current="page"

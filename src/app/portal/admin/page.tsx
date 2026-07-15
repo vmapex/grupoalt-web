@@ -12,6 +12,9 @@ import { describeAxiosError } from '@/lib/errorPresentation'
 import { useAuthStore } from '@/store/authStore'
 import { ConfirmDeleteModal } from '@/components/admin/ConfirmDeleteModal'
 import { restaurarUsuario, permanentDeleteUsuario } from '@/hooks/api/useAdminPerfis'
+import { PerfisRBACSection } from '@/components/admin/PerfisRBACSection'
+import { MotorAcessoSection } from '@/components/admin/MotorAcessoSection'
+import { DARK } from '@/store/themeStore'
 
 interface UserData {
   id: number; nome: string; email: string; ativo: boolean; is_admin: boolean
@@ -70,6 +73,9 @@ export default function AdminPage() {
   // o filtro é client-side. Default oculta — mesmo espírito do toggle F2
   // do /bi/financeiro/admin/usuarios, sem refetch.
   const [showDeleted, setShowDeleted] = useState(false)
+  // Busca client-side por nome/email (paridade com a antiga tela de
+  // usuários do BI, aposentada em favor desta).
+  const [buscaUsuario, setBuscaUsuario] = useState('')
   const [restoringUsuarioIds, setRestoringUsuarioIds] = useState<Set<number>>(() => new Set())
   // Usa Set pra permitir restaurar varias empresas em paralelo sem que
   // o spinner do segundo apague o do primeiro. Mesmo pattern do
@@ -293,6 +299,14 @@ export default function AdminPage() {
       {/* ═══ TAB: USUÁRIOS ═══ */}
       {tab === 'Usuários' && (
         <div className="space-y-3">
+          <input
+            type="search"
+            value={buscaUsuario}
+            onChange={e => setBuscaUsuario(e.target.value)}
+            placeholder="Buscar por nome ou email..."
+            aria-label="Buscar usuário por nome ou email"
+            className="w-full max-w-sm bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]"
+          />
           {usuarios.some(u => !!u.deleted_at) && (
             <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none w-fit">
               <input
@@ -304,7 +318,14 @@ export default function AdminPage() {
               Mostrar usuários deletados ({usuarios.filter(u => !!u.deleted_at).length})
             </label>
           )}
-          {usuarios.filter(u => showDeleted || !u.deleted_at).map(user => {
+          {usuarios
+            .filter(u => showDeleted || !u.deleted_at)
+            .filter(u => {
+              const q = buscaUsuario.trim().toLowerCase()
+              if (!q) return true
+              return u.nome.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+            })
+            .map(user => {
             const isExpanded = expandedUser === user.id
             const isSoftDeleted = !!user.deleted_at
             const deletedAtLabel = user.deleted_at
@@ -421,6 +442,22 @@ export default function AdminPage() {
                         ))}
                       </div>
                     </div>
+                    {/* Perfis RBAC + Acesso ao Motor (2026-07-15): antes viviam
+                        só em /bi/financeiro/admin/usuarios; a gestão de usuários
+                        agora é toda aqui. Não renderiza pra soft-deletado —
+                        o fluxo exige restaurar antes. */}
+                    {!isSoftDeleted && (
+                      <>
+                        <div className="pt-2">
+                          <PerfisRBACSection
+                            usuarioId={user.id}
+                            isAdmin={user.is_admin}
+                            empresas={empresas.filter(e => !e.deleted_at)}
+                          />
+                        </div>
+                        <MotorAcessoSection usuarioId={user.id} usuarioNome={user.nome} t={DARK} />
+                      </>
+                    )}
                   </div>
                 )}
               </div>
