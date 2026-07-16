@@ -50,6 +50,21 @@ export async function restoreEmpresa(empresaId: number) {
   return res.data
 }
 
+/** Persiste logos (dark/light) da empresa no backend (api 0012).
+ *  Semântica de patch parcial: campo omitido não é alterado; campo
+ *  presente com null remove o logo. Valores são data URI base64
+ *  (data:image/...;base64,...), máx ~500KB — o backend valida (422). */
+export async function updateEmpresaLogos(
+  empresaId: number,
+  logos: { logo_dark?: string | null; logo_light?: string | null },
+) {
+  const res = await api.put<{ message: string; logo_dark: boolean; logo_light: boolean }>(
+    `/admin/empresas/${empresaId}/logos`,
+    logos,
+  )
+  return res.data
+}
+
 /** Hard delete REAL da empresa (IRREVERSIVEL): apaga a linha + cascade em
  *  credenciais, vinculos, permissoes e TODOS os dados financeiros. Backend
  *  exige defesa em profundidade tripla:

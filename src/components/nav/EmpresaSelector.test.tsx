@@ -33,6 +33,13 @@ vi.mock('@/store/empresaStore', () => ({
       activeId: activeIdMock,
       setActive: setActiveMock,
     }),
+  // Mesma regra do store real: dark prioriza logoDark, light prioriza
+  // logoLight (fallback cruzado). Componente usa pra trocar o ícone
+  // genérico pelo logo persistido.
+  getLogo: (emp: Empresa | null, isDark: boolean) => {
+    if (!emp) return null
+    return isDark ? (emp.logoDark || emp.logoLight) : (emp.logoLight || emp.logoDark)
+  },
 }))
 
 

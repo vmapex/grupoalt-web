@@ -24,7 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Building2, ChevronDown, Check } from 'lucide-react'
-import { useEmpresaStore } from '@/store/empresaStore'
+import { useEmpresaStore, getLogo } from '@/store/empresaStore'
 import { useThemeStore } from '@/store/themeStore'
 
 
@@ -91,7 +91,18 @@ export function EmpresaSelector() {
           cursor: disabled ? 'not-allowed' : 'pointer',
         }}
       >
-        <Building2 className="w-4 h-4" style={{ color: t.gold }} />
+        {(() => {
+          // Logo da empresa (persistido no backend, api 0012) no lugar do
+          // ícone genérico quando disponível. `data:` URI — <img> simples,
+          // next/image não otimiza data URIs.
+          const logo = getLogo(active, t.isDark)
+          return logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="" className="h-5 max-w-[90px] object-contain shrink-0" />
+          ) : (
+            <Building2 className="w-4 h-4" style={{ color: t.gold }} />
+          )
+        })()}
         <span
           className="truncate max-w-[160px]"
           style={{

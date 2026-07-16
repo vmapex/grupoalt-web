@@ -1,7 +1,16 @@
 import { create } from 'zustand'
 import api from '@/lib/api'
 
-interface Empresa { id: number; nome: string; cnpj?: string; slug?: string }
+interface Empresa {
+  id: number
+  nome: string
+  cnpj?: string
+  slug?: string
+  /** Logos por tema (data URI base64) — persistidos no backend (api 0012)
+   *  e entregues pelo /auth/me. Consumidos via empresaStore.getLogo. */
+  logo_dark?: string | null
+  logo_light?: string | null
+}
 interface Grupo { id: number; nome: string }
 interface Permissao { modulo: string; acao: string; empresa_id?: number | null }
 

@@ -11,6 +11,7 @@ import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { AdminSubNav } from '@/components/admin/AdminSubNav'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
+import { updateEmpresaLogos } from '@/hooks/api/useAdminEmpresas'
 
 /* ------------------------------------------------------------------ */
 /*  LogoUploadBox                                                      */
@@ -238,6 +239,33 @@ export default function PageAdmin() {
 
   const cancelEdit = () => setEditId(null)
 
+  // Upload/remoção de logo: otimista no store local (preview imediato) +
+  // persistência no backend (api 0012). Falha na API reverte o preview.
+  const persistLogo = async (
+    emp: Empresa,
+    campo: 'logoDark' | 'logoLight',
+    valor: string | null,
+  ) => {
+    const anterior = emp[campo]
+    updateEmpresa(emp.id, { [campo]: valor })
+    try {
+      await updateEmpresaLogos(Number(emp.id), {
+        [campo === 'logoDark' ? 'logo_dark' : 'logo_light']: valor,
+      })
+      setResyncMsg({
+        kind: 'ok',
+        text: `Logo ${valor ? 'salvo' : 'removido'} — ${emp.nome}. Visível para todos os usuários.`,
+      })
+    } catch (err: unknown) {
+      updateEmpresa(emp.id, { [campo]: anterior })
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setResyncMsg({
+        kind: 'error',
+        text: typeof detail === 'string' ? detail : `Falha ao salvar o logo de ${emp.nome}. Tente novamente.`,
+      })
+    }
+  }
+
   return (
     <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
       {/* Header */}
@@ -321,14 +349,16 @@ export default function PageAdmin() {
                 padding: 20,
               }}
             >
-              {/* Logo uploads row */}
+              {/* Logo uploads row — persiste no backend (api 0012) e
+                  atualiza o store local pra feedback imediato. Antes só
+                  gravava no localStorage de quem fez upload. */}
               <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
                 <LogoUploadBox
                   label="Logo Dark"
                   previewBg="#0A0F1E"
                   logoSrc={emp.logoDark}
-                  onUpload={(b64) => updateEmpresa(emp.id, { logoDark: b64 })}
-                  onRemove={() => updateEmpresa(emp.id, { logoDark: null })}
+                  onUpload={(b64) => persistLogo(emp, 'logoDark', b64)}
+                  onRemove={() => persistLogo(emp, 'logoDark', null)}
                   borderColor={t.border}
                   mutedColor={t.muted}
                   surfaceColor={t.surface}
@@ -338,8 +368,8 @@ export default function PageAdmin() {
                   label="Logo Light"
                   previewBg="#F0F2F5"
                   logoSrc={emp.logoLight}
-                  onUpload={(b64) => updateEmpresa(emp.id, { logoLight: b64 })}
-                  onRemove={() => updateEmpresa(emp.id, { logoLight: null })}
+                  onUpload={(b64) => persistLogo(emp, 'logoLight', b64)}
+                  onRemove={() => persistLogo(emp, 'logoLight', null)}
                   borderColor={t.border}
                   mutedColor={t.muted}
                   surfaceColor={t.surface}
