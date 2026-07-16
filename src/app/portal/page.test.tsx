@@ -175,7 +175,8 @@ describe('<PortalHomePage />', () => {
     })
     render(<PortalHomePage />)
     expect(screen.getByText('BI Financeiro')).toBeTruthy()
-    // indicadores:ver -> Operacionais + Controladoria
+    // indicadores:ver -> Operacionais; Controladoria exige financeiro:ver
+    // (2026-07-15) e este perfil tem os dois.
     expect(screen.getByText('Indicadores Operacionais')).toBeTruthy()
     expect(screen.getByText('Controladoria')).toBeTruthy()
     expect(screen.getByText('Estrutura do Grupo')).toBeTruthy()
@@ -183,6 +184,21 @@ describe('<PortalHomePage />', () => {
     expect(screen.queryByText('Motor de Fechamento')).toBeNull()
     // sem documentos
     expect(screen.queryByText('Documentos')).toBeNull()
+  })
+
+  it('Operacional (indicadores:ver SEM financeiro:ver) NAO ve Controladoria', () => {
+    // Ressalva da validação 2026-07-15: Controladoria expõe visão
+    // financeira — perfil operacional vê só Indicadores Operacionais.
+    permsAtivasMock = mkPerms({
+      permissoes: [
+        { modulo: 'fechamento', acao: 'ver', empresa_id: 1 },
+        { modulo: 'indicadores', acao: 'ver', empresa_id: 1 },
+      ],
+    })
+    render(<PortalHomePage />)
+    expect(screen.getByText('Indicadores Operacionais')).toBeTruthy()
+    expect(screen.queryByText('Controladoria')).toBeNull()
+    expect(screen.queryByText('BI Financeiro')).toBeNull()
   })
 
   it('cards apontam para os href esperados', () => {
