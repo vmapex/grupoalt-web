@@ -85,8 +85,10 @@ export const useEmpresaStore = create<EmpresaState>()(
           id: String(e.id),
           nome: e.nome,
           cnpj: e.cnpj || '',
-          logoDark: null,
-          logoLight: null,
+          // Logos persistidos no backend (api 0012) — antes eram sempre
+          // null aqui e o upload vivia órfão no localStorage local.
+          logoDark: e.logo_dark ?? null,
+          logoLight: e.logo_light ?? null,
           cor: CORES[i % CORES.length],
         }))
 

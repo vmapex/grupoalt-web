@@ -55,6 +55,27 @@ describe('empresaStore.syncFromAuth', () => {
     expect(state._synced).toBe(true)
   })
 
+  it('propaga logos persistidos no backend (logo_dark/logo_light → logoDark/logoLight)', () => {
+    // 2026-07-15: logos deixaram de viver só no localStorage de quem fez
+    // upload — o /auth/me entrega e o syncFromAuth mapeia.
+    useAuthStore.setState({
+      empresas: [
+        {
+          id: 1, nome: 'Com Logo', cnpj: '',
+          logo_dark: 'data:image/png;base64,DARK',
+          logo_light: 'data:image/png;base64,LIGHT',
+        },
+        { id: 2, nome: 'Sem Logo', cnpj: '' },
+      ],
+    })
+    useEmpresaStore.getState().syncFromAuth()
+    const [comLogo, semLogo] = useEmpresaStore.getState().empresas
+    expect(comLogo.logoDark).toBe('data:image/png;base64,DARK')
+    expect(comLogo.logoLight).toBe('data:image/png;base64,LIGHT')
+    expect(semLogo.logoDark).toBeNull()
+    expect(semLogo.logoLight).toBeNull()
+  })
+
   it('atribui cor distinta para cada empresa', () => {
     useAuthStore.setState({
       empresas: [
