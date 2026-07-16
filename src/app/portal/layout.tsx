@@ -136,8 +136,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
+        {/* z-20: o backdrop-filter cria stacking context; sem z-index o
+            <main> (relative z-0, depois no DOM) pintava POR CIMA do header
+            e dos dropdowns dele (NotificationBell/UserMenu) — notificações
+            atrás dos cards e clique no "Sair" morrendo no conteúdo
+            (validação 2026-07-15). */}
         <header
-          className="h-14 flex items-center justify-between px-6 flex-shrink-0 relative"
+          className="h-14 flex items-center justify-between px-6 flex-shrink-0 relative z-20"
           style={{
             borderBottom: `1px solid ${t.border}`,
             background: themeMode === 'dark' ? 'rgba(5,10,20,0.72)' : 'rgba(255,255,255,0.78)',

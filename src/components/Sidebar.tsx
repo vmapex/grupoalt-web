@@ -14,7 +14,17 @@ import { useThemeStore } from '@/store/themeStore'
 import { canAccessAdmin } from '@/lib/access'
 import { EmpresaSelector } from '@/components/nav/EmpresaSelector'
 
-interface NavChild { label: string; href: string; icon?: React.ReactNode; badge?: string }
+interface NavChild {
+  label: string
+  href: string
+  icon?: React.ReactNode
+  badge?: string
+  /** Gate POR ITEM "modulo:acao" — além do `modulo` da seção. Itens que
+   *  expõem visão financeira (BI, Controladoria) exigem financeiro:ver
+   *  mesmo dentro da seção Indicadores (decisão do usuário 2026-07-15:
+   *  perfil operacional não pode nem ver o caminho pro financeiro). */
+  require?: `${string}:${string}`
+}
 interface NavSection {
   id: string
   label: string
@@ -23,7 +33,35 @@ interface NavSection {
   children: NavChild[]
 }
 
-const sections: NavSection[] = [
+/** Filtra seções e itens pelo RBAC do usuário. Exportada pra teste.
+ *
+ *  Regras:
+ *  - admin: vê tudo.
+ *  - seção com `modulo`: precisa de `modulo:ver`.
+ *  - item com `require`: precisa da permissão do item (além da seção).
+ *  - seção que ficar sem itens visíveis some inteira.
+ */
+export function filterNavSections(
+  all: NavSection[],
+  isAdmin: boolean,
+  hasPermissao: (modulo: string, acao: string) => boolean,
+): NavSection[] {
+  if (isAdmin) return all
+  return all
+    .filter((s) => !s.modulo || hasPermissao(s.modulo, 'ver'))
+    .map((s) => ({
+      ...s,
+      children: s.children.filter((c) => {
+        if (!c.require) return true
+        const idx = c.require.indexOf(':')
+        return hasPermissao(c.require.slice(0, idx), c.require.slice(idx + 1))
+      }),
+    }))
+    .filter((s) => s.children.length > 0)
+}
+
+/** Catálogo de navegação. Exportado pra teste do filtro RBAC. */
+export const NAV_SECTIONS: NavSection[] = [
   {
     id: 'principal',
     label: 'Principal',
@@ -36,9 +74,9 @@ const sections: NavSection[] = [
     label: 'Indicadores',
     modulo: 'indicadores',
     children: [
-      { label: 'Financeiro', href: '/bi/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      { label: 'Financeiro', href: '/bi/financeiro', icon: <BarChart3 className="w-[18px] h-[18px]" />, require: 'financeiro:ver' },
       { label: 'Operações', href: '/portal/indicadores/operacoes', icon: <TrendingUp className="w-[18px] h-[18px]" /> },
-      { label: 'Controladoria', href: '/portal/indicadores/controladoria', icon: <Landmark className="w-[18px] h-[18px]" /> },
+      { label: 'Controladoria', href: '/portal/indicadores/controladoria', icon: <Landmark className="w-[18px] h-[18px]" />, require: 'financeiro:ver' },
     ],
   },
   {
@@ -85,15 +123,13 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
 
   const isAdmin = canAccessAdmin(user)
 
-  const visibleSections = useMemo(() => sections.filter(s => {
-    if (isAdmin) return true
-    if (!s.modulo) return true
-    // Bug pré-existente (achado no plano do SSO): a ação era 'visualizar',
-    // que NÃO existe no vocabulário RBAC ('ver' — app/core/rbac.py ACOES).
-    // Nunca casava → para não-admin, toda seção com `modulo` sumia. Passou
-    // despercebido porque só havia admins (bypass) em produção.
-    return hasPermissao(s.modulo, 'ver')
-  }), [isAdmin, hasPermissao])
+  // Nota histórica: a ação aqui já foi 'visualizar' (fora do vocabulário
+  // RBAC — 'ver' em app/core/rbac.py ACOES) e toda seção sumia pra
+  // não-admin; corrigido no #191. O filtro por item entrou em 2026-07-15.
+  const visibleSections = useMemo(
+    () => filterNavSections(NAV_SECTIONS, isAdmin, hasPermissao),
+    [isAdmin, hasPermissao],
+  )
 
   const userInitials = user?.nome
     ? user.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()

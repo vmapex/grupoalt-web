@@ -50,7 +50,10 @@ export const DASHBOARD_CARDS: readonly DashboardCard[] = [
     desc: 'Indicadores e relatórios consolidados.',
     href: '/portal/indicadores/controladoria',
     icon: Landmark,
-    require: 'indicadores:ver',
+    // 2026-07-15 (decisão do usuário): Controladoria expõe visão financeira
+    // consolidada — exige a permissão financeira, não a operacional. Perfis
+    // sem financeiro:ver (Operacoes etc.) não veem o card.
+    require: 'financeiro:ver',
   },
   {
     title: 'Estrutura do Grupo',
