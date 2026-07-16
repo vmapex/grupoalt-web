@@ -567,3 +567,104 @@ describe('AdminPage portal — seções Perfis RBAC e Acesso ao Motor', () => {
     expect(screen.getByText('Ana Ativa')).toBeTruthy()
   })
 })
+
+
+// ── Convite por e-mail no cadastro + reenvio (2026-07-16) ───────────────────
+
+describe('AdminPage portal — convite por e-mail', () => {
+  beforeEach(() => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === '/gestao/usuarios') {
+        return Promise.resolve({
+          data: [
+            { ...baseUser, id: 1, nome: 'Ana Ativa', email: 'ana@x.com', deleted_at: null },
+          ],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+  })
+
+  async function abrirModalNovoUsuario() {
+    render(<AdminPage />)
+    await screen.findByText('Ana Ativa')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Novo Usuário/i }))
+    })
+  }
+
+  it('padrão é convite: sem campo de senha, POST sem senha e toast de convite', async () => {
+    apiPostMock.mockResolvedValue({
+      data: { id: 9, nome: 'Novo User', email: 'novo@x.com', convite_enviado: true },
+    })
+    await abrirModalNovoUsuario()
+
+    // Aviso do fluxo de convite visível; campo de senha oculto
+    expect(screen.getByText(/convite por e-mail/i)).toBeTruthy()
+    expect(screen.queryByPlaceholderText('••••••••')).toBeNull()
+
+    fireEvent.change(screen.getByPlaceholderText('João Silva'), { target: { value: 'Novo User' } })
+    fireEvent.change(screen.getByPlaceholderText('joao@grupoalt.com.br'), { target: { value: 'novo@x.com' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Criar$/i }))
+    })
+
+    expect(apiPostMock).toHaveBeenCalledWith('/gestao/usuarios', {
+      nome: 'Novo User', email: 'novo@x.com', is_admin: false,
+    })
+    expect(screen.getByText(/Convite enviado para novo@x.com/i)).toBeTruthy()
+  })
+
+  it('marcar "senha manual" mostra o campo e envia a senha no payload', async () => {
+    apiPostMock.mockResolvedValue({
+      data: { id: 9, nome: 'Manual User', email: 'manual@x.com', convite_enviado: false },
+    })
+    await abrirModalNovoUsuario()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('checkbox', { name: /Definir senha manualmente/i }))
+    })
+    fireEvent.change(screen.getByPlaceholderText('João Silva'), { target: { value: 'Manual User' } })
+    fireEvent.change(screen.getByPlaceholderText('joao@grupoalt.com.br'), { target: { value: 'manual@x.com' } })
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'senha-manual-1' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Criar$/i }))
+    })
+
+    expect(apiPostMock).toHaveBeenCalledWith('/gestao/usuarios', {
+      nome: 'Manual User', email: 'manual@x.com', is_admin: false, senha: 'senha-manual-1',
+    })
+  })
+
+  it('convite que falhou no envio mostra o aviso do backend', async () => {
+    apiPostMock.mockResolvedValue({
+      data: {
+        id: 9, nome: 'X', email: 'x@x.com', convite_enviado: false,
+        aviso: "Usuário criado, mas o e-mail de convite FALHOU. Use 'Reenviar convite' para tentar de novo.",
+      },
+    })
+    await abrirModalNovoUsuario()
+    fireEvent.change(screen.getByPlaceholderText('João Silva'), { target: { value: 'X' } })
+    fireEvent.change(screen.getByPlaceholderText('joao@grupoalt.com.br'), { target: { value: 'x@x.com' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Criar$/i }))
+    })
+    expect(screen.getByText(/convite FALHOU/i)).toBeTruthy()
+  })
+
+  it('Reenviar convite no detalhe expandido chama o endpoint e mostra toast', async () => {
+    apiPostMock.mockResolvedValue({ data: { message: 'Convite enviado para ana@x.com' } })
+    render(<AdminPage />)
+    await screen.findByText('Ana Ativa')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Expandir Ana Ativa/i }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Reenviar convite para Ana Ativa/i }))
+    })
+
+    expect(apiPostMock).toHaveBeenCalledWith('/gestao/usuarios/1/reenviar-convite')
+    expect(screen.getByText(/Convite enviado para ana@x.com/i)).toBeTruthy()
+  })
+})

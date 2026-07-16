@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw } from 'lucide-react'
+import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus } from 'lucide-react'
 import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
@@ -142,6 +142,10 @@ export default function AdminPage() {
 
   // Forms
   const [userForm, setUserForm] = useState({ nome: '', email: '', senha: '', is_admin: false })
+  // Convite por padrão (2026-07-16): sem senha, o backend cria o usuário e
+  // envia e-mail com link pra ele definir a própria. Senha manual = exceção.
+  const [senhaManual, setSenhaManual] = useState(false)
+  const [reenviandoConviteId, setReenviandoConviteId] = useState<number | null>(null)
   const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', slug: '', app_key: '', app_secret: '' })
   const [unidadeForm, setUnidadeForm] = useState({ nome: '', codigo: '' })
 
@@ -176,10 +180,37 @@ export default function AdminPage() {
   const handleCreateUser = async () => {
     setSaving(true); setError('')
     try {
-      await api.post('/gestao/usuarios', userForm)
-      setShowModal(null); setUserForm({ nome: '', email: '', senha: '', is_admin: false }); loadData()
+      // Sem senha no payload = convite por e-mail (backend gera o link).
+      const payload: Record<string, unknown> = {
+        nome: userForm.nome, email: userForm.email, is_admin: userForm.is_admin,
+      }
+      if (senhaManual) payload.senha = userForm.senha
+      const res = await api.post('/gestao/usuarios', payload)
+      setShowModal(null)
+      setUserForm({ nome: '', email: '', senha: '', is_admin: false })
+      setSenhaManual(false)
+      loadData()
+      if (senhaManual) {
+        showToast('success', `Usuário "${res.data.nome}" criado com senha manual`)
+      } else if (res.data.convite_enviado) {
+        showToast('success', `Convite enviado para ${res.data.email}`)
+      } else {
+        showToast('error', res.data.aviso || 'Usuário criado, mas o convite não foi enviado — use "Reenviar convite".')
+      }
     } catch (err: any) { setError(err?.response?.data?.detail || 'Erro') }
     finally { setSaving(false) }
+  }
+
+  const handleReenviarConvite = async (user: UserData) => {
+    setReenviandoConviteId(user.id)
+    try {
+      const res = await api.post(`/gestao/usuarios/${user.id}/reenviar-convite`)
+      showToast('success', res.data.message || `Convite enviado para ${user.email}`)
+    } catch (err: any) {
+      showToast('error', err?.response?.data?.detail || `Falha ao enviar o convite para ${user.email}`)
+    } finally {
+      setReenviandoConviteId(null)
+    }
   }
   const toggleEmpresa = async (userId: number, empresaId: number, linked: boolean) => {
     if (linked) await api.delete(`/gestao/usuarios/${userId}/empresas/${empresaId}`)
@@ -401,6 +432,25 @@ export default function AdminPage() {
                         {user.ativo ? 'Ativo' : 'Inativo'} — clique para alternar
                       </button>
                     </div>
+                    {!isSoftDeleted && user.ativo && (
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <span className="text-sm text-zinc-300 block">Convite / redefinição de senha</span>
+                          <span className="text-xs text-zinc-500">Envia um novo link por e-mail para o usuário definir a senha (invalida links anteriores).</span>
+                        </div>
+                        <button
+                          onClick={() => handleReenviarConvite(user)}
+                          disabled={reenviandoConviteId === user.id}
+                          aria-label={`Reenviar convite para ${user.nome}`}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-[#CCA000]/10 border border-[#CCA000]/30 text-[#E0B82E] hover:bg-[#CCA000]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          {reenviandoConviteId === user.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <MailPlus className="w-3.5 h-3.5" />}
+                          Reenviar convite
+                        </button>
+                      </div>
+                    )}
                     <div>
                       <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Building2 className="w-3.5 h-3.5" /> Acesso a Empresas</h4>
                       <div className="space-y-2">
@@ -663,10 +713,22 @@ export default function AdminPage() {
                   <label className="block text-xs font-medium text-zinc-400 mb-1.5">E-mail</label>
                   <input type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="joao@grupoalt.com.br" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5">Senha</label>
-                  <input type="password" value={userForm.senha} onChange={e => setUserForm({ ...userForm, senha: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="••••••••" />
-                </div>
+                {!senhaManual && (
+                  <p className="text-xs text-zinc-400 leading-relaxed rounded-xl px-3 py-2.5 bg-[#CCA000]/10 border border-[#CCA000]/25">
+                    O usuário receberá um <strong className="text-[#E0B82E]">convite por e-mail</strong> com
+                    um link (válido por 7 dias) para definir a própria senha.
+                  </p>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={senhaManual} onChange={e => setSenhaManual(e.target.checked)} className="w-4 h-4 rounded accent-[#CCA000]" />
+                  <span className="text-sm text-zinc-300">Definir senha manualmente (sem convite)</span>
+                </label>
+                {senhaManual && (
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5">Senha</label>
+                    <input type="password" value={userForm.senha} onChange={e => setUserForm({ ...userForm, senha: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]" placeholder="••••••••" />
+                  </div>
+                )}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={userForm.is_admin} onChange={e => setUserForm({ ...userForm, is_admin: e.target.checked })} className="w-4 h-4 rounded accent-[#CCA000]" />
                   <span className="text-sm text-zinc-300">Administrador global</span>
