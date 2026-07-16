@@ -281,7 +281,7 @@ export default function LoginPage() {
                   <span className={styles.checkboxBox} aria-hidden="true" />
                   <span className={styles.checkboxLabel}>Lembrar de mim</span>
                 </label>
-                <a href="#" className={styles.linkGhost}>
+                <a href="/esqueci-senha" className={styles.linkGhost}>
                   Esqueceu a senha?
                 </a>
               </div>
