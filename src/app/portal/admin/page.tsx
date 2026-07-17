@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus, RefreshCw, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
@@ -408,8 +409,11 @@ export default function AdminPage() {
 
   return (
     <div>
-      {/* Toast notification */}
-      {toast && (
+      {/* Toast notification — via portal pro <body>: o <main> do layout tem
+          relative z-0 (fix #194), então um fixed z-50 AQUI DENTRO fica preso
+          nesse stacking context e o header (z-20) pinta por cima — a mensagem
+          ficava ilegível atrás da barra superior. */}
+      {toast && typeof document !== 'undefined' && createPortal(
         <div role="alert" className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm flex items-center gap-2 transition-all max-w-md ${
           toast.type === 'success'
             ? 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
@@ -422,7 +426,8 @@ export default function AdminPage() {
           <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
             <X size={14} />
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
