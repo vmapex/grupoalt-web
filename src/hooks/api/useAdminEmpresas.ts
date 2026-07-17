@@ -50,6 +50,16 @@ export async function restoreEmpresa(empresaId: number) {
   return res.data
 }
 
+/** Atualiza dados cadastrais da empresa (PATCH parcial: campo omitido
+ *  não é alterado). Backend valida slug se enviado. */
+export async function updateEmpresaDados(
+  empresaId: number,
+  data: { nome?: string; cnpj?: string },
+) {
+  const res = await api.patch<AdminEmpresaAPI>(`/admin/empresas/${empresaId}`, data)
+  return res.data
+}
+
 /** Persiste logos (dark/light) da empresa no backend (api 0012).
  *  Semântica de patch parcial: campo omitido não é alterado; campo
  *  presente com null remove o logo. Valores são data URI base64

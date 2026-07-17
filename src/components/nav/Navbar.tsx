@@ -282,34 +282,40 @@ export function Navbar() {
         <div className="hidden sm:block">
           <EmpresaDropdown />
         </div>
-        {isAdmin && (
-          <Link
-            href="/bi/financeiro/admin"
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
-            style={{
-              background: t.surface,
-              border: `1px solid ${pathname === '/bi/financeiro/admin' ? t.borderGold : t.border}`,
-              color: pathname === '/bi/financeiro/admin' ? t.gold : t.muted,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = t.borderGold
-              e.currentTarget.style.color = t.gold
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = pathname === '/bi/financeiro/admin' ? t.borderGold : t.border
-              e.currentTarget.style.color = pathname === '/bi/financeiro/admin' ? t.gold : t.muted
-            }}
-            aria-label="Configurações"
-          >
-            <Settings
-              size={13}
-              className="transition-transform"
+        {isAdmin && (() => {
+          // F1 da unificação (2026-07-17): a antiga index "Empresas" virou
+          // redirect pro /portal/admin — o gear leva pro Plano de Contas e
+          // acende em qualquer página admin do BI.
+          const onAdmin = pathname?.startsWith('/bi/financeiro/admin') ?? false
+          return (
+            <Link
+              href="/bi/financeiro/admin/categorias"
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
               style={{
-                transform: pathname === '/bi/financeiro/admin' ? 'rotate(90deg)' : 'none',
+                background: t.surface,
+                border: `1px solid ${onAdmin ? t.borderGold : t.border}`,
+                color: onAdmin ? t.gold : t.muted,
               }}
-            />
-          </Link>
-        )}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = t.borderGold
+                e.currentTarget.style.color = t.gold
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = onAdmin ? t.borderGold : t.border
+                e.currentTarget.style.color = onAdmin ? t.gold : t.muted
+              }}
+              aria-label="Configurações"
+            >
+              <Settings
+                size={13}
+                className="transition-transform"
+                style={{
+                  transform: onAdmin ? 'rotate(90deg)' : 'none',
+                }}
+              />
+            </Link>
+          )
+        })()}
       </div>
     </nav>
   )

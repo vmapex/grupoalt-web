@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 import AdminPage from './page'
 
@@ -69,6 +69,8 @@ function makeDeferred(): Deferred {
 const restoreDeferreds = new Map<number, Deferred>()
 
 const permanentDeleteEmpresaMock = vi.fn()
+const updateEmpresaDadosMock = vi.fn()
+const updateEmpresaLogosMock = vi.fn()
 
 vi.mock('@/hooks/api/useAdminEmpresas', () => ({
   restoreEmpresa: (id: number) => {
@@ -77,6 +79,8 @@ vi.mock('@/hooks/api/useAdminEmpresas', () => ({
     return d.promise
   },
   permanentDeleteEmpresa: (...args: unknown[]) => permanentDeleteEmpresaMock(...args),
+  updateEmpresaDados: (...args: unknown[]) => updateEmpresaDadosMock(...args),
+  updateEmpresaLogos: (...args: unknown[]) => updateEmpresaLogosMock(...args),
 }))
 
 // ── Mocks do lifecycle de usuarios ─────────────────────────────────────────
@@ -158,6 +162,8 @@ beforeEach(() => {
   usuarioRestoreDeferreds.clear()
   permanentDeleteMock.mockReset()
   permanentDeleteEmpresaMock.mockReset()
+  updateEmpresaDadosMock.mockReset()
+  updateEmpresaLogosMock.mockReset()
   deleteUsuarioModalProps.mockReset()
   confirmDeleteModalProps.mockReset()
   perfisSectionProps.mockReset()
@@ -666,5 +672,147 @@ describe('AdminPage portal — convite por e-mail', () => {
 
     expect(apiPostMock).toHaveBeenCalledWith('/gestao/usuarios/1/reenviar-convite')
     expect(screen.getByText(/Convite enviado para ana@x.com/i)).toBeTruthy()
+  })
+})
+
+
+// ── Config de empresa na aba Empresas (F1 da unificação, 2026-07-17) ────────
+// Dados cadastrais (fix do bug do saveEdit do BI: agora persiste via
+// PATCH /admin/empresas/{id}), resync de extrato (testes portados do
+// antigo /bi/financeiro/admin) e deep-link ?tab= dos redirects.
+
+describe('AdminPage portal — config de empresa (F1 unificação)', () => {
+  beforeEach(() => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === '/gestao/usuarios') return Promise.resolve({ data: [] })
+      if (url === '/admin/empresas') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 30, nome: 'GRUPO ALT', cnpj: '00.000.000/0001-00',
+              tem_credencial: true, deleted_at: null,
+            },
+          ],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  async function expandirEmpresa() {
+    render(<AdminPage />)
+    const tabEmpresas = await screen.findByRole('button', { name: /^Empresas$/i })
+    await act(async () => {
+      fireEvent.click(tabEmpresas)
+    })
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /Expandir GRUPO ALT/i }))
+    })
+  }
+
+  it('form de dados vem preenchido e Salvar persiste via PATCH + toast', async () => {
+    updateEmpresaDadosMock.mockResolvedValue({})
+    await expandirEmpresa()
+
+    const nomeInput = screen.getByRole('textbox', { name: /Nome da empresa GRUPO ALT/i }) as HTMLInputElement
+    const cnpjInput = screen.getByRole('textbox', { name: /CNPJ da empresa GRUPO ALT/i }) as HTMLInputElement
+    expect(nomeInput.value).toBe('GRUPO ALT')
+    expect(cnpjInput.value).toBe('00.000.000/0001-00')
+
+    fireEvent.change(nomeInput, { target: { value: 'ALT MAX' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salvar dados de GRUPO ALT/i }))
+    })
+
+    expect(updateEmpresaDadosMock).toHaveBeenCalledWith(30, {
+      nome: 'ALT MAX', cnpj: '00.000.000/0001-00',
+    })
+    expect(screen.getByRole('alert').textContent).toMatch(/Empresa "ALT MAX" atualizada/)
+  })
+
+  it('nome vazio bloqueia o save com toast de erro e sem chamada', async () => {
+    await expandirEmpresa()
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Nome da empresa GRUPO ALT/i }), {
+      target: { value: '   ' },
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salvar dados de GRUPO ALT/i }))
+    })
+
+    expect(updateEmpresaDadosMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toMatch(/obrigatório/i)
+  })
+
+  it('resync: confirm cancelado nao chama a API', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await expandirEmpresa()
+
+    fireEvent.click(screen.getByRole('button', { name: /Resync extrato GRUPO ALT/i }))
+    expect(apiPostMock).not.toHaveBeenCalled()
+  })
+
+  it('resync confirmado: POST no endpoint certo + toast de sucesso com contadores', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    apiPostMock.mockResolvedValueOnce({
+      data: { status: 'ok', deleted: 1113, lancamentos_synced: 5400 },
+    })
+    await expandirEmpresa()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Resync extrato GRUPO ALT/i }))
+    })
+
+    expect(apiPostMock).toHaveBeenCalledWith('/sync/empresas/30/resync-extrato')
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/1113 removidos/)
+      expect(screen.getByRole('alert').textContent).toMatch(/5400 lançamentos/)
+    })
+  })
+
+  it('resync com timeout do edge (504) mostra info de segundo plano, nao erro', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    apiPostMock.mockRejectedValueOnce({ response: { status: 504 } })
+    await expandirEmpresa()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Resync extrato GRUPO ALT/i }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/segundo plano/)
+    })
+  })
+
+  it('resync com erro real (403) mostra toast de falha com detail', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    apiPostMock.mockRejectedValueOnce({
+      response: { status: 403, data: { detail: 'Sem permissão' } },
+    })
+    await expandirEmpresa()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Resync extrato GRUPO ALT/i }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/falha ao iniciar resync/i)
+      expect(screen.getByRole('alert').textContent).toMatch(/Sem permissão/)
+    })
+  })
+
+  it('deep-link ?tab=empresas abre direto na aba Empresas (redirect do BI)', async () => {
+    window.history.replaceState({}, '', '/portal/admin?tab=empresas')
+    try {
+      render(<AdminPage />)
+      // Conteúdo da aba Empresas visível sem clicar na aba
+      expect(await screen.findByRole('button', { name: /Expandir GRUPO ALT/i })).toBeTruthy()
+    } finally {
+      window.history.replaceState({}, '', '/')
+    }
   })
 })
