@@ -1,7 +1,7 @@
 # CLAUDE.md — grupoalt-web
 
 > Frontend do Portal BI do Grupo ALT.
-> Última atualização: 2026-07-15 (Fase 2 Motor↔Portal concluída: SSO em produção, gate + smoke E2E aprovados)
+> Última atualização: 2026-07-16 (validação operacional: RBAC de alertas/visão financeira, logos persistidos, convite por e-mail + reset de senha)
 
 ## Referências
 - `ALTMAX-PORTAL-BI-HANDOFF.md` — spec completa do protótipo (1.183 linhas)
@@ -733,3 +733,56 @@ não pela tela aberta.
   vive só no admin do BI, e o admin do BI deveria ser só de BI. Toca na unificação
   `bi/` ↔ `portal/`.
 - Fase D: KPIs do Motor no dashboard do portal.
+
+## Sessão 2026-07-15/16 — Validação com perfil operacional (5 ressalvas) + convite/reset de senha
+
+Validação do usuário logado como perfil operacional real levantou 5 ressalvas.
+Tudo mergeado e validado em produção (companions: api#149/#150/#151, repo privado).
+
+**web #193 — gestão de usuários unificada no `/portal/admin`:** o detalhe
+expandido do usuário ganhou as seções Perfis RBAC (novo
+`components/admin/PerfisRBACSection.tsx`) e Acesso ao Motor (reuso do
+`MotorAcessoSection` com tokens `DARK`) + busca por nome/email. "Usuários"
+saiu da `AdminSubNav` do BI (admin do BI é só de BI);
+`/bi/financeiro/admin/usuarios` virou redirect.
+
+**web #194 — header do portal + visibilidade financeira:**
+- Bug de empilhamento que explicava DOIS sintomas: o `<header>` tem
+  `backdrop-filter` (cria stacking context) sem z-index, e o `<main>`
+  (`relative z-0`, depois no DOM) pintava POR CIMA dos dropdowns — painel de
+  notificações atravessado pelos cards e clique no "Sair" morrendo no
+  conteúdo. Fix: `z-20` no header.
+- Sidebar com gate POR ITEM (`NavChild.require` + `filterNavSections`
+  exportada/testada): "Financeiro" (link pro BI) e "Controladoria" exigem
+  `financeiro:ver`; card Controladoria da home idem. Perfil operacional vê
+  só "Operações" em Indicadores.
+- Backend companion (api#149): alertas financeiros da sineta só chegam pra
+  quem tem `financeiro:ver` na empresa.
+
+**web #195 — logo por empresa persistido:** upload em Configurações salva no
+backend (`updateEmpresaLogos`, otimista + rollback) em vez de só no
+localStorage de quem subiu; `/auth/me` entrega `logo_dark/logo_light`,
+`syncFromAuth` mapeia, `EmpresaSelector` do portal e Navbar/EmpresaDropdown
+do BI exibem (getLogo, tema-aware), PDFs estampam no cabeçalho (backend).
+
+**web #196 — convite por e-mail + esqueci/redefinir senha:**
+- Páginas públicas `/esqueci-senha` (confirmação genérica por design —
+  anti-enumeração do backend) e `/redefinir-senha?token=...[&convite=1]`
+  (serve reset E primeiro acesso de convidado; mínimo 8 chars + confirmação;
+  Suspense p/ useSearchParams).
+- Login: link "Esqueceu a senha?" apontava pra `#` desde sempre — agora leva
+  pro fluxo real.
+- Modal Novo Usuário do `/portal/admin`: CONVITE POR PADRÃO (só nome+email;
+  link de 7 dias) com checkbox "Definir senha manualmente" pro fluxo antigo;
+  botão "Reenviar convite" no detalhe expandido (invalida links anteriores).
+- Gate operacional (envs SMTP + migration) documentado no CLAUDE.md da api
+  (repo privado). Smoke aprovado em produção 2026-07-16.
+
+## Estado atual do build (2026-07-16)
+
+- **46 rotas** (novas: `/esqueci-senha`, `/redefinir-senha`); testes **420 em `main`**.
+- Gestão de usuários = `/portal/admin` (BI admin: Empresas, Plano de Contas,
+  Contas Bancárias, Orbit). Visão financeira (BI/Controladoria/alertas) exige
+  `financeiro:ver`.
+- Backlog: Fase D do Motor (duas visões, escopo aguarda discussão — memória
+  `fase-d-motor-bi`); unificação estrutural `bi/` ↔ `portal/`.
