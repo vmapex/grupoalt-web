@@ -1,15 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus } from 'lucide-react'
+import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus, RefreshCw, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
 import { DeleteEmpresaModal } from '@/components/admin/DeleteEmpresaModal'
 import { DeleteUsuarioModal } from '@/components/admin/DeleteUsuarioModal'
-import { restoreEmpresa, permanentDeleteEmpresa } from '@/hooks/api/useAdminEmpresas'
+import { LogoUploadBox } from '@/components/admin/LogoUploadBox'
+import { restoreEmpresa, permanentDeleteEmpresa, updateEmpresaDados, updateEmpresaLogos } from '@/hooks/api/useAdminEmpresas'
 import { describeAxiosError } from '@/lib/errorPresentation'
 import { useAuthStore } from '@/store/authStore'
+import { useEmpresaStore } from '@/store/empresaStore'
 import { ConfirmDeleteModal } from '@/components/admin/ConfirmDeleteModal'
 import { restaurarUsuario, permanentDeleteUsuario } from '@/hooks/api/useAdminPerfis'
 import { PerfisRBACSection } from '@/components/admin/PerfisRBACSection'
@@ -64,7 +66,7 @@ export default function AdminPage() {
   const [error, setError] = useState('')
   const [testResults, setTestResults] = useState<Record<number, { sucesso: boolean; mensagem: string } | null>>({})
   const [testing, setTesting] = useState<number | null>(null)
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null)
   const [deletingEmpresa, setDeletingEmpresa] = useState<{ id: number; nome: string } | null>(null)
   const [deletingUsuario, setDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
   const [permanentDeletingUsuario, setPermanentDeletingUsuario] = useState<{ id: number; nome: string; email: string } | null>(null)
@@ -81,9 +83,114 @@ export default function AdminPage() {
   // o spinner do segundo apague o do primeiro. Mesmo pattern do
   // /bi/financeiro/admin/usuarios (PR #152).
   const [restoringEmpresaIds, setRestoringEmpresaIds] = useState<Set<number>>(() => new Set())
-  const showToast = (type: 'success' | 'error', msg: string) => {
+  // sticky: resultado de operação longa (ex.: resync) fica na tela até o
+  // admin fechar no X — 4s não bastam pra ler contadores.
+  const showToast = (type: 'success' | 'error' | 'info', msg: string, opts?: { sticky?: boolean }) => {
     setToast({ type, msg })
-    setTimeout(() => setToast(null), 4000)
+    if (!opts?.sticky) setTimeout(() => setToast(null), 4000)
+  }
+
+  // ── Config de empresa (F1 da unificação, 2026-07-17) ──────────────────
+  // Dados cadastrais, logos e resync migraram do /bi/financeiro/admin.
+  // Logos: a fonte do preview é o empresaStore (sincronizado do /auth/me),
+  // mesma fonte que a antiga tela do BI usava.
+  const storeEmpresas = useEmpresaStore((s) => s.empresas)
+  const updateEmpresaStore = useEmpresaStore((s) => s.updateEmpresa)
+  const [empresaEdit, setEmpresaEdit] = useState({ nome: '', cnpj: '' })
+  const [savingEmpresa, setSavingEmpresa] = useState(false)
+  // Set permite resyncs em empresas diferentes sem que o spinner de uma
+  // apague o da outra (mesmo pattern do restore).
+  const [resyncingIds, setResyncingIds] = useState<Set<number>>(() => new Set())
+
+  const handleSaveEmpresaDados = async (emp: EmpresaOption) => {
+    const nome = empresaEdit.nome.trim()
+    const cnpj = empresaEdit.cnpj.trim()
+    if (!nome) {
+      showToast('error', 'O nome da empresa é obrigatório')
+      return
+    }
+    setSavingEmpresa(true)
+    try {
+      // PATCH parcial: cnpj vazio é omitido (o endpoint não limpa campo).
+      await updateEmpresaDados(emp.id, { nome, ...(cnpj ? { cnpj } : {}) })
+      // Reflete nos pickers (EmpresaSelector/Navbar) sem exigir F5.
+      if (storeEmpresas.some((se) => se.id === String(emp.id))) {
+        updateEmpresaStore(String(emp.id), { nome, ...(cnpj ? { cnpj } : {}) })
+      }
+      showToast('success', `Empresa "${nome}" atualizada`)
+      loadData()
+    } catch (err: unknown) {
+      const presentation = describeAxiosError(err, {
+        entity: 'empresa',
+        prefix: `Falha ao salvar "${emp.nome}"`,
+      })
+      showToast('error', presentation.message)
+    } finally {
+      setSavingEmpresa(false)
+    }
+  }
+
+  const handleResyncExtrato = async (emp: EmpresaOption) => {
+    const aviso =
+      `Resync do extrato de ${emp.nome}:\n\n` +
+      'APAGA todos os lançamentos bancários e re-baixa ~2 anos da Omie. ' +
+      'O processo leva de 10 a 20 minutos e o BI mostra dados parciais ' +
+      'enquanto roda (o Dashboard exibe o progresso).\n\nContinuar?'
+    if (!confirm(aviso)) return
+    setResyncingIds((prev) => new Set(prev).add(emp.id))
+    try {
+      const { data } = await api.post(`/sync/empresas/${emp.id}/resync-extrato`)
+      showToast(
+        'success',
+        `${emp.nome}: resync concluído — ${data?.deleted ?? '?'} removidos, ` +
+          `${data?.lancamentos_synced ?? '?'} lançamentos re-sincronizados.`,
+        { sticky: true },
+      )
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      // O endpoint e sincrono e demorado: timeout do edge (504) ou queda de
+      // rede NAO significam falha — o servidor continua processando.
+      if (!status || status === 502 || status === 504) {
+        showToast(
+          'info',
+          `${emp.nome}: a chamada excedeu o tempo de resposta, mas o resync ` +
+            'continua em segundo plano. Acompanhe o progresso no Dashboard (~10-20 min).',
+          { sticky: true },
+        )
+      } else {
+        const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        showToast('error', `${emp.nome}: falha ao iniciar resync — ${detail || `HTTP ${status}`}`, { sticky: true })
+      }
+    } finally {
+      setResyncingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(emp.id)
+        return next
+      })
+    }
+  }
+
+  // Upload/remoção de logo: otimista no store local (preview imediato) +
+  // persistência no backend (api 0012). Falha na API reverte o preview.
+  const persistLogo = async (
+    empresaId: number,
+    campo: 'logoDark' | 'logoLight',
+    valor: string | null,
+  ) => {
+    const storeEmp = storeEmpresas.find((se) => se.id === String(empresaId))
+    if (!storeEmp) return
+    const anterior = storeEmp[campo]
+    updateEmpresaStore(storeEmp.id, { [campo]: valor })
+    try {
+      await updateEmpresaLogos(empresaId, {
+        [campo === 'logoDark' ? 'logo_dark' : 'logo_light']: valor,
+      })
+      showToast('success', `Logo ${valor ? 'salvo' : 'removido'} — ${storeEmp.nome}. Visível para todos os usuários.`)
+    } catch (err: unknown) {
+      updateEmpresaStore(storeEmp.id, { [campo]: anterior })
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      showToast('error', typeof detail === 'string' ? detail : `Falha ao salvar o logo de ${storeEmp.nome}. Tente novamente.`)
+    }
   }
 
   const handleRestoreEmpresa = async (emp: EmpresaOption) => {
@@ -174,6 +281,14 @@ export default function AdminPage() {
   useEffect(() => {
     if (adminAccess === 'allowed') loadData()
   }, [adminAccess])
+  // Deep-link de aba (?tab=empresas|unidades) — usado pelos redirects das
+  // rotas aposentadas do BI admin. Lido no mount via window pra não puxar
+  // useSearchParams (exigiria Suspense na página inteira).
+  useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab')
+    if (tabParam === 'empresas') setTab('Empresas')
+    else if (tabParam === 'unidades') setTab('Unidades')
+  }, [])
   useEffect(() => { if (selectedEmpresa) loadUnidades(selectedEmpresa) }, [selectedEmpresa])
 
   // User actions
@@ -295,12 +410,14 @@ export default function AdminPage() {
     <div>
       {/* Toast notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm flex items-center gap-2 transition-all ${
+        <div role="alert" className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm flex items-center gap-2 transition-all max-w-md ${
           toast.type === 'success'
             ? 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
-            : 'bg-red-900/90 text-red-200 border border-red-700/50'
+            : toast.type === 'info'
+              ? 'bg-amber-900/90 text-amber-200 border border-amber-700/50'
+              : 'bg-red-900/90 text-red-200 border border-red-700/50'
         }`}>
-          {toast.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+          {toast.type === 'success' ? <CheckCircle size={16} /> : toast.type === 'info' ? <Info size={16} /> : <XCircle size={16} />}
           {toast.msg}
           <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
             <X size={14} />
@@ -535,7 +652,12 @@ export default function AdminPage() {
               >
                 <div className="flex items-center gap-2 p-5 hover:bg-zinc-800/50 transition-colors">
                   <button
-                    onClick={() => setExpandedEmpresa(isExp ? null : emp.id)}
+                    onClick={() => {
+                      const next = isExp ? null : emp.id
+                      setExpandedEmpresa(next)
+                      // Form de dados cadastrais parte do valor atual da API.
+                      if (next !== null) setEmpresaEdit({ nome: emp.nome, cnpj: emp.cnpj ?? '' })
+                    }}
                     className="flex-1 flex items-center gap-4 text-left min-w-0"
                     aria-expanded={isExp}
                     aria-label={`${isExp ? 'Recolher' : 'Expandir'} ${emp.nome}`}
@@ -601,7 +723,101 @@ export default function AdminPage() {
                   )}
                 </div>
                 {isExp && (
-                  <div className="border-t border-zinc-800 p-5">
+                  <div className="border-t border-zinc-800 p-5 space-y-6">
+                    {/* Dados cadastrais + logos + resync (F1 da unificação):
+                        migrados do /bi/financeiro/admin. Soft-deletada só
+                        mostra credenciais — restaure antes de editar. */}
+                    {!isSoftDeleted && (
+                      <div>
+                        <h4 className="text-xs font-medium text-[#CCA000] uppercase tracking-wider mb-3">Dados da Empresa</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Nome</label>
+                            <input
+                              value={empresaEdit.nome}
+                              onChange={e => setEmpresaEdit(f => ({ ...f, nome: e.target.value }))}
+                              aria-label={`Nome da empresa ${emp.nome}`}
+                              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000]"
+                              placeholder="Nome da empresa"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">CNPJ</label>
+                            <input
+                              value={empresaEdit.cnpj}
+                              onChange={e => setEmpresaEdit(f => ({ ...f, cnpj: e.target.value }))}
+                              aria-label={`CNPJ da empresa ${emp.nome}`}
+                              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono"
+                              placeholder="00.000.000/0001-00"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleSaveEmpresaDados(emp)}
+                          disabled={savingEmpresa}
+                          aria-label={`Salvar dados de ${emp.nome}`}
+                          className="mt-3 bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2 text-sm font-bold transition-all disabled:opacity-50"
+                        >
+                          {savingEmpresa ? 'Salvando...' : 'Salvar Dados'}
+                        </button>
+                      </div>
+                    )}
+                    {!isSoftDeleted && (() => {
+                      const storeEmp = storeEmpresas.find(se => se.id === String(emp.id))
+                      return (
+                        <div>
+                          <h4 className="text-xs font-medium text-[#CCA000] uppercase tracking-wider mb-3">Logos</h4>
+                          {storeEmp ? (
+                            <div className="flex gap-4 flex-wrap">
+                              <LogoUploadBox
+                                label="Logo Dark"
+                                previewBg="#0A0F1E"
+                                logoSrc={storeEmp.logoDark}
+                                onUpload={b64 => persistLogo(emp.id, 'logoDark', b64)}
+                                onRemove={() => persistLogo(emp.id, 'logoDark', null)}
+                                borderColor={DARK.border}
+                                mutedColor={DARK.muted}
+                                surfaceColor={DARK.surface}
+                                redColor={DARK.red}
+                              />
+                              <LogoUploadBox
+                                label="Logo Light"
+                                previewBg="#F0F2F5"
+                                logoSrc={storeEmp.logoLight}
+                                onUpload={b64 => persistLogo(emp.id, 'logoLight', b64)}
+                                onRemove={() => persistLogo(emp.id, 'logoLight', null)}
+                                borderColor={DARK.border}
+                                mutedColor={DARK.muted}
+                                surfaceColor={DARK.surface}
+                                redColor={DARK.red}
+                              />
+                            </div>
+                          ) : (
+                            <p className="text-xs text-zinc-500">
+                              O preview dos logos usa as empresas do seu acesso — vincule seu usuário a esta empresa para gerenciá-los.
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    {!isSoftDeleted && (
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <span className="text-sm text-zinc-300 block">Resync do extrato</span>
+                          <span className="text-xs text-zinc-500">Apaga e re-sincroniza todos os lançamentos bancários da Omie (~10-20 min).</span>
+                        </div>
+                        <button
+                          onClick={() => handleResyncExtrato(emp)}
+                          disabled={resyncingIds.has(emp.id)}
+                          aria-label={`Resync extrato ${emp.nome}`}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-all disabled:opacity-50 disabled:cursor-wait flex-shrink-0"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${resyncingIds.has(emp.id) ? 'animate-spin' : ''}`} />
+                          {resyncingIds.has(emp.id) ? 'Sincronizando...' : 'Resync extrato'}
+                        </button>
+                      </div>
+                    )}
+                    <div>
                     <h4 className="text-xs font-medium text-[#CCA000] uppercase tracking-wider mb-3">Credenciais Omie</h4>
                     <div className="space-y-3">
                       <div>
@@ -653,6 +869,7 @@ export default function AdminPage() {
                           {testResults[emp.id]!.mensagem}
                         </div>
                       )}
+                    </div>
                     </div>
                   </div>
                 )}
