@@ -5,6 +5,8 @@ import { Download, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { usePermissoesAtivas } from '@/hooks/usePermission'
+import { hasPermissionIn } from '@/store/permissoesStore'
 
 /**
  * Step 09: catalogo fechado de relatorios PDF que o frontend pode disparar.
@@ -61,13 +63,16 @@ export function ExportPDFButton({
 }: ExportPDFButtonProps) {
   const [loading, setLoading] = useState(false)
   const user = useAuthStore((s) => s.user)
-  const hasPermissao = useAuthStore((s) => s.hasPermissao)
+  // F2 da unificação (2026-07-17): check de UX migrado do legado do
+  // /auth/me pro RBAC efetivo da empresa ativa (o backend segue validando).
+  // isAdmin em OR evita desabilitar pro admin enquanto o fetch carrega.
+  const perms = usePermissoesAtivas()
 
   const empresaIdNum = normalizeEmpresaId(empresaId)
   const cfg = PDF_REPORTS[report]
   const isAdmin = !!user?.is_admin
   const allowed = permissao
-    ? hasPermissao(permissao.modulo, permissao.acao, empresaIdNum ?? undefined)
+    ? isAdmin || hasPermissionIn(perms, permissao.modulo, permissao.acao)
     : isAdmin
 
   const finalLabel = label ?? cfg.defaultLabel
