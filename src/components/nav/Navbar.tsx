@@ -14,6 +14,7 @@ import { EmpresaDropdown } from './EmpresaDropdown'
 import { UnidadeDropdown } from './UnidadeDropdown'
 import { DateRangePicker } from './DateRangePicker'
 import { NotificationBell } from './NotificationBell'
+import { UserMenu } from './UserMenu'
 import { ExportPDFButton } from '@/components/ui/ExportPDFButton'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Settings, Building2, ArrowLeft, RefreshCw } from 'lucide-react'
@@ -316,6 +317,11 @@ export function Navbar() {
             </Link>
           )
         })()}
+
+        {/* F3 da unificação (2026-07-18): mesmo menu de usuário do portal —
+            antes o BI não tinha "Sair" (deslogar exigia voltar ao portal). */}
+        <div className="hidden sm:block w-px h-6" style={{ background: t.border }} />
+        <UserMenu />
       </div>
     </nav>
   )
