@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, Shield, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus, RefreshCw, Info } from 'lucide-react'
+import { Users, Plus, Building2, MapPin, ChevronDown, ChevronUp, X, Trash2, Wifi, Loader2, CheckCircle, XCircle, RotateCcw, MailPlus, RefreshCw, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { useRequireAdmin } from '@/hooks/useRequireAdmin'
 import { AccessDenied } from '@/components/AccessDenied'
@@ -23,7 +23,6 @@ interface UserData {
   /** ISO 8601 quando soft-deletado; null/undefined quando ativo. */
   deleted_at?: string | null
   empresas: { id: number; nome: string; role: string }[]
-  permissoes: { id: number; modulo: string; acao: string; empresa_id: number | null }[]
   unidades: { id: number; nome: string; empresa_id: number }[]
 }
 interface EmpresaOption {
@@ -36,13 +35,13 @@ interface EmpresaOption {
 }
 interface UnidadeData { id: number; nome: string; codigo: string | null; ativa: boolean }
 
-const MODULOS: Record<string, string[]> = {
-  indicadores: ['visualizar', 'exportar'],
-  documentos: ['visualizar', 'editar', 'aprovar'],
-  fechamento: ['visualizar', 'editar', 'aprovar'],
-  grupo: ['visualizar', 'editar'],
-  admin: ['visualizar', 'editar'],
-}
+// F2 da unificação (2026-07-17): a UI "Permissões por Módulo" foi aposentada.
+// Ela gravava vocabulário legado ('visualizar'/'aprovar') na tabela
+// `permissoes`, que NENHUM gate do backend consulta (o RBAC só reconhece
+// ver/editar/exportar/executar) — era um painel de controle desligado da
+// tomada. O acesso real é gerido pelos Perfis RBAC (PerfisRBACSection).
+// O role admin/gestor/viewer por empresa PERMANECE (decisão D3): ainda
+// gateia listagem de usuários e quotas do Orbit no backend.
 const ROLES = [
   { value: 'admin', label: 'Admin' },
   { value: 'gestor', label: 'Gestor' },
@@ -335,13 +334,6 @@ export default function AdminPage() {
   const updateRole = async (userId: number, empresaId: number, role: string) => {
     await api.post(`/gestao/usuarios/${userId}/empresas`, { empresa_id: empresaId, role }); loadData()
   }
-  const togglePermissao = async (userId: number, modulo: string, acao: string, has: boolean) => {
-    const user = usuarios.find(u => u.id === userId)
-    if (!user) return
-    const newPerms = user.permissoes.filter(p => !(p.modulo === modulo && p.acao === acao)).map(p => ({ modulo: p.modulo, acao: p.acao, empresa_id: p.empresa_id }))
-    if (!has) newPerms.push({ modulo, acao, empresa_id: null })
-    await api.put(`/gestao/usuarios/${userId}/permissoes`, newPerms); loadData()
-  }
   const toggleAtivo = async (userId: number, ativo: boolean) => {
     await api.patch(`/gestao/usuarios/${userId}`, { ativo: !ativo }); loadData()
   }
@@ -428,7 +420,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">Administração</h1>
-          <p className="text-sm text-zinc-400">Gerencie usuários, empresas, unidades e permissões</p>
+          <p className="text-sm text-zinc-400">Gerencie usuários, empresas, unidades e perfis de acesso</p>
         </div>
         <button onClick={() => setShowModal(tab === 'Usuários' ? 'user' : tab === 'Empresas' ? 'empresa' : 'unidade')} className="flex items-center gap-2 bg-gradient-to-r from-[#CCA000] to-[#E0B82E] text-zinc-900 rounded-xl px-4 py-2.5 text-sm font-bold transition-all shadow-sm">
           <Plus className="w-4 h-4" /> {tab === 'Usuários' ? 'Novo Usuário' : tab === 'Empresas' ? 'Nova Empresa' : 'Nova Unidade'}
@@ -503,7 +495,6 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-zinc-500">
                       <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{user.empresas.length}</span>
-                      <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{user.permissoes.length}</span>
                       <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{user.unidades.length}</span>
                     </div>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
@@ -587,26 +578,6 @@ export default function AdminPage() {
                             </div>
                           )
                         })}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> Permissões por Módulo</h4>
-                      <div className="space-y-3">
-                        {Object.entries(MODULOS).map(([modulo, acoes]) => (
-                          <div key={modulo} className="py-2 px-3 rounded-xl bg-zinc-800/50">
-                            <span className="text-xs font-medium text-zinc-300 capitalize mb-2 block">{modulo}</span>
-                            <div className="flex flex-wrap gap-2">
-                              {acoes.map(acao => {
-                                const has = user.permissoes.some(p => p.modulo === modulo && p.acao === acao)
-                                return (
-                                  <button key={acao} onClick={() => togglePermissao(user.id, modulo, acao, has)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${has ? 'bg-[#CCA000]/20 text-[#E0B82E] border border-[#CCA000]/30' : 'bg-zinc-700/50 text-zinc-500 border border-zinc-700 hover:border-zinc-600'}`}>
-                                    {acao}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                     {/* Perfis RBAC + Acesso ao Motor (2026-07-15): antes viviam
@@ -822,8 +793,12 @@ export default function AdminPage() {
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Key</label>
+                        {/* autoComplete off: o Chrome via o input password abaixo e
+                            autopreenchia login salvo do portal aqui — risco de salvar
+                            lixo por cima das credenciais Omie. */}
                         <input
                           id={`appkey-${emp.id}`}
+                          autoComplete="off"
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono"
                           placeholder="Insira o App Key da Omie"
                         />
@@ -833,6 +808,7 @@ export default function AdminPage() {
                         <input
                           id={`appsecret-${emp.id}`}
                           type="password"
+                          autoComplete="new-password"
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono"
                           placeholder="Insira o App Secret da Omie"
                         />
@@ -971,11 +947,11 @@ export default function AdminPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Key</label>
-                      <input value={empresaForm.app_key} onChange={e => setEmpresaForm({ ...empresaForm, app_key: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="1234567890" />
+                      <input value={empresaForm.app_key} onChange={e => setEmpresaForm({ ...empresaForm, app_key: e.target.value })} autoComplete="off" className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="1234567890" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-zinc-400 mb-1.5">App Secret</label>
-                      <input type="password" value={empresaForm.app_secret} onChange={e => setEmpresaForm({ ...empresaForm, app_secret: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="••••••••••••••••" />
+                      <input type="password" value={empresaForm.app_secret} onChange={e => setEmpresaForm({ ...empresaForm, app_secret: e.target.value })} autoComplete="new-password" className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#CCA000] font-mono" placeholder="••••••••••••••••" />
                     </div>
                   </div>
                 </div>

@@ -12,6 +12,8 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { canAccessAdmin } from '@/lib/access'
+import { usePermissoesAtivas } from '@/hooks/usePermission'
+import { hasPermissionIn } from '@/store/permissoesStore'
 import { EmpresaSelector } from '@/components/nav/EmpresaSelector'
 
 interface NavChild {
@@ -108,8 +110,16 @@ export const NAV_SECTIONS: NavSection[] = [
 
 export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
-  const { user, hasPermissao } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
   const t = useThemeStore((s) => s.tokens)
+  // F2 da unificação (2026-07-17): o gate lê as permissões RBAC EFETIVAS
+  // da empresa ativa (GET /auth/me/permissoes/{id}, cacheadas pelo
+  // permissoesStore — fetch disparado no layout do portal). Antes lia as
+  // permissões LEGADAS do /auth/me (vocabulário 'visualizar' incompatível):
+  // não-admin com financeiro:ver no RBAC não via "Financeiro" no menu.
+  // Fail-closed: enquanto o fetch não chega, não-admin vê só as seções
+  // sem gate (perms === undefined ⇒ hasPermissionIn === false).
+  const perms = usePermissoesAtivas()
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
@@ -127,8 +137,8 @@ export default function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean;
   // RBAC — 'ver' em app/core/rbac.py ACOES) e toda seção sumia pra
   // não-admin; corrigido no #191. O filtro por item entrou em 2026-07-15.
   const visibleSections = useMemo(
-    () => filterNavSections(NAV_SECTIONS, isAdmin, hasPermissao),
-    [isAdmin, hasPermissao],
+    () => filterNavSections(NAV_SECTIONS, isAdmin, (m, a) => hasPermissionIn(perms, m, a)),
+    [isAdmin, perms],
   )
 
   const userInitials = user?.nome
