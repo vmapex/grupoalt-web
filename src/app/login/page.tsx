@@ -91,7 +91,6 @@ export default function LoginPage() {
         { id: me.id, nome: me.nome, email: me.email, is_admin: me.is_admin },
         me.empresas || [],
         me.grupos || [],
-        me.permissoes || [],
       )
       router.push('/portal')
     } catch (err: any) {

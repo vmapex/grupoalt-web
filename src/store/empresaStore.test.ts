@@ -23,7 +23,6 @@ beforeEach(() => {
     empresaAtiva: null,
     grupos: [],
     grupoAtivo: null,
-    permissoes: [],
   })
   useEmpresaStore.setState({
     empresas: [],

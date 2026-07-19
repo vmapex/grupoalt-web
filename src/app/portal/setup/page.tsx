@@ -100,7 +100,6 @@ export default function SetupPage() {
         { id: data.id, nome: data.nome, email: data.email, is_admin: data.is_admin },
         data.empresas || [],
         data.grupos || [],
-        data.permissoes || [],
       )
       setTimeout(() => syncFromAuth(), 0)
 
