@@ -35,7 +35,7 @@ export default function BIFinanceiroLayout({ children }: { children: React.React
       api.get('/auth/me')
         .then((res) => {
           const d = res.data
-          setAuth(d.user || d, d.empresas || [], d.grupos || [], d.permissoes || [])
+          setAuth(d.user || d, d.empresas || [], d.grupos || [])
         })
         .catch(() => {
           router.push('/login')

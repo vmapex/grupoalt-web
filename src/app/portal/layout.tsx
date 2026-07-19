@@ -54,7 +54,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           { id: data.id, nome: data.nome, email: data.email, is_admin: data.is_admin },
           data.empresas || [],
           data.grupos || [],
-          data.permissoes || [],
         )
         setNotifCount(notifRes.data.nao_lidas || 0)
         // Sync empresaStore with real empresas from API

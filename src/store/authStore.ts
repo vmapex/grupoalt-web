@@ -12,7 +12,6 @@ interface Empresa {
   logo_light?: string | null
 }
 interface Grupo { id: number; nome: string }
-interface Permissao { modulo: string; acao: string; empresa_id?: number | null }
 
 /**
  * STEP 11 — `empresaStore.activeId` é a fonte de verdade para empresa ativa.
@@ -35,14 +34,12 @@ interface AuthState {
   empresaAtiva: Empresa | null
   grupos: Grupo[]
   grupoAtivo: Grupo | null
-  permissoes: Permissao[]
-  setAuth: (user: AuthState['user'], empresas: Empresa[], grupos?: Grupo[], permissoes?: Permissao[]) => void
+  setAuth: (user: AuthState['user'], empresas: Empresa[], grupos?: Grupo[]) => void
   /** Compat: delega para empresaStore.setActive. Não chamar em código novo. */
   setEmpresaAtiva: (e: Empresa) => void
   /** Uso interno do empresaStore — atualiza só o espelho, não propaga. */
   setEmpresaAtivaInternal: (e: Empresa | null) => void
   setGrupoAtivo: (g: Grupo) => void
-  hasPermissao: (modulo: string, acao: string, empresaId?: number) => boolean
   logout: () => void
 }
 
@@ -53,9 +50,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   empresaAtiva: null,
   grupos: [],
   grupoAtivo: null,
-  permissoes: [],
 
-  setAuth: (user, empresas, grupos = [], permissoes = []) => {
+  // F4 da unificação (2026-07-19): as permissões LEGADAS do /auth/me saíram
+  // do store — o gating visual usa o RBAC efetivo (permissoesStore) desde a
+  // F2, e `hasPermissao` ficou sem consumidores.
+  setAuth: (user, empresas, grupos = []) => {
     // Não pré-seleciona empresaAtiva — quem reconcilia é empresaStore.syncFromAuth,
     // que respeita activeId persistido e valida contra `empresas`.
     set({
@@ -63,7 +62,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user, empresas,
       grupos,
       grupoAtivo: grupos[0] || null,
-      permissoes,
     })
   },
 
@@ -78,21 +76,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setGrupoAtivo: (g) => set({ grupoAtivo: g }),
 
-  hasPermissao: (modulo, acao, empresaId) => {
-    const { user, permissoes } = get()
-    if (user?.is_admin) return true
-    return permissoes.some(p =>
-      p.modulo === modulo &&
-      p.acao === acao &&
-      (p.empresa_id == null || p.empresa_id === empresaId)
-    )
-  },
-
   logout: () => {
     api.post('/auth/logout').catch(() => {})
     set({
       isAuthenticated: false, user: null, empresas: [], empresaAtiva: null,
-      grupos: [], grupoAtivo: null, permissoes: [],
+      grupos: [], grupoAtivo: null,
     })
     // Limpa fonte de verdade da empresa + persistência, evita vazar entre usuários.
     import('./empresaStore').then(({ useEmpresaStore }) => {
