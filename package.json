@@ -16,7 +16,7 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.65.0",
+    "@sentry/nextjs": "^10.66.0",
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
     "js-cookie": "^3.0.8",
