@@ -66,6 +66,8 @@ export interface MotorBiExecutivoAPI {
   por_unidade: MotorBiGrupoAPI[]
   por_cliente: MotorBiGrupoAPI[]
   por_tipo_veiculo: MotorBiGrupoAPI[]
+  /** ABC de agregados — ordenado por custo desc (motor-api #189). */
+  por_motorista?: MotorBiGrupoAPI[]
 }
 
 export function useMotorBiExecutivo(params: { ano?: number; unidade_id?: number | null }) {
