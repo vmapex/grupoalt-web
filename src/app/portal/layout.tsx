@@ -87,7 +87,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       financeiro: 'Financeiro', caixa: 'Caixa', extrato: 'Extrato',
       cp: 'Contas a Pagar', cr: 'Contas a Receber', fluxo: 'Fluxo de Caixa',
       conciliacao: 'Conciliação', indicadores: 'Indicadores', documentos: 'Documentos',
-      fechamento: 'Motor Fechamento', admin: 'Admin', permissoes: 'Permissões',
+      fechamento: 'Motor Fechamento', bi: 'BI do Motor', admin: 'Admin', permissoes: 'Permissões',
       processos: 'Processos', politicas: 'Políticas', planejamentos: 'Planejamento',
       faturamento: 'Faturamento', custos: 'Custos', contabil: 'Contábil',
       controladoria: 'Controladoria', operacoes: 'Operações',
