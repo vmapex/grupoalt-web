@@ -42,12 +42,14 @@ export default function CustoFaturamentoPage() {
   )
 
   // Curva ABC com % acumulado (sobre o custo total dos agregados listados).
+  // Sem mutação de closure no render (react-hooks/compiler): o acumulado da
+  // posição i é a soma do prefixo top[0..i] — top é só 15 itens.
   const abc = useMemo(() => {
     const lista = data?.abc_agregados ?? []
     const total = lista.reduce((s, m) => s + m.custo, 0)
-    let acum = 0
-    return lista.slice(0, 15).map((m) => {
-      acum += m.custo
+    const top = lista.slice(0, 15)
+    return top.map((m, i) => {
+      const acum = top.slice(0, i + 1).reduce((s, x) => s + x.custo, 0)
       return { ...m, share: total > 0 ? (m.custo / total) * 100 : 0, acumPct: total > 0 ? (acum / total) * 100 : 0 }
     })
   }, [data])
