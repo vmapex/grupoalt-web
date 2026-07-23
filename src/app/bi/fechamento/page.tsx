@@ -1,19 +1,216 @@
 'use client'
-/* BI de Fechamento · Faturamento — tela 1 do shell (estrutura; os dados
-   virão de GET /fechamento-bi/resumo na etapa de profundidade). */
-import { TelaEmConstrucao } from './_shared'
+/* ═══════════════════════════════════════════════════════════════
+   BI de Fechamento · Faturamento — tela principal do módulo.
+   Base = HISTÓRICO DE FECHAMENTO consolidado (/fechamento-bi/resumo);
+   filtros globais do layout (ano/mês/quinzena-dezena/navio/unidade).
+   fmtInt em leitura; fmtK só em eixos/labels de gráfico.
+   ═══════════════════════════════════════════════════════════════ */
+import { useMemo } from 'react'
+import {
+  ResponsiveContainer, ComposedChart, BarChart, Bar, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
+} from 'recharts'
+import { useThemeStore } from '@/store/themeStore'
+import { KPICard } from '@/components/ui/KPICard'
+import { GlowLine } from '@/components/ui/GlowLine'
+import { CustomTooltip } from '@/components/charts/CustomTooltip'
+import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
+import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
+import { useResumoComRecorte } from './_useResumo'
+
+function fmtData(iso: string | null): string {
+  if (!iso || iso.length < 10) return '—'
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`
+}
 
 export default function FaturamentoPage() {
+  const t = useThemeStore((s) => s.tokens)
+  const {
+    loading, error, refetch, ano, mes,
+    recorteAtivo, labelRecorte, fechamentos, visao,
+  } = useResumoComRecorte()
+
+  const serie = useMemo(() => {
+    if (!visao) return []
+    return visao.serieMensal.map((m, i) => ({
+      name: MESES[i],
+      faturamento: m.faturamento,
+      custo: m.custo,
+      margem: m.margem,
+    }))
+  }, [visao])
+
+  const cardStyle = { background: t.surface, border: `1px solid ${t.border}` } as const
+
+  if (error) return <BiErro erro={error} onRetry={refetch} />
+  if (loading && !visao) return <BiCarregando />
+  if (!visao) return null
+
+  const k = visao.kpis
+  const sufixoRecorte = recorteAtivo ? ` · ${labelRecorte}` : ''
+
   return (
-    <TelaEmConstrucao
-      titulo="Faturamento"
-      descricao="Visão principal de faturamento do fechamento consolidado — respeita os filtros globais de ano, mês, quinzena/dezena, navio e unidade."
-      itens={[
-        'KPIs: faturamento, custo, margem, nº de viagens e de fechamentos do recorte',
-        'Série mensal de faturamento × custo × margem (12 meses do ano filtrado)',
-        'Resultado por unidade (dinâmico — funciona para N unidades)',
-        'Lista dos fechamentos do período com drill até o detalhe',
-      ]}
-    />
+    <div className="space-y-5">
+      {k.fechamentos === 0 && (
+        <BiVazio mensagem={`Nenhum fechamento processado no recorte selecionado (${ano}${mes ? ` · ${MESES[mes - 1]}` : ''}${sufixoRecorte}).`} />
+      )}
+
+      {/* KPI strip */}
+      <div className="rounded-xl overflow-hidden relative" style={cardStyle}>
+        <GlowLine color={t.gold} />
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+          <KPICard
+            label="Faturamento"
+            value={`R$ ${fmtInt(k.faturamento)}`}
+            color={t.text}
+            accent={t.gold}
+            sub={`${fmtInt(k.fechamentos)} fechamento(s)${sufixoRecorte}`}
+          />
+          <KPICard
+            label="Custo"
+            value={`R$ ${fmtInt(k.custo)}`}
+            color={t.text}
+            accent={t.red}
+            sub={k.faturamento > 0 ? `${fmtPct((k.custo / k.faturamento) * 100)} da receita` : undefined}
+          />
+          <KPICard
+            label="Margem"
+            value={fmtPct(k.margem_pct)}
+            color={k.margem >= 0 ? t.green : t.red}
+            accent={t.green}
+            sub={`R$ ${fmtInt(k.margem)}`}
+          />
+          <KPICard
+            label="Viagens"
+            value={fmtInt(k.viagens)}
+            color={t.text}
+            accent={t.blue}
+            sub={k.viagens > 0 ? `ticket médio R$ ${fmtInt(k.faturamento / k.viagens)}` : undefined}
+          />
+          <KPICard
+            label="Cabeças"
+            value={k.cabecas != null ? fmtInt(k.cabecas) : '—'}
+            color={t.text}
+            accent={t.purple}
+            sub={k.cabecas == null ? 'indisponível no recorte intra-mês' : k.cabecas > 0 ? `R$ ${fmtInt(k.faturamento / k.cabecas)} / cabeça` : undefined}
+          />
+          <KPICard
+            label="KM rodados"
+            value={k.km != null ? fmtInt(k.km) : '—'}
+            color={t.text}
+            accent={t.blue}
+            sub={k.km == null ? 'indisponível no recorte intra-mês' : k.km > 0 ? `R$ ${fmtInt(k.faturamento / k.km)} / km` : undefined}
+            borderRight={false}
+          />
+        </div>
+      </div>
+
+      {/* Faturamento × custo mês a mês */}
+      <div className="rounded-xl p-4 relative" style={cardStyle}>
+        <GlowLine color={t.gold} />
+        {cardHeading(t, `Faturamento × custo mês a mês — ${ano}${sufixoRecorte}`)}
+        <div style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={serie} barGap={3}>
+              <CartesianGrid vertical={false} stroke={t.gridLine} />
+              <XAxis dataKey="name" tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtK(v)} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="faturamento" name="Faturamento" radius={[3, 3, 0, 0]} barSize={18} fill={t.gold} />
+              <Bar dataKey="custo" name="Custo" radius={[3, 3, 0, 0]} barSize={18} fill={t.red} fillOpacity={0.85} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* Faturamento por unidade */}
+        <div className="rounded-xl p-4 relative" style={cardStyle}>
+          <GlowLine color={t.gold} />
+          {cardHeading(t, 'Resultado por unidade')}
+          <div style={{ height: Math.max(200, (visao.porUnidade.length || 1) * 34) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={visao.porUnidade} layout="vertical" margin={{ right: 56 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="unidade_nome" width={130} tick={{ fontSize: 9, fill: t.textSec, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="faturamento" name="Faturamento" fill={t.gold} radius={[0, 3, 3, 0]} barSize={12}>
+                  <LabelList dataKey="faturamento" position="right" formatter={(v: number) => fmtK(v)} style={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} />
+                </Bar>
+                <Bar dataKey="margem" name="Margem" radius={[0, 3, 3, 0]} barSize={12}>
+                  {visao.porUnidade.map((u, i) => (
+                    <Cell key={i} fill={u.margem >= 0 ? t.green : t.red} fillOpacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Tabela por unidade (números de leitura) */}
+        <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
+          <GlowLine color={t.blue} />
+          {cardHeading(t, 'Unidades — números do recorte')}
+          <table className="w-full text-xs" style={{ minWidth: 440 }}>
+            <thead>
+              <tr style={{ color: t.muted }}>
+                <th className="text-left py-2 font-normal">Unidade</th>
+                <th className="text-right py-2 font-normal">Fech.</th>
+                <th className="text-right py-2 font-normal">Viagens</th>
+                <th className="text-right py-2 font-normal">Faturamento</th>
+                <th className="text-right py-2 font-normal">Margem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visao.porUnidade.map((u) => (
+                <tr key={u.unidade_id} style={{ borderTop: `1px solid ${t.border}` }}>
+                  <td className="py-2" style={{ color: t.text }}>{u.unidade_nome}</td>
+                  <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>{fmtInt(u.fechamentos)}</td>
+                  <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>{fmtInt(u.viagens)}</td>
+                  <td className="py-2 text-right font-mono" style={{ color: t.text }}>R$ {fmtInt(u.faturamento)}</td>
+                  <td className="py-2 text-right font-mono" style={{ color: u.margem >= 0 ? t.green : t.red }}>
+                    R$ {fmtInt(u.margem)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Fechamentos do recorte */}
+      <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
+        <GlowLine color={t.purple} />
+        {cardHeading(t, `Fechamentos do recorte (${fmtInt(fechamentos.length)})`)}
+        <table className="w-full text-xs" style={{ minWidth: 640 }}>
+          <thead>
+            <tr style={{ color: t.muted }}>
+              <th className="text-left py-2 font-normal">Período</th>
+              <th className="text-left py-2 font-normal">Unidade</th>
+              <th className="text-right py-2 font-normal">Fechado em</th>
+              <th className="text-right py-2 font-normal">Viagens</th>
+              <th className="text-right py-2 font-normal">Faturamento</th>
+              <th className="text-right py-2 font-normal">Custo</th>
+              <th className="text-right py-2 font-normal">Margem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fechamentos.map((f) => (
+              <tr key={f.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                <td className="py-2" style={{ color: t.text }}>{f.periodo_label || `${fmtData(f.dt_ini)} – ${fmtData(f.dt_fim)}`}</td>
+                <td className="py-2" style={{ color: t.textSec }}>{f.unidade_nome}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.muted }}>{fmtData(f.dt_fechamento)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>{fmtInt(f.viagens)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.text }}>R$ {fmtInt(f.faturamento)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>R$ {fmtInt(f.custo)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: f.margem >= 0 ? t.green : t.red }}>
+                  R$ {fmtInt(f.margem)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
