@@ -130,8 +130,118 @@ export interface FechamentoBiAnualAPI {
   meta: { unidade_id: number | null; navio_id: number | null; fonte: string }
 }
 
+/** Componentes de crédito × débito de um fechamento (das linhas_resumo):
+ *  débitos = valor + bônus + pedágio; retenções = desconto + seguro +
+ *  imposto + comissão de carreta (repassada ao locador); saldo = líquido. */
+export interface FechamentoBiComponentesAPI {
+  valor_motorista: number
+  bonus_motorista: number
+  pedagio: number
+  desconto_motorista: number
+  seguro_boi: number
+  imposto: number
+  comissao_carreta: number
+  saldo_motorista: number
+  debitos: number
+  retencoes: number
+}
+
+export interface FechamentoBiCreditoDebitoAPI {
+  totais: FechamentoBiComponentesAPI
+  por_unidade: (FechamentoBiComponentesAPI & {
+    unidade_id: number
+    unidade_nome: string
+    fechamentos: number
+  })[]
+  fechamentos: (FechamentoBiComponentesAPI & {
+    id: number
+    unidade_id: number
+    unidade_nome: string
+    periodo_label: string | null
+    ano: number
+    mes: number
+    dt_fechamento: string | null
+  })[]
+  meta: { ano: number; mes: number | null; unidade_id: number | null; navio_id: number | null }
+}
+
+export interface FechamentoBiPostoAPI {
+  posto_id: number | null
+  posto_nome: string
+  abastecimento: number
+  vale: number
+  desconto: number
+  liquido: number
+  litros: number
+  lancamentos: number
+}
+
+export interface FechamentoBiPostosAPI {
+  kpis: {
+    abastecimento: number
+    vale: number
+    desconto: number
+    liquido: number
+    litros: number
+    lancamentos: number
+    litros_disponivel: boolean
+    rs_por_litro: number | null
+  }
+  por_posto: FechamentoBiPostoAPI[]
+  meta: { ano: number; mes: number | null; unidade_id: number | null; nota_litros: string }
+}
+
+export interface FechamentoBiDevedoresAPI {
+  kpis: {
+    pendente_total: number
+    pendente_count: number
+    quitado_total: number
+    quitado_count: number
+  }
+  aging: { faixa: string; valor: number; count: number }[]
+  top_devedores: {
+    motorista_id: number | null
+    nome: string
+    valor: number
+    count: number
+    mais_antigo_dias: number
+  }[]
+  por_unidade: { unidade_id: number | null; unidade_nome: string; valor: number; count: number }[]
+  meta: { unidade_id: number | null }
+}
+
 export function useFechamentoBiFiltros() {
   return useApi<FechamentoBiFiltrosAPI>('/fechamento-bi/filtros')
+}
+
+export function useFechamentoBiCreditoDebito(params: {
+  ano: number
+  mes?: number | null
+  unidade_id?: number | null
+  navio_id?: number | null
+}) {
+  const clean: Record<string, number> = { ano: params.ano }
+  if (params.mes) clean.mes = params.mes
+  if (params.unidade_id) clean.unidade_id = params.unidade_id
+  if (params.navio_id) clean.navio_id = params.navio_id
+  return useApi<FechamentoBiCreditoDebitoAPI>('/fechamento-bi/credito-debito', clean)
+}
+
+export function useFechamentoBiPostos(params: {
+  ano: number
+  mes?: number | null
+  unidade_id?: number | null
+}) {
+  const clean: Record<string, number> = { ano: params.ano }
+  if (params.mes) clean.mes = params.mes
+  if (params.unidade_id) clean.unidade_id = params.unidade_id
+  return useApi<FechamentoBiPostosAPI>('/fechamento-bi/postos', clean)
+}
+
+export function useFechamentoBiDevedores(params: { unidade_id?: number | null }) {
+  const clean: Record<string, number> = {}
+  if (params.unidade_id) clean.unidade_id = params.unidade_id
+  return useApi<FechamentoBiDevedoresAPI>('/fechamento-bi/devedores', clean)
 }
 
 export function useFechamentoBiFaturamentoAnual(params: {
