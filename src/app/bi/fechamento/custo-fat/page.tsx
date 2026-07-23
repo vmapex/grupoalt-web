@@ -16,7 +16,7 @@ import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
-import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
+import { MESES, MesTriTick, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
 import { useResumoComRecorte } from '../_useResumo'
 
 export default function CustoFaturamentoPage() {
@@ -116,11 +116,11 @@ export default function CustoFaturamentoPage() {
       <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.red} />
         {cardHeading(t, `Custo × Receita mês a mês — ${ano}${sufixoRecorte} (tooltip mostra o % custo)`)}
-        <div style={{ height: 260 }}>
+        <div style={{ height: 270 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={serie} barGap={3}>
               <CartesianGrid vertical={false} stroke={t.gridLine} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={<MesTriTick t={t} />} height={34} axisLine={false} tickLine={false} interval={0} />
               <YAxis tick={{ fontSize: 9, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtK(v)} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="custo" name="Custo" radius={[3, 3, 0, 0]} barSize={18} fill={t.red} fillOpacity={0.9} />

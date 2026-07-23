@@ -6,6 +6,38 @@ import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
 
 export const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
+/**
+ * Tick de eixo X em duas linhas: mês em cima e o marcador do trimestre
+ * (1º TRI…4º TRI) sob o mês central de cada tri — espelho do eixo do
+ * Power BI de referência; prepara a mudança de granularidade mês/tri.
+ * Uso: <XAxis tick={<MesTriTick t={t} />} height={34} …/>
+ */
+export function MesTriTick(props: {
+  x?: number
+  y?: number
+  payload?: { value?: string; index?: number }
+  t: ThemeTokens
+}) {
+  const { x = 0, y = 0, payload, t } = props
+  const nome = payload?.value ?? ''
+  const idx = payload?.index ?? MESES.indexOf(nome)
+  // FEV/MAI/AGO/NOV (mês do meio do tri) carregam o rótulo do trimestre.
+  const tri = idx % 3 === 1 ? `${Math.floor(idx / 3) + 1}º TRI` : null
+  const mono = "'JetBrains Mono', monospace"
+  return (
+    <g>
+      <text x={x} y={y + 10} textAnchor="middle" fontSize={9} fontFamily={mono} fill={t.muted}>
+        {nome}
+      </text>
+      {tri && (
+        <text x={x} y={y + 24} textAnchor="middle" fontSize={8} fontFamily={mono} fill={t.gold} letterSpacing="0.12em">
+          {tri}
+        </text>
+      )}
+    </g>
+  )
+}
+
 export function cardHeading(t: ThemeTokens, label: string): ReactNode {
   return (
     <div
