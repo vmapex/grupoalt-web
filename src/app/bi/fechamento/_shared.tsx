@@ -46,6 +46,15 @@ export function BiCarregando() {
   )
 }
 
+export function BiVazio({ mensagem }: { mensagem: string }) {
+  const t = useThemeStore((s) => s.tokens)
+  return (
+    <div className="rounded-xl p-6 text-center text-xs" style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.muted }}>
+      {mensagem}
+    </div>
+  )
+}
+
 /** Tela estruturada, ainda sem dados — lista o que a etapa seguinte entrega. */
 export function TelaEmConstrucao({ titulo, descricao, itens }: { titulo: string; descricao: string; itens: string[] }) {
   const t = useThemeStore((s) => s.tokens)
