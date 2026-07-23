@@ -16,6 +16,8 @@ import { create } from 'zustand'
 export interface OpcaoFiltro {
   id: number
   label: string
+  /** tipo_periodo da unidade no Motor (QUINZENAL|DEZENA|MENSAL|NAVIO). */
+  tipoPeriodo?: string | null
 }
 
 /** Recorte intra-mês: quinzenas (Q1/Q2) ou dezenas (D1/D2/D3). */
@@ -29,6 +31,29 @@ export const PERIODO_INTRA_MES_OPTS: { value: PeriodoIntraMes; label: string }[]
   { value: 'D2', label: '2ª dezena' },
   { value: 'D3', label: '3ª dezena' },
 ]
+
+/**
+ * Recortes intra-mês que fazem sentido para o `tipo_periodo` da unidade
+ * selecionada (validação 2026-07-23: a granularidade deve respeitar a
+ * configuração da unidade). Sem unidade selecionada (grupo inteiro) ou
+ * tipo desconhecido, oferece tudo.
+ */
+export function periodosPermitidos(
+  tipoPeriodo: string | null | undefined,
+): PeriodoIntraMes[] {
+  switch (tipoPeriodo) {
+    case 'QUINZENAL':
+      return ['', 'Q1', 'Q2']
+    case 'DEZENA':
+      return ['', 'D1', 'D2', 'D3']
+    case 'MENSAL':
+    case 'NAVIO':
+      // Fechamento mensal/por navio não pratica recorte intra-mês fixo.
+      return ['']
+    default:
+      return ['', 'Q1', 'Q2', 'D1', 'D2', 'D3']
+  }
+}
 
 interface BiFechamentoState {
   ano: number

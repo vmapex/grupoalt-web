@@ -6,6 +6,7 @@ import {
   fechamentoNoRecorte,
   filtrarFechamentosPorRecorte,
 } from './fechamentoBi'
+import { periodosPermitidos } from '@/store/biFechamentoStore'
 import type { FechamentoBiFechamentoAPI } from '@/hooks/api/useFechamentoBi'
 
 function fech(over: Partial<FechamentoBiFechamentoAPI>): FechamentoBiFechamentoAPI {
@@ -48,6 +49,24 @@ describe('fechamentoNoRecorte', () => {
   it('janela cruzando mês ou sem datas nunca casa recorte', () => {
     expect(fechamentoNoRecorte(fech({ dt_ini: '2026-07-28', dt_fim: '2026-08-05' }), 'D3')).toBe(false)
     expect(fechamentoNoRecorte(fech({ dt_ini: null, dt_fim: null }), 'Q1')).toBe(false)
+  })
+})
+
+describe('periodosPermitidos (tipo_periodo da unidade)', () => {
+  it('quinzenal só oferece quinzenas; dezena só dezenas', () => {
+    expect(periodosPermitidos('QUINZENAL')).toEqual(['', 'Q1', 'Q2'])
+    expect(periodosPermitidos('DEZENA')).toEqual(['', 'D1', 'D2', 'D3'])
+  })
+
+  it('mensal/navio não praticam recorte intra-mês', () => {
+    expect(periodosPermitidos('MENSAL')).toEqual([''])
+    expect(periodosPermitidos('NAVIO')).toEqual([''])
+  })
+
+  it('sem unidade selecionada (grupo) ou tipo desconhecido oferece tudo', () => {
+    expect(periodosPermitidos(null)).toHaveLength(6)
+    expect(periodosPermitidos(undefined)).toHaveLength(6)
+    expect(periodosPermitidos('OUTRO')).toHaveLength(6)
   })
 })
 

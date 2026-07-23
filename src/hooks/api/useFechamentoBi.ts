@@ -15,6 +15,8 @@ export interface FechamentoBiUnidadeOptAPI {
   nome: string
   cidade?: string | null
   uf?: string | null
+  /** QUINZENAL | DEZENA | MENSAL | NAVIO — recorte que a unidade pratica. */
+  tipo_periodo?: string | null
 }
 
 export interface FechamentoBiNavioOptAPI {
@@ -111,8 +113,35 @@ export interface FechamentoBiResumoAPI {
   }
 }
 
+export interface FechamentoBiAnoAPI {
+  ano: number
+  faturamento: number
+  custo: number
+  margem: number
+  viagens: number
+  fechamentos: number
+  /** Variação % do faturamento vs o ano anterior; null no primeiro ano. */
+  var_pct: number | null
+  serie_mensal: { mes: number; faturamento: number; viagens: number; fechamentos: number }[]
+}
+
+export interface FechamentoBiAnualAPI {
+  anos: FechamentoBiAnoAPI[]
+  meta: { unidade_id: number | null; navio_id: number | null; fonte: string }
+}
+
 export function useFechamentoBiFiltros() {
   return useApi<FechamentoBiFiltrosAPI>('/fechamento-bi/filtros')
+}
+
+export function useFechamentoBiFaturamentoAnual(params: {
+  unidade_id?: number | null
+  navio_id?: number | null
+}) {
+  const clean: Record<string, number> = {}
+  if (params.unidade_id) clean.unidade_id = params.unidade_id
+  if (params.navio_id) clean.navio_id = params.navio_id
+  return useApi<FechamentoBiAnualAPI>('/fechamento-bi/faturamento-anual', clean)
 }
 
 export function useFechamentoBiResumo(params: {

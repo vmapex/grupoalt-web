@@ -14,6 +14,7 @@ import { useThemeStore } from '@/store/themeStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
+import { BarLabelVar } from '@/components/charts/BarLabelVar'
 import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
 import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
 import { useResumoComRecorte } from './_useResumo'
@@ -105,19 +106,27 @@ export default function FaturamentoPage() {
         </div>
       </div>
 
-      {/* Faturamento × custo mês a mês */}
+      {/* Faturamento mês a mês com variação % sobre o mês anterior
+          (pedido da validação 2026-07-23: sem custo aqui — custo tem
+          lente própria na aba Custo × Faturamento). */}
       <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.gold} />
-        {cardHeading(t, `Faturamento × custo mês a mês — ${ano}${sufixoRecorte}`)}
-        <div style={{ height: 260 }}>
+        {cardHeading(t, `Faturamento mês a mês — ${ano}${sufixoRecorte} (▲▼ variação sobre o mês anterior)`)}
+        <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={serie} barGap={3}>
+            <ComposedChart data={serie} margin={{ top: 34 }}>
               <CartesianGrid vertical={false} stroke={t.gridLine} />
               <XAxis dataKey="name" tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtK(v)} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="faturamento" name="Faturamento" radius={[3, 3, 0, 0]} barSize={18} fill={t.gold} />
-              <Bar dataKey="custo" name="Custo" radius={[3, 3, 0, 0]} barSize={18} fill={t.red} fillOpacity={0.85} />
+              <Bar dataKey="faturamento" name="Faturamento" radius={[3, 3, 0, 0]} barSize={26} fill={t.gold}>
+                <LabelList
+                  dataKey="faturamento"
+                  content={(props) => (
+                    <BarLabelVar {...(props as object)} fill={t.gold} data={serie} dataKey="faturamento" />
+                  )}
+                />
+              </Bar>
             </ComposedChart>
           </ResponsiveContainer>
         </div>
