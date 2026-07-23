@@ -120,6 +120,10 @@ export default function BIFechamentoLayout({ children }: { children: React.React
 
   const anos = anoOpts.length ? anoOpts : [new Date().getFullYear()]
   const selectStyle = { background: t.surface, border: `1px solid ${t.border}`, color: t.text } as const
+  // O popup nativo do <select> no Chrome/Windows tem fundo claro e as <option>
+  // herdam o color branco do select em dark mode — texto invisível. Estilo
+  // explícito nas options resolve nos dois temas.
+  const optionStyle = { background: t.surface, color: t.text } as const
   const selectClass = 'rounded-lg px-2.5 py-1.5 text-xs focus:outline-none'
 
   return (
@@ -158,38 +162,38 @@ export default function BIFechamentoLayout({ children }: { children: React.React
           {/* Filtros globais — ANO · MÊS · QUINZENA/DEZENA · NAVIO · UNIDADE */}
           <div className="flex gap-2 shrink-0 flex-wrap">
             <select value={ano} onChange={(e) => setAno(Number(e.target.value))} className={selectClass} style={selectStyle} aria-label="Ano">
-              {anos.map((a) => <option key={a} value={a}>{a}</option>)}
+              {anos.map((a) => <option key={a} value={a} style={optionStyle}>{a}</option>)}
             </select>
             <select
               value={mes ?? ''}
               onChange={(e) => setMes(e.target.value ? Number(e.target.value) : null)}
               className={selectClass} style={selectStyle} aria-label="Mês"
             >
-              <option value="">Todos os meses</option>
-              {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              <option value="" style={optionStyle}>Todos os meses</option>
+              {MESES.map((m, i) => <option key={m} value={i + 1} style={optionStyle}>{m}</option>)}
             </select>
             <select
               value={periodo}
               onChange={(e) => setPeriodo(e.target.value as typeof periodo)}
               className={selectClass} style={selectStyle} aria-label="Quinzena ou dezena"
             >
-              {PERIODO_INTRA_MES_OPTS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              {PERIODO_INTRA_MES_OPTS.map((p) => <option key={p.value} value={p.value} style={optionStyle}>{p.label}</option>)}
             </select>
             <select
               value={navioId ?? ''}
               onChange={(e) => setNavioId(e.target.value ? Number(e.target.value) : null)}
               className={`${selectClass} max-w-[150px]`} style={selectStyle} aria-label="Navio"
             >
-              <option value="">Todos os navios</option>
-              {navioOpts.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+              <option value="" style={optionStyle}>Todos os navios</option>
+              {navioOpts.map((n) => <option key={n.id} value={n.id} style={optionStyle}>{n.label}</option>)}
             </select>
             <select
               value={unidadeId ?? ''}
               onChange={(e) => setUnidadeId(e.target.value ? Number(e.target.value) : null)}
               className={`${selectClass} max-w-[170px]`} style={selectStyle} aria-label="Unidade"
             >
-              <option value="">Todas as unidades</option>
-              {unidadeOpts.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
+              <option value="" style={optionStyle}>Todas as unidades</option>
+              {unidadeOpts.map((u) => <option key={u.id} value={u.id} style={optionStyle}>{u.label}</option>)}
             </select>
           </div>
         </div>
