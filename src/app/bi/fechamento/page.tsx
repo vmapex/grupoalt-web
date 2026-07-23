@@ -18,7 +18,7 @@ import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { BarLabelVar } from '@/components/charts/BarLabelVar'
 import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
-import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
+import { MESES, MesTriTick, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
 import { useResumoComRecorte } from './_useResumo'
 
 function fmtData(iso: string | null): string {
@@ -123,11 +123,11 @@ export default function FaturamentoPage() {
             <History size={11} /> Comparar 5 anos
           </Link>
         </div>
-        <div style={{ height: 280 }}>
+        <div style={{ height: 290 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={serie} margin={{ top: 34 }}>
               <CartesianGrid vertical={false} stroke={t.gridLine} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={<MesTriTick t={t} />} height={34} axisLine={false} tickLine={false} interval={0} />
               <YAxis tick={{ fontSize: 9, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtK(v)} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="faturamento" name="Faturamento" radius={[3, 3, 0, 0]} barSize={26} fill={t.gold}>

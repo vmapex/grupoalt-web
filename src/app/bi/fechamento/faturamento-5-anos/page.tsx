@@ -23,7 +23,7 @@ import { useBiFechamentoStore } from '@/store/biFechamentoStore'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
 import { useFechamentoBiFaturamentoAnual, type FechamentoBiAnoAPI } from '@/hooks/api/useFechamentoBi'
-import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
+import { MESES, MesTriTick, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
 
 const MAX_ANOS = 5
 
@@ -36,7 +36,8 @@ interface LinhaTooltip {
   varAcum: number | null
 }
 
-/** Tooltip: mês × anos + acumulado até o mês × anos (Δ vs ano anterior). */
+/** Tooltip no formato do Power BI de referência: tabela com ANO | Mês |
+ *  %YoY | YTD | %YoY — mês e acumulado comparados entre os anos. */
 function TooltipCincoAnos({
   active, label, linhasPorMes, t,
 }: {
@@ -48,40 +49,47 @@ function TooltipCincoAnos({
   const linhas = active && label ? linhasPorMes[label] : undefined
   if (!linhas?.length) return null
   const delta = (v: number | null) =>
-    v == null ? null : (
-      <span className="font-mono ml-1" style={{ color: v >= 0 ? t.green : t.red, fontSize: 10 }}>
-        {v >= 0 ? '▲' : '▼'}{fmtPct(Math.abs(v))}
+    v == null ? <span style={{ color: t.muted }}>—</span> : (
+      <span className="font-mono" style={{ color: v >= 0 ? t.green : t.red }}>
+        {v >= 0 ? '▲' : '▼'} {fmtPct(Math.abs(v))}
       </span>
     )
+  const th = { color: t.muted, fontWeight: 600 } as const
   return (
     <div
       className="rounded-lg"
       style={{
         background: t.surfaceElevated,
         border: `1px solid ${t.borderHover}`,
-        padding: '10px 14px',
+        padding: '10px 12px',
         boxShadow: t.tooltipShadow,
       }}
     >
-      <div className="text-[10px] font-mono mb-2" style={{ color: t.muted }}>
-        {label} — mês e acumulado até {label}
-      </div>
-      <table className="text-[11px]">
+      <table className="text-[11px]" style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr className="text-[9.5px] uppercase" style={{ borderBottom: `1px solid ${t.border}` }}>
+            <th className="text-left pr-3 pb-1" style={th}>Ano</th>
+            <th className="text-right pr-3 pb-1" style={th}>{label}</th>
+            <th className="text-right pr-3 pb-1" style={th}>%YoY</th>
+            <th className="text-right pr-3 pb-1" style={th}>YTD</th>
+            <th className="text-right pb-1" style={th}>%YoY</th>
+          </tr>
+        </thead>
         <tbody>
-          {linhas.map((l) => (
-            <tr key={l.ano}>
-              <td className="pr-3 py-0.5">
+          {linhas.map((l, i) => (
+            <tr key={l.ano} style={i === 0 ? { background: `${t.gold}14` } : undefined}>
+              <td className="pr-3 py-1">
                 <span className="inline-block w-1.5 h-1.5 rounded-sm mr-1.5 align-middle" style={{ background: l.cor }} />
-                <span className="font-mono" style={{ color: t.textSec }}>{l.ano}</span>
+                <span className="font-mono" style={{ color: t.text }}>{l.ano}</span>
               </td>
-              <td className="pr-1 py-0.5 text-right font-mono" style={{ color: t.text }}>
-                {l.mes > 0 ? `R$ ${fmtInt(l.mes)}` : '—'}
+              <td className="pr-3 py-1 text-right font-mono" style={{ color: t.text }}>
+                {l.mes > 0 ? fmtK(l.mes) : '—'}
               </td>
-              <td className="pr-3 py-0.5">{l.mes > 0 ? delta(l.varMes) : null}</td>
-              <td className="pr-1 py-0.5 text-right font-mono" style={{ color: t.textSec }}>
-                acum {l.acum > 0 ? `R$ ${fmtInt(l.acum)}` : '—'}
+              <td className="pr-3 py-1 text-right">{l.mes > 0 ? delta(l.varMes) : <span style={{ color: t.muted }}>—</span>}</td>
+              <td className="pr-3 py-1 text-right font-mono" style={{ color: t.text }}>
+                {l.acum > 0 ? fmtK(l.acum) : '—'}
               </td>
-              <td className="py-0.5">{l.acum > 0 ? delta(l.varAcum) : null}</td>
+              <td className="py-1 text-right">{l.acum > 0 ? delta(l.varAcum) : <span style={{ color: t.muted }}>—</span>}</td>
             </tr>
           ))}
         </tbody>
@@ -204,24 +212,33 @@ export default function Faturamento5AnosPage() {
       <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.blue} />
         {cardHeading(t, `Faturamento mês a mês — ${anos[0].ano} a ${anos[anos.length - 1].ano} (tooltip compara o mês e o acumulado entre os anos)`)}
-        <div style={{ height: 300 }}>
+        <div style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={serieMensal}>
+            <ComposedChart data={serieMensal} margin={{ top: 20 }}>
               <CartesianGrid vertical={false} stroke={t.gridLine} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={<MesTriTick t={t} />} height={34} axisLine={false} tickLine={false} interval={0} />
               <YAxis tick={{ fontSize: 9, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtK(v)} />
               <Tooltip content={<TooltipCincoAnos linhasPorMes={linhasPorMes} t={t} />} />
               <Legend wrapperStyle={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
-              {anos.map((y, i) => (
-                <Line
-                  key={y.ano}
-                  type="monotone"
-                  dataKey={String(y.ano)}
-                  stroke={cores[i]}
-                  strokeWidth={i === anos.length - 1 ? 2.5 : 1.5}
-                  dot={false}
-                />
-              ))}
+              {anos.map((y, i) => {
+                const atual = i === anos.length - 1
+                return (
+                  <Line
+                    key={y.ano}
+                    type="monotone"
+                    dataKey={String(y.ano)}
+                    stroke={cores[i]}
+                    strokeWidth={atual ? 2.5 : 1.5}
+                    dot={atual ? { r: 2.5, fill: cores[i], strokeWidth: 0 } : false}
+                    // Rótulo de valor em cada mês só no ano corrente —
+                    // marcação pedida na validação sem poluir os 5 anos.
+                    label={atual ? {
+                      position: 'top', formatter: (v: number) => (v > 0 ? fmtK(v) : ''),
+                      fontSize: 9, fill: cores[i], fontFamily: "'JetBrains Mono', monospace",
+                    } : undefined}
+                  />
+                )
+              })}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
