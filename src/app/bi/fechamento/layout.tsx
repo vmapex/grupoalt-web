@@ -26,7 +26,7 @@ import {
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useAuthStore } from '@/store/authStore'
-import { useBiFechamentoStore, PERIODO_INTRA_MES_OPTS } from '@/store/biFechamentoStore'
+import { useBiFechamentoStore, PERIODO_INTRA_MES_OPTS, periodosPermitidos } from '@/store/biFechamentoStore'
 import { useFechamentoBiFiltros } from '@/hooks/api/useFechamentoBi'
 import { useFetchPermissoesAtivas } from '@/hooks/usePermission'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -111,12 +111,25 @@ export default function BIFechamentoLayout({ children }: { children: React.React
     const comFechamento = new Set(filtros.navios_com_fechamento || [])
     setOpts({
       anos: filtros.anos || [],
-      unidades: (filtros.unidades || []).map((u) => ({ id: u.id, label: u.nome })),
+      unidades: (filtros.unidades || []).map((u) => ({
+        id: u.id, label: u.nome, tipoPeriodo: u.tipo_periodo ?? null,
+      })),
       navios: (filtros.navios || [])
         .filter((n) => comFechamento.size === 0 || comFechamento.has(n.id))
         .map((n) => ({ id: n.id, label: n.nome })),
     })
   }, [filtros, setOpts])
+
+  // Recorte intra-mês respeita o tipo_periodo da unidade selecionada
+  // (unidade quinzenal não oferece dezena e vice-versa). Se a seleção
+  // atual ficou incompatível ao trocar de unidade, volta a "completo".
+  const tipoPeriodoSel = unidadeId != null
+    ? unidadeOpts.find((u) => u.id === unidadeId)?.tipoPeriodo
+    : null
+  const periodosDisponiveis = periodosPermitidos(tipoPeriodoSel)
+  useEffect(() => {
+    if (!periodosDisponiveis.includes(periodo)) setPeriodo('')
+  }, [periodo, periodosDisponiveis, setPeriodo])
 
   const anos = anoOpts.length ? anoOpts : [new Date().getFullYear()]
   const selectStyle = { background: t.surface, border: `1px solid ${t.border}`, color: t.text } as const
@@ -176,8 +189,12 @@ export default function BIFechamentoLayout({ children }: { children: React.React
               value={periodo}
               onChange={(e) => setPeriodo(e.target.value as typeof periodo)}
               className={selectClass} style={selectStyle} aria-label="Quinzena ou dezena"
+              disabled={periodosDisponiveis.length <= 1}
+              title={periodosDisponiveis.length <= 1 ? 'A unidade selecionada fecha por período completo (mensal/navio)' : undefined}
             >
-              {PERIODO_INTRA_MES_OPTS.map((p) => <option key={p.value} value={p.value} style={optionStyle}>{p.label}</option>)}
+              {PERIODO_INTRA_MES_OPTS
+                .filter((p) => periodosDisponiveis.includes(p.value))
+                .map((p) => <option key={p.value} value={p.value} style={optionStyle}>{p.label}</option>)}
             </select>
             <select
               value={navioId ?? ''}
