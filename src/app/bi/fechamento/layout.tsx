@@ -21,7 +21,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
-  BarChart3, History, TrendingDown, Fuel, HandCoins, ArrowLeftRight, ArrowLeft,
+  BarChart3, TrendingDown, Fuel, HandCoins, ArrowLeftRight, ArrowLeft,
 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
@@ -33,9 +33,11 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import api from '@/lib/api'
 import { MESES } from './_shared'
 
+// "Faturamento 5 anos" saiu da barra (validação 2026-07-23): é indicador de
+// alta gestão, acessado por botão no card do gráfico mensal do Faturamento.
+// A rota continua existindo; a aba Faturamento fica ativa quando nela.
 const TABS = [
-  { href: '/bi/fechamento', label: 'Faturamento', Icon: BarChart3 },
-  { href: '/bi/fechamento/faturamento-5-anos', label: 'Faturamento 5 anos', Icon: History },
+  { href: '/bi/fechamento', label: 'Faturamento', Icon: BarChart3, tambem: ['/bi/fechamento/faturamento-5-anos'] },
   { href: '/bi/fechamento/custo-fat', label: 'Custo × Faturamento', Icon: TrendingDown },
   { href: '/bi/fechamento/agregados', label: 'Agregados & Postos', Icon: Fuel },
   { href: '/bi/fechamento/adiantamentos-devedores', label: 'Adiant. & Devedores', Icon: HandCoins },
@@ -227,8 +229,8 @@ export default function BIFechamentoLayout({ children }: { children: React.React
           }}
         >
           <div className="flex gap-0.5 rounded-full p-0.5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-            {TABS.map(({ href, label, Icon }) => {
-              const active = pathname === href
+            {TABS.map(({ href, label, Icon, tambem }) => {
+              const active = pathname === href || (tambem ?? []).includes(pathname)
               return (
                 <Link
                   key={href}

@@ -6,6 +6,8 @@
    fmtInt em leitura; fmtK só em eixos/labels de gráfico.
    ═══════════════════════════════════════════════════════════════ */
 import { useMemo } from 'react'
+import Link from 'next/link'
+import { History } from 'lucide-react'
 import {
   ResponsiveContainer, ComposedChart, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
@@ -111,7 +113,16 @@ export default function FaturamentoPage() {
           lente própria na aba Custo × Faturamento). */}
       <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.gold} />
-        {cardHeading(t, `Faturamento mês a mês — ${ano}${sufixoRecorte} (▲▼ variação sobre o mês anterior)`)}
+        <div className="flex items-start justify-between gap-3">
+          {cardHeading(t, `Faturamento mês a mês — ${ano}${sufixoRecorte} (▲▼ variação sobre o mês anterior)`)}
+          <Link
+            href="/bi/fechamento/faturamento-5-anos"
+            className="flex items-center gap-1.5 text-[10px] shrink-0 rounded-full px-2.5 py-1 transition-all"
+            style={{ color: t.gold, background: t.goldDim, border: `1px solid ${t.border}`, fontWeight: 600, letterSpacing: '0.04em' }}
+          >
+            <History size={11} /> Comparar 5 anos
+          </Link>
+        </div>
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={serie} margin={{ top: 34 }}>
