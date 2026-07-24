@@ -29,6 +29,27 @@ export const PERFIS_MOTOR = [
 
 export type PerfilMotor = (typeof PERFIS_MOTOR)[number]
 
+/** Ordena os perfis do Motor do mais fraco ao mais forte — espelho de
+ *  MOTOR_RANK em grupoalt-api/app/services/motor_perfil.py. */
+export const MOTOR_RANK: Record<string, number> = {
+  ANALISTA: 0,
+  EMISSOR_CTE: 1,
+  OPERADOR: 2,
+  GESTOR_FECHAMENTO: 3,
+  ADM: 4,
+}
+
+/**
+ * True quando o SSO vai entrar ABAIXO do perfil provisionado (o backend capa
+ * a claim ao teto). Espelha `excede_teto` do motor_perfil.py, incluindo a
+ * exceção EMISSOR_CTE (papel sob demanda, nunca é excesso com teto ≥ leitura).
+ */
+export function ssoRebaixado(perfilMotor: string, teto: string): boolean {
+  if (teto === 'NENHUM') return true
+  if (perfilMotor === 'EMISSOR_CTE') return false
+  return (MOTOR_RANK[perfilMotor] ?? 99) > (MOTOR_RANK[teto] ?? -1)
+}
+
 export interface MotorUnidadeAPI {
   id: number
   nome: string
@@ -56,6 +77,9 @@ export interface MotorAcessoAPI {
   /** Usuário já existente no Motor com o mesmo email (fluxo de adoção). */
   motor_existente_por_email: MotorUsuarioPublicoAPI | null
   perfil_sugerido: PerfilMotor | null
+  /** Teto ATUAL pelas permissões RBAC (empresa-âncora). "NENHUM" = SSO
+   *  bloqueado (403); abaixo do perfil provisionado = SSO entra rebaixado. */
+  teto_atual?: string | null
 }
 
 export interface SsoTicketAPI {
