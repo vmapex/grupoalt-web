@@ -1,27 +1,28 @@
 'use client'
 /* ═══════════════════════════════════════════════════════════════
-   BI de Fechamento · Crédito & Débito — "DRE do fechamento" a partir
-   das linhas_resumo consolidadas (GET /fechamento-bi/credito-debito):
-   débitos ao motorista (valor + bônus + pedágio) × retenções da
-   unidade (desconto + seguro do boi + imposto + comissão de carreta,
-   repassada ao locador) × saldo líquido a pagar. Filtros: ano, mês,
-   unidade e navio (quinzena/dezena não se aplica — o componente vem
-   por fechamento inteiro). fmtInt em leitura; fmtK só em labels.
+   BI de Fechamento · Crédito & Débito — espelho da página homônima
+   do Power BI (GET /fechamento-bi/credito-debito), com as fórmulas
+   canônicas do RelatoriosPage do Motor. Dois lados + rodapé:
+
+   CRÉDITO: comissão bruta, comissão carretas, seguro boi, saldo
+   posto + imposto, devedores, adiantamentos, SUBTOTAL (= razão),
+   total terceiros (aguardando definição), total postos.
+   DÉBITO: devedores gerados (motorista × valor), postos outras
+   unidades, desconto razão, custo motorista.
+   RODAPÉ: saldos crédito × débito e VALOR TOTAL FECHAMENTO.
+
+   MELHORIA vs PBI: KPIs de RESULTADO e MARGEM % no topo.
+   Período sem fechamento → "período em aberto", não zeros.
+   NÃO recalcula nada: só apresenta o que o Motor consolidou.
+   fmtInt em leitura.
    ═══════════════════════════════════════════════════════════════ */
-import { useMemo } from 'react'
-import {
-  ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, LabelList,
-} from 'recharts'
-import { useThemeStore } from '@/store/themeStore'
+import type { ReactNode } from 'react'
+import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
 import { useBiFechamentoStore } from '@/store/biFechamentoStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
-import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtInt, fmtK } from '@/lib/formatters'
-import {
-  useFechamentoBiCreditoDebito,
-  type FechamentoBiComponentesAPI,
-} from '@/hooks/api/useFechamentoBi'
+import { fmtInt, fmtPct } from '@/lib/formatters'
+import { useFechamentoBiCreditoDebito } from '@/hooks/api/useFechamentoBi'
 import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
 
 function fmtData(iso: string | null): string {
@@ -29,15 +30,30 @@ function fmtData(iso: string | null): string {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`
 }
 
-const COMPONENTES: { chave: keyof FechamentoBiComponentesAPI; label: string; lado: 'debito' | 'retencao' }[] = [
-  { chave: 'valor_motorista', label: 'Valor motorista', lado: 'debito' },
-  { chave: 'bonus_motorista', label: 'Bônus', lado: 'debito' },
-  { chave: 'pedagio', label: 'Pedágio (reembolso)', lado: 'debito' },
-  { chave: 'desconto_motorista', label: 'Descontos', lado: 'retencao' },
-  { chave: 'seguro_boi', label: 'Seguro do boi', lado: 'retencao' },
-  { chave: 'imposto', label: 'Imposto', lado: 'retencao' },
-  { chave: 'comissao_carreta', label: 'Comissão carreta (locador)', lado: 'retencao' },
-]
+function Linha({
+  t, label, valor, destaque, nota,
+}: {
+  t: ThemeTokens
+  label: string
+  valor: number | null
+  destaque?: boolean
+  nota?: string
+}) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 py-1.5"
+      style={destaque ? { borderTop: `1px solid ${t.border}`, marginTop: 4, paddingTop: 8 } : undefined}
+    >
+      <span className={destaque ? 'text-xs font-semibold' : 'text-xs'} style={{ color: destaque ? t.text : t.textSec }}>
+        {label}
+        {nota && <span className="ml-2 text-[10px]" style={{ color: t.muted }}>{nota}</span>}
+      </span>
+      <span className={`font-mono ${destaque ? 'text-sm font-bold' : 'text-xs'}`} style={{ color: valor == null ? t.muted : t.text }}>
+        {valor == null ? '—' : `R$ ${fmtInt(valor)}`}
+      </span>
+    </div>
+  )
+}
 
 export default function CreditoDebitoPage() {
   const t = useThemeStore((s) => s.tokens)
@@ -49,50 +65,48 @@ export default function CreditoDebitoPage() {
     ano, mes, unidade_id: unidadeId, navio_id: navioId,
   })
 
-  const composicao = useMemo(() => {
-    if (!data) return []
-    return COMPONENTES.map((c) => ({
-      name: c.label,
-      valor: Math.abs(data.totais[c.chave]),
-      lado: c.lado,
-    })).filter((c) => c.valor > 0)
-  }, [data])
-
   const cardStyle = { background: t.surface, border: `1px solid ${t.border}` } as const
 
   if (error) return <BiErro erro={error} onRetry={refetch} />
   if (loading && !data) return <BiCarregando />
   if (!data) return null
 
-  const tot = data.totais
+  // Período sem fechamento processado ≠ resultado zero.
+  if (data.fechamentos.length === 0) {
+    return (
+      <BiVazio
+        mensagem={`Período em aberto — sem resultado consolidado (${ano}${mes ? ` · ${MESES[mes - 1]}` : ''}). O resultado aparece aqui quando o fechamento do período for processado no Motor.`}
+      />
+    )
+  }
+
+  const c = data.credito
+  const d = data.debito
+  const r = data.rodape
 
   return (
     <div className="space-y-5">
-      {data.fechamentos.length === 0 && (
-        <BiVazio mensagem={`Nenhum fechamento processado no recorte (${ano}${mes ? ` · ${MESES[mes - 1]}` : ''}).`} />
-      )}
-
-      {/* KPI strip */}
+      {/* MELHORIA vs PBI: resultado e margem em destaque */}
       <div className="rounded-xl overflow-hidden relative" style={cardStyle}>
-        <GlowLine color={t.purple} />
+        <GlowLine color={t.gold} />
         <div className="grid grid-cols-2 md:grid-cols-4">
           <KPICard
-            label="Débitos ao motorista"
-            value={`R$ ${fmtInt(tot.debitos)}`}
-            color={t.text}
-            accent={t.red}
-            sub="valor + bônus + pedágio"
+            label="Valor total fechamento"
+            value={`R$ ${fmtInt(r.valor_total_fechamento)}`}
+            color={r.valor_total_fechamento >= 0 ? t.text : t.red}
+            accent={t.gold}
+            sub="razão − custo motorista"
           />
           <KPICard
-            label="Retenções da unidade"
-            value={`R$ ${fmtInt(tot.retencoes)}`}
-            color={t.text}
+            label="Margem do período"
+            value={fmtPct(r.margem_pct)}
+            color={r.margem_pct >= 0 ? t.green : t.red}
             accent={t.green}
-            sub="descontos + seguro + imposto + carreta"
+            sub={`sobre razão R$ ${fmtInt(r.subtotal_credito)}`}
           />
           <KPICard
-            label="Líquido a pagar (saldo)"
-            value={`R$ ${fmtInt(tot.saldo_motorista)}`}
+            label="Líquido a pagar (fichas)"
+            value={`R$ ${fmtInt(r.liquido_a_pagar)}`}
             color={t.text}
             accent={t.purple}
             sub="consolidado nos fechamentos"
@@ -108,69 +122,83 @@ export default function CreditoDebitoPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {/* Composição crédito × débito */}
+        {/* CRÉDITO */}
         <div className="rounded-xl p-4 relative" style={cardStyle}>
-          <GlowLine color={t.purple} />
-          {cardHeading(t, 'Composição — débitos (vermelho) × retenções (verde)')}
-          <div style={{ height: Math.max(220, (composicao.length || 1) * 34) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={composicao} layout="vertical" margin={{ right: 60 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={170} tick={{ fontSize: 9, fill: t.textSec, fontFamily: "'JetBrains Mono', monospace" }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="valor" name="Valor" radius={[0, 3, 3, 0]} barSize={16}>
-                  <LabelList dataKey="valor" position="right" formatter={(v: number) => fmtK(v)} style={{ fontSize: 9, fill: t.muted, fontFamily: "'JetBrains Mono', monospace" }} />
-                  {composicao.map((c, i) => (
-                    <Cell key={i} fill={c.lado === 'debito' ? t.red : t.green} fillOpacity={0.85} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <GlowLine color={t.green} />
+          {cardHeading(t, 'Crédito — o que fica com a unidade')}
+          <Linha t={t} label="Comissão (bruta)" valor={c.comissao_bruta} nota="razão − motorista + frota" />
+          <Linha t={t} label="Comissão carretas" valor={c.comissao_carretas} nota="repassada ao locador" />
+          <Linha t={t} label="Seguro boi" valor={c.seguro_boi} />
+          <Linha t={t} label="Saldo posto" valor={c.saldo_posto} nota="retido nas fichas" />
+          <Linha t={t} label="Imposto" valor={c.imposto} />
+          <Linha t={t} label="Devedores" valor={c.devedores} nota="descontados no período" />
+          <Linha t={t} label="Adiantamentos" valor={c.adiantamentos} nota="descontados no período" />
+          <Linha t={t} label="SUBTOTAL (total razão)" valor={c.subtotal} destaque />
+          <Linha t={t} label="Total terceiros" valor={c.total_terceiros} nota="aguardando definição da fonte" />
+          <Linha t={t} label="Total postos" valor={c.total_postos} nota="abast + vale − desc do período" />
         </div>
 
-        {/* Por unidade */}
-        <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
-          <GlowLine color={t.blue} />
-          {cardHeading(t, 'Crédito × débito por unidade')}
-          <table className="w-full text-xs" style={{ minWidth: 440 }}>
-            <thead>
-              <tr style={{ color: t.muted }}>
-                <th className="text-left py-2 font-normal">Unidade</th>
-                <th className="text-right py-2 font-normal">Fech.</th>
-                <th className="text-right py-2 font-normal">Débitos</th>
-                <th className="text-right py-2 font-normal">Retenções</th>
-                <th className="text-right py-2 font-normal">Saldo líquido</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.por_unidade.map((u) => (
-                <tr key={u.unidade_id} style={{ borderTop: `1px solid ${t.border}` }}>
-                  <td className="py-2" style={{ color: t.text }}>{u.unidade_nome}</td>
-                  <td className="py-2 text-right font-mono" style={{ color: t.muted }}>{fmtInt(u.fechamentos)}</td>
-                  <td className="py-2 text-right font-mono" style={{ color: t.red }}>R$ {fmtInt(u.debitos)}</td>
-                  <td className="py-2 text-right font-mono" style={{ color: t.green }}>R$ {fmtInt(u.retencoes)}</td>
-                  <td className="py-2 text-right font-mono" style={{ color: t.text }}>R$ {fmtInt(u.saldo_motorista)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* DÉBITO */}
+        <div className="rounded-xl p-4 relative" style={cardStyle}>
+          <GlowLine color={t.red} />
+          {cardHeading(t, 'Débito — o que a unidade paga')}
+          <Linha t={t} label="Custo motorista (líquido)" valor={d.custo_motorista_liq} />
+          <Linha t={t} label="Postos outras unidades" valor={d.postos_outras_unidades} nota="reembolso à unidade pagadora" />
+          <Linha t={t} label="Desconto razão" valor={d.desconto_razao} />
+          <Linha t={t} label="TOTAL DÉBITO" valor={d.total} destaque />
+
+          <div className="mt-4">
+            <div className="text-[10px] mb-2" style={{ color: t.muted, fontFamily: 'var(--font-mono)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+              Devedores gerados no fechamento ({fmtInt(d.devedores_gerados.length)})
+            </div>
+            {d.devedores_gerados.length === 0 ? (
+              <div className="text-xs py-2" style={{ color: t.muted }}>Nenhuma ficha negativa no recorte.</div>
+            ) : (
+              <table className="w-full text-xs">
+                <tbody>
+                  {d.devedores_gerados.map((dg) => (
+                    <tr key={`${dg.motorista_id}`} style={{ borderTop: `1px solid ${t.border}` }}>
+                      <td className="py-1.5" style={{ color: t.textSec }}>{dg.nome}</td>
+                      <td className="py-1.5 text-right font-mono" style={{ color: t.red }}>R$ {fmtInt(dg.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Fechamentos */}
-      <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
+      {/* RODAPÉ — saldos e valor total */}
+      <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.gold} />
+        {cardHeading(t, 'Saldos do período')}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <RodapeItem t={t} label="Saldo crédito (subtotal)" valor={r.subtotal_credito} cor={t.green} />
+          <RodapeItem t={t} label="Saldo débito (total)" valor={r.total_debito} cor={t.red} />
+          <RodapeItem
+            t={t}
+            label="VALOR TOTAL FECHAMENTO"
+            valor={r.valor_total_fechamento}
+            cor={r.valor_total_fechamento >= 0 ? t.gold : t.red}
+            grande
+          />
+        </div>
+      </div>
+
+      {/* Fechamentos que compõem o recorte */}
+      <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
+        <GlowLine color={t.purple} />
         {cardHeading(t, `Fechamentos do recorte (${fmtInt(data.fechamentos.length)})`)}
-        <table className="w-full text-xs" style={{ minWidth: 640 }}>
+        <table className="w-full text-xs" style={{ minWidth: 560 }}>
           <thead>
             <tr style={{ color: t.muted }}>
               <th className="text-left py-2 font-normal">Período</th>
               <th className="text-left py-2 font-normal">Unidade</th>
               <th className="text-right py-2 font-normal">Fechado em</th>
-              <th className="text-right py-2 font-normal">Débitos</th>
-              <th className="text-right py-2 font-normal">Retenções</th>
-              <th className="text-right py-2 font-normal">Saldo líquido</th>
+              <th className="text-right py-2 font-normal">Total razão</th>
+              <th className="text-right py-2 font-normal">Custo motorista</th>
+              <th className="text-right py-2 font-normal">Valor total</th>
             </tr>
           </thead>
           <tbody>
@@ -179,13 +207,36 @@ export default function CreditoDebitoPage() {
                 <td className="py-2" style={{ color: t.text }}>{f.periodo_label || '—'}</td>
                 <td className="py-2" style={{ color: t.textSec }}>{f.unidade_nome}</td>
                 <td className="py-2 text-right font-mono" style={{ color: t.muted }}>{fmtData(f.dt_fechamento)}</td>
-                <td className="py-2 text-right font-mono" style={{ color: t.red }}>R$ {fmtInt(f.debitos)}</td>
-                <td className="py-2 text-right font-mono" style={{ color: t.green }}>R$ {fmtInt(f.retencoes)}</td>
-                <td className="py-2 text-right font-mono" style={{ color: t.text }}>R$ {fmtInt(f.saldo_motorista)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.text }}>R$ {fmtInt(f.total_razao)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>R$ {fmtInt(f.custo_motorista_liq)}</td>
+                <td className="py-2 text-right font-mono" style={{ color: f.valor_total >= 0 ? t.green : t.red }}>
+                  R$ {fmtInt(f.valor_total)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+function RodapeItem({
+  t, label, valor, cor, grande,
+}: {
+  t: ThemeTokens
+  label: string
+  valor: number
+  cor: string
+  grande?: boolean
+}): ReactNode {
+  return (
+    <div className="rounded-lg p-3" style={{ background: t.bg, border: `1px solid ${t.border}` }}>
+      <div className="text-[10px] mb-1" style={{ color: t.muted, fontFamily: 'var(--font-mono)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div className={`font-mono font-bold ${grande ? 'text-xl' : 'text-base'}`} style={{ color: cor }}>
+        R$ {fmtInt(valor)}
       </div>
     </div>
   )
