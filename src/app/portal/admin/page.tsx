@@ -252,6 +252,9 @@ export default function AdminPage() {
   // envia e-mail com link pra ele definir a própria. Senha manual = exceção.
   const [senhaManual, setSenhaManual] = useState(false)
   const [reenviandoConviteId, setReenviandoConviteId] = useState<number | null>(null)
+  // Mudança nos perfis RBAC muda o TETO do SSO do Motor — incrementa pra
+  // seção Acesso ao Motor recarregar e reavaliar o aviso na hora.
+  const [motorRefresh, setMotorRefresh] = useState(0)
   const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', slug: '', app_key: '', app_secret: '' })
   const [unidadeForm, setUnidadeForm] = useState({ nome: '', codigo: '' })
 
@@ -591,9 +594,10 @@ export default function AdminPage() {
                             usuarioId={user.id}
                             isAdmin={user.is_admin}
                             empresas={empresas.filter(e => !e.deleted_at)}
+                            onChanged={() => setMotorRefresh((k) => k + 1)}
                           />
                         </div>
-                        <MotorAcessoSection usuarioId={user.id} usuarioNome={user.nome} t={DARK} />
+                        <MotorAcessoSection usuarioId={user.id} usuarioNome={user.nome} t={DARK} refreshKey={motorRefresh} />
                       </>
                     )}
                   </div>

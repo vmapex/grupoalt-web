@@ -32,9 +32,13 @@ interface Props {
   usuarioId: number
   isAdmin: boolean
   empresas: EmpresaOpcao[]
+  /** Disparado após atribuir/revogar perfil — os perfis RBAC derivam o TETO
+   *  do SSO do Motor, então a seção "Acesso ao Motor" (irmã na página)
+   *  precisa reavaliar o aviso de rebaixamento/bloqueio na hora. */
+  onChanged?: () => void
 }
 
-export function PerfisRBACSection({ usuarioId, isAdmin, empresas }: Props) {
+export function PerfisRBACSection({ usuarioId, isAdmin, empresas, onChanged }: Props) {
   const perfisResult = useAdminPerfis()
   const atribuicoesResult = useAdminUsuarioAtribuicoes(usuarioId)
   const perfis = perfisResult.data ?? []
@@ -67,6 +71,7 @@ export function PerfisRBACSection({ usuarioId, isAdmin, empresas }: Props) {
     try {
       await criarAtribuicaoPerfil(usuarioId, Number(novaPerfilId), Number(novaEmpresaId))
       atribuicoesResult.refetch()
+      onChanged?.()
       setNovaPerfilId('')
       setNovaEmpresaId('')
     } catch (err: unknown) {
@@ -83,6 +88,7 @@ export function PerfisRBACSection({ usuarioId, isAdmin, empresas }: Props) {
     try {
       await removerAtribuicaoPerfil(usuarioId, atribuicaoId)
       atribuicoesResult.refetch()
+      onChanged?.()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string }
       setErro(e?.response?.data?.detail || e?.message || 'Erro ao revogar perfil')
