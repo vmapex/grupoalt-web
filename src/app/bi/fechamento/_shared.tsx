@@ -49,6 +49,32 @@ export function cardHeading(t: ThemeTokens, label: string): ReactNode {
   )
 }
 
+/**
+ * Aviso de filtro global SEM EFEITO na tela atual. Cada tela declara os
+ * filtros que não consegue aplicar (ex.: quinzena/dezena no Crédito &
+ * Débito, navio nos lançamentos de posto) e o que está sendo exibido no
+ * lugar — sem isso o usuário seleciona um recorte e a tela segue igual
+ * em silêncio, o que numa validação de paridade lê como divergência.
+ * Renderiza nada quando a lista está vazia (nenhum filtro ignorado ativo).
+ */
+export function FiltrosSemEfeito({ filtros, exibindo }: { filtros: string[]; exibindo: string }) {
+  const t = useThemeStore((s) => s.tokens)
+  if (filtros.length === 0) return null
+  return (
+    <div
+      className="rounded-lg px-3 py-2 text-[11px] flex items-start gap-2"
+      style={{ background: `${t.amber}14`, border: `1px solid ${t.amber}55`, color: t.textSec }}
+    >
+      <span aria-hidden="true" style={{ color: t.amber }}>⚠</span>
+      <span>
+        {filtros.length === 1 ? 'O filtro' : 'Os filtros'}{' '}
+        <span style={{ color: t.amber, fontWeight: 600 }}>{filtros.join(' · ')}</span>{' '}
+        {filtros.length === 1 ? 'não se aplica' : 'não se aplicam'} a esta tela — exibindo {exibindo}.
+      </span>
+    </div>
+  )
+}
+
 export function BiErro({ erro, onRetry }: { erro: string; onRetry: () => void }) {
   const t = useThemeStore((s) => s.tokens)
   return (
