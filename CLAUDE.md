@@ -786,3 +786,83 @@ do BI exibem (getLogo, tema-aware), PDFs estampam no cabeçalho (backend).
   `financeiro:ver`.
 - Backlog: Fase D do Motor (duas visões, escopo aguarda discussão — memória
   `fase-d-motor-bi`); unificação estrutural `bi/` ↔ `portal/`.
+
+## Sessão 2026-07-22/24 — Módulo BI de Fechamento completo (read-through do Motor)
+
+Novo módulo `/bi/fechamento` lendo o Motor de Fechamento (fonte única) via
+read-through com cache — **NÃO copia o banco do Motor**. Companions na
+`grupoalt-api`: #160 (fundação), #161 (anual), #162 (telas finais),
+#163 (Crédito & Débito canônico). Web: #210 (shell), #211 (fix selects),
+#212 (Faturamento + Custo×Fat), #213 (var% + tipo_periodo + 5 anos),
+#214 (5 anos vira botão + tooltip), #215 (3 telas finais), #216 (Crédito
+& Débito espelho PBI).
+
+**Arquitetura (api):**
+- `MotorBIClient` (services/motor_client.py): identidade de SERVIÇO
+  read-only no Motor (perfil ANALISTA, usuário id em
+  `MOTOR_BI_SVC_USER_ID`; sem env → 503) autenticada pela MESMA máquina
+  de SSO da Fase 2 — ticket JWT server-side trocado em GET /auth/sso,
+  cookie no Redis 20h, re-SSO único em 401. Claim perfil=ANALISTA contém
+  privilégio (o Motor adota o perfil do ticket).
+- Router `/v1/fechamento-bi/*` (gate `fechamento:bi`): `/filtros`
+  (unidades c/ tipo_periodo, navios, anos — dinâmicos), `/resumo`,
+  `/faturamento-anual`, `/credito-debito`, `/postos`, `/devedores`.
+  Cache Redis 10min por recorte + agregado POR FECHAMENTO
+  (`fech:v3:{id}:{atualizado_em}`, TTL 7d — reabertura roda a chave).
+- **Base = HISTÓRICO DE FECHAMENTO consolidado, nunca viagens cruas**
+  (duplicatas de reimportação inflariam faturamento). Litros zerados →
+  R$/litro previsto e desabilitado ("aguardando litros").
+- **Dual-shape de linhas_resumo** (#163): produção fecha via
+  /commit-batch com o shape do FRONTEND (saldo_bruto,
+  desconto_seguro_boi, total_debitos, liquido, frota…) ≠ shape do motor
+  server-side (valor_motorista_total…). Agregador lê os dois via
+  `_linha_num`; valores por viagem saem do snapshot (igual nos dois).
+
+**Telas (web):** Faturamento (KPIs, var% MoM via BarLabelVar, resultado
+por unidade, fechamentos; botão "Comparar 5 anos"), Faturamento 5 anos
+(fora da barra de abas; tabela ano a ano + gráfico com tooltip-tabela
+estilo PBI: ANO | mês | %YoY | YTD | %YoY), Custo × Fat (ABC de
+agregados c/ % acumulado), Agregados & Postos, Adiant. & Devedores
+(aging 0-30/31-60/61-90/90+, posição ATUAL — só filtro de unidade),
+Crédito & Débito (espelho fiel da planilha/PBI: crédito × débito ×
+rodapé c/ VALOR TOTAL FECHAMENTO; "período em aberto" quando não há
+fechamento; KPIs de Resultado e Margem % no topo). Eixo mês+trimestre
+(`MesTriTick`) nos gráficos mensais.
+
+**Filtros globais** (biFechamentoStore): ANO · MÊS · QUINZENA/DEZENA ·
+NAVIO · UNIDADE — opções dinâmicas do `/filtros`; quinzena/dezena
+respeita o `tipo_periodo` da unidade (QUINZENAL→Q1/Q2; DEZENA→D1-D3;
+MENSAL/NAVIO→trava) e é recorte LOCAL sobre os fechamentos
+(lib/fechamentoBi.ts — janela contida; cabeças/km/ABC não re-fatiam,
+telas mostram "—"/nota).
+
+**Definições de domínio validadas (Crédito & Débito, 2026-07-23):**
+comissão bruta = razão − motorista (agregados) + valorFrota (FROTA);
+saldo posto = retido nas fichas; devedores/adiant = DESCONTADOS no
+período (dt_fechamento_desconto ?? dt_prevista_debito, FINANCEIRO fora);
+devedores gerados = fichas com líquido negativo; SUBTOTAL crédito =
+total razão; VALOR TOTAL = razão − custo motorista (canon do
+RelatoriosPage.gerar() do Motor).
+
+**Também nesta sessão (repos do Motor):** motor-alt#231 (dropdown de
+Relatórios não lia unidade_ids multi), motor-alt#232 (UI de unidades de
+operação no cadastro de motoristas + badge SEM UNIDADE),
+motor-api#190 (trava de DELETE em período fechado — 409
+PERIODO_FECHADO, sem bypass; correção legítima = reopen-batch);
+script fix-motoristas-sem-unidade aplicado em prod (55 corrigidos).
+
+**Pendências:** "Total terceiros" sem fonte no Motor (tela mostra "—",
+aguarda definição da controladoria); smoke + validação de paridade vs
+planilha/PBI num período fechado (gate final); ajustes de layout;
+import histórico 2024/25 no Motor; rotacionar senha do Postgres do
+Motor; test:integration do motor-api em staging; mapear ~88 motoristas
+SEM UNIDADE pela UI nova.
+
+## Estado atual do build (2026-07-24)
+
+- Testes **440 em `main`**; rotas novas: `/bi/fechamento` ×6 (+ `/bi/motor` ×4 da sessão 07-22).
+- BI de Fechamento 100% dados reais; gate `fechamento:bi`; usuário de
+  serviço no Motor = ANALISTA id 14 (`MOTOR_BI_SVC_USER_ID`).
+- Lição operacional: PRs são mergeados MINUTOS após abertura — checar
+  `gh pr view N --json state` antes de push de follow-up (2 commits
+  ficaram órfãos em 23/07; resgatados via cherry-pick nos #163/#216).
