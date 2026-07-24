@@ -10,18 +10,37 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts'
 import { useThemeStore } from '@/store/themeStore'
-import { useBiFechamentoStore } from '@/store/biFechamentoStore'
+import { useBiFechamentoStore, PERIODO_INTRA_MES_OPTS } from '@/store/biFechamentoStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
 import { useFechamentoBiDevedores } from '@/hooks/api/useFechamentoBi'
-import { BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
+import { MESES, BiErro, BiCarregando, BiVazio, FiltrosSemEfeito, cardHeading } from '../_shared'
 
 export default function AdiantamentosDevedoresPage() {
   const t = useThemeStore((s) => s.tokens)
+  const ano = useBiFechamentoStore((s) => s.ano)
+  const anoOpts = useBiFechamentoStore((s) => s.anoOpts)
+  const mes = useBiFechamentoStore((s) => s.mes)
+  const periodo = useBiFechamentoStore((s) => s.periodo)
+  const navioId = useBiFechamentoStore((s) => s.navioId)
+  const navioOpts = useBiFechamentoStore((s) => s.navioOpts)
   const unidadeId = useBiFechamentoStore((s) => s.unidadeId)
   const { data, loading, error, refetch } = useFechamentoBiDevedores({ unidade_id: unidadeId })
+
+  // Posição ATUAL da carteira: só o filtro de UNIDADE recorta. Dívida
+  // antiga continua devida — ano/mês/quinzena/navio não se aplicam.
+  const filtrosIgnorados: string[] = []
+  if (anoOpts.length > 0 && ano !== anoOpts[0]) filtrosIgnorados.push(`Ano ${ano}`)
+  if (mes) filtrosIgnorados.push(MESES[mes - 1])
+  if (periodo) {
+    filtrosIgnorados.push(PERIODO_INTRA_MES_OPTS.find((p) => p.value === periodo)?.label ?? periodo)
+  }
+  if (navioId != null) {
+    const navio = navioOpts.find((n) => n.id === navioId)
+    filtrosIgnorados.push(navio ? `Navio ${navio.label}` : 'Navio')
+  }
 
   const cardStyle = { background: t.surface, border: `1px solid ${t.border}` } as const
 
@@ -38,6 +57,10 @@ export default function AdiantamentosDevedoresPage() {
 
   return (
     <div className="space-y-5">
+      <FiltrosSemEfeito
+        filtros={filtrosIgnorados}
+        exibindo={`a posição ATUAL da carteira${unidadeId != null ? ' da unidade selecionada' : ''}`}
+      />
       {k.pendente_count === 0 && k.quitado_count === 0 && (
         <BiVazio mensagem="Nenhum devedor/adiantamento registrado no Motor para o filtro selecionado." />
       )}
