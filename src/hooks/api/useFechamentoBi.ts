@@ -130,30 +130,40 @@ export interface FechamentoBiAnualAPI {
   meta: { unidade_id: number | null; navio_id: number | null; fonte: string }
 }
 
-/** Componentes de crédito × débito de um fechamento (das linhas_resumo):
- *  débitos = valor + bônus + pedágio; retenções = desconto + seguro +
- *  imposto + comissão de carreta (repassada ao locador); saldo = líquido. */
-export interface FechamentoBiComponentesAPI {
-  valor_motorista: number
-  bonus_motorista: number
-  pedagio: number
-  desconto_motorista: number
-  seguro_boi: number
-  imposto: number
-  comissao_carreta: number
-  saldo_motorista: number
-  debitos: number
-  retencoes: number
-}
-
+/** Crédito & Débito — espelho da página do Power BI, fórmulas canônicas
+ *  do RelatoriosPage do Motor sobre o histórico consolidado (definições
+ *  validadas 2026-07-23). `total_terceiros` é null até haver fonte no
+ *  Motor ("aguardando definição"). */
 export interface FechamentoBiCreditoDebitoAPI {
-  totais: FechamentoBiComponentesAPI
-  por_unidade: (FechamentoBiComponentesAPI & {
-    unidade_id: number
-    unidade_nome: string
-    fechamentos: number
-  })[]
-  fechamentos: (FechamentoBiComponentesAPI & {
+  credito: {
+    comissao_bruta: number
+    comissao_carretas: number
+    seguro_boi: number
+    saldo_posto: number
+    imposto: number
+    devedores: number
+    adiantamentos: number
+    /** Canon do Motor: subtotal do crédito = total razão do período. */
+    subtotal: number
+    total_terceiros: number | null
+    total_postos: number
+  }
+  debito: {
+    custo_motorista_liq: number
+    devedores_gerados: { motorista_id: number | null; nome: string; valor: number }[]
+    postos_outras_unidades: number
+    desconto_razao: number
+    total: number
+  }
+  rodape: {
+    subtotal_credito: number
+    total_debito: number
+    /** Canon: total razão − custo motorista líquido. */
+    valor_total_fechamento: number
+    margem_pct: number
+    liquido_a_pagar: number
+  }
+  fechamentos: {
     id: number
     unidade_id: number
     unidade_nome: string
@@ -161,8 +171,18 @@ export interface FechamentoBiCreditoDebitoAPI {
     ano: number
     mes: number
     dt_fechamento: string | null
-  })[]
-  meta: { ano: number; mes: number | null; unidade_id: number | null; navio_id: number | null }
+    total_razao: number
+    custo_motorista_liq: number
+    valor_total: number
+  }[]
+  meta: {
+    ano: number
+    mes: number | null
+    unidade_id: number | null
+    navio_id: number | null
+    dt_ini: string
+    dt_fim: string
+  }
 }
 
 export interface FechamentoBiPostoAPI {
