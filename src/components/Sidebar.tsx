@@ -95,6 +95,10 @@ export const NAV_SECTIONS: NavSection[] = [
     modulo: 'fechamento',
     children: [
       { label: 'Motor Fechamento v2.0', href: '/portal/fechamento', icon: <GitCompare className="w-[18px] h-[18px]" /> },
+      // Fase D: visão gerencial do GRUPO — exige fechamento:bi (não :ver,
+      // que é o gate do SSO que operadores têm). Shell dedicado /bi/motor,
+      // espelho do BI financeiro (validação 2026-07-22).
+      { label: 'BI do Motor', href: '/bi/motor', icon: <BarChart3 className="w-[18px] h-[18px]" />, require: 'fechamento:bi' },
     ],
   },
   {
