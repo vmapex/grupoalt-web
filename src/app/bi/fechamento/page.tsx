@@ -17,7 +17,7 @@ import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { BarLabelVar } from '@/components/charts/BarLabelVar'
-import { fmtInt, fmtPct, fmtK } from '@/lib/formatters'
+import { fmtBRL, fmtInt, fmtPct, fmtK } from '@/lib/formatters'
 import { MESES, MesTriTick, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
 import { useResumoComRecorte } from './_useResumo'
 
@@ -102,7 +102,7 @@ export default function FaturamentoPage() {
             value={k.km != null ? fmtInt(k.km) : '—'}
             color={t.text}
             accent={t.blue}
-            sub={k.km == null ? 'indisponível no recorte intra-mês' : k.km > 0 ? `R$ ${fmtInt(k.faturamento / k.km)} / km` : undefined}
+            sub={k.km == null ? 'indisponível no recorte intra-mês' : k.km > 0 ? `R$ ${fmtBRL(k.faturamento / k.km)} / km` : undefined}
             borderRight={false}
           />
         </div>

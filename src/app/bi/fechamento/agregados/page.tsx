@@ -13,18 +13,21 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts'
 import { useThemeStore } from '@/store/themeStore'
-import { useBiFechamentoStore } from '@/store/biFechamentoStore'
+import { useBiFechamentoStore, PERIODO_INTRA_MES_OPTS } from '@/store/biFechamentoStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
-import { fmtInt, fmtK } from '@/lib/formatters'
+import { fmtBRL, fmtInt, fmtK } from '@/lib/formatters'
 import { useFechamentoBiPostos } from '@/hooks/api/useFechamentoBi'
-import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
+import { MESES, BiErro, BiCarregando, BiVazio, FiltrosSemEfeito, cardHeading } from '../_shared'
 
 export default function AgregadosPostosPage() {
   const t = useThemeStore((s) => s.tokens)
   const ano = useBiFechamentoStore((s) => s.ano)
   const mes = useBiFechamentoStore((s) => s.mes)
+  const periodo = useBiFechamentoStore((s) => s.periodo)
+  const navioId = useBiFechamentoStore((s) => s.navioId)
+  const navioOpts = useBiFechamentoStore((s) => s.navioOpts)
   const unidadeId = useBiFechamentoStore((s) => s.unidadeId)
   const { data, loading, error, refetch } = useFechamentoBiPostos({
     ano, mes, unidade_id: unidadeId,
@@ -40,8 +43,23 @@ export default function AgregadosPostosPage() {
 
   const k = data.kpis
 
+  // Lançamentos de posto não carregam navio nem janela intra-mês —
+  // navio e quinzena/dezena não re-fatiam esta tela.
+  const filtrosIgnorados: string[] = []
+  if (navioId != null) {
+    const navio = navioOpts.find((n) => n.id === navioId)
+    filtrosIgnorados.push(navio ? `Navio ${navio.label}` : 'Navio')
+  }
+  if (periodo) {
+    filtrosIgnorados.push(PERIODO_INTRA_MES_OPTS.find((p) => p.value === periodo)?.label ?? periodo)
+  }
+
   return (
     <div className="space-y-5">
+      <FiltrosSemEfeito
+        filtros={filtrosIgnorados}
+        exibindo={`todos os lançamentos de ${ano}${mes ? ` · ${MESES[mes - 1]}` : ''}${unidadeId != null ? ' da unidade selecionada' : ''}`}
+      />
       {k.lancamentos === 0 && (
         <BiVazio mensagem={`Nenhum abastecimento/vale lançado no recorte (${ano}${mes ? ` · ${MESES[mes - 1]}` : ''}).`} />
       )}
@@ -78,10 +96,10 @@ export default function AgregadosPostosPage() {
           />
           <KPICard
             label="R$ / litro"
-            value={k.litros_disponivel && k.rs_por_litro != null ? `R$ ${fmtInt(k.rs_por_litro)}` : '—'}
-            color={t.muted}
-            accent={t.muted}
-            sub="aguardando litros na base do Motor"
+            value={k.litros_disponivel && k.rs_por_litro != null ? `R$ ${fmtBRL(k.rs_por_litro)}` : '—'}
+            color={k.litros_disponivel ? t.text : t.muted}
+            accent={k.litros_disponivel ? t.amber : t.muted}
+            sub={k.litros_disponivel ? `${fmtInt(k.litros)} litros no recorte` : 'aguardando litros na base do Motor'}
             borderRight={false}
           />
         </div>

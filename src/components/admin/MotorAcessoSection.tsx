@@ -20,6 +20,7 @@ import {
   concederMotorAcesso,
   getMotorAcesso,
   revogarMotorAcesso,
+  ssoRebaixado,
   useMotorUnidades,
   PERFIS_MOTOR,
   type MotorAcessoAPI,
@@ -32,6 +33,9 @@ interface Props {
   usuarioId: number
   usuarioNome: string
   t: ThemeTokens
+  /** Incrementado pela página quando os perfis RBAC do usuário mudam —
+   *  recarrega o estado (o teto do SSO deriva deles). */
+  refreshKey?: number
 }
 
 type Estado =
@@ -48,7 +52,7 @@ function extrairErro(err: unknown): { status?: number; msg: string } {
   }
 }
 
-export function MotorAcessoSection({ usuarioId, usuarioNome, t }: Props) {
+export function MotorAcessoSection({ usuarioId, usuarioNome, t, refreshKey }: Props) {
   const [estado, setEstado] = useState<Estado>({ fase: 'carregando' })
   const [perfil, setPerfil] = useState<PerfilMotor>('ANALISTA')
   const [unidades, setUnidades] = useState<Set<number>>(() => new Set())
@@ -80,7 +84,7 @@ export function MotorAcessoSection({ usuarioId, usuarioNome, t }: Props) {
 
   useEffect(() => {
     void carregar()
-  }, [carregar])
+  }, [carregar, refreshKey])
 
   const toggleUnidade = (id: number) => {
     setUnidades((prev) => {
@@ -184,9 +188,45 @@ export function MotorAcessoSection({ usuarioId, usuarioNome, t }: Props) {
     (acesso.motor_estado.perfil !== acesso.perfil_motor ||
       acesso.motor_estado.ativo !== acesso.ativo)
 
+  // Diagnóstico do "perfil reseta acesso" (2026-07-24): o teto do SSO deriva
+  // dos perfis RBAC e pode ter mudado DEPOIS do provisionamento. Sem estes
+  // avisos o efeito só aparece no próximo SSO do usuário (403 ou perfil
+  // rebaixado persistido no Motor) e parece perda de acesso aleatória.
+  const teto = acesso.teto_atual ?? null
+  const acessoAtivo = Boolean(acesso.provisionado && acesso.ativo)
+  const ssoBloqueado = acessoAtivo && teto === 'NENHUM'
+  const rebaixado =
+    acessoAtivo && teto != null && teto !== 'NENHUM' &&
+    acesso.perfil_motor != null && ssoRebaixado(acesso.perfil_motor, teto)
+
   return (
     <div>
       {titulo}
+
+      {ssoBloqueado && (
+        <div role="alert" style={{
+          fontSize: 11, padding: '8px 10px', borderRadius: 6, marginBottom: 10,
+          background: t.redDim, border: `1px solid ${t.red}55`, color: t.red,
+        }}>
+          🚫 <strong>SSO bloqueado</strong>: os perfis RBAC atuais não incluem{' '}
+          <code>fechamento:ver</code> na empresa-âncora — o próximo acesso ao Motor
+          responde 403. Usuário provisionado via SSO não tem senha local no Motor:
+          restaure um perfil RBAC com <code>fechamento:ver</code> (ou revogue o
+          acesso aqui) em vez de resetar a senha lá.
+        </div>
+      )}
+
+      {rebaixado && (
+        <div role="alert" style={{
+          fontSize: 11, padding: '8px 10px', borderRadius: 6, marginBottom: 10,
+          background: `${t.amber}14`, border: `1px solid ${t.amber}55`, color: t.amber,
+        }}>
+          ⚠ O SSO vai entrar como <strong>{teto}</strong>, não como{' '}
+          <strong>{acesso.perfil_motor}</strong>: as permissões RBAC atuais só
+          justificam {teto} e o Motor adota (e persiste) o perfil do ticket. Para
+          restaurar {acesso.perfil_motor}, ajuste os perfis RBAC acima.
+        </div>
+      )}
 
       {/* Status atual */}
       {acesso.provisionado ? (

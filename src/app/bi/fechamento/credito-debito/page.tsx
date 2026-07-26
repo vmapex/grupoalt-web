@@ -18,12 +18,12 @@
    ═══════════════════════════════════════════════════════════════ */
 import type { ReactNode } from 'react'
 import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
-import { useBiFechamentoStore } from '@/store/biFechamentoStore'
+import { useBiFechamentoStore, PERIODO_INTRA_MES_OPTS } from '@/store/biFechamentoStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { fmtInt, fmtPct } from '@/lib/formatters'
 import { useFechamentoBiCreditoDebito } from '@/hooks/api/useFechamentoBi'
-import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from '../_shared'
+import { MESES, BiErro, BiCarregando, BiVazio, FiltrosSemEfeito, cardHeading } from '../_shared'
 
 function fmtData(iso: string | null): string {
   if (!iso || iso.length < 10) return '—'
@@ -59,6 +59,7 @@ export default function CreditoDebitoPage() {
   const t = useThemeStore((s) => s.tokens)
   const ano = useBiFechamentoStore((s) => s.ano)
   const mes = useBiFechamentoStore((s) => s.mes)
+  const periodo = useBiFechamentoStore((s) => s.periodo)
   const unidadeId = useBiFechamentoStore((s) => s.unidadeId)
   const navioId = useBiFechamentoStore((s) => s.navioId)
   const { data, loading, error, refetch } = useFechamentoBiCreditoDebito({
@@ -84,8 +85,16 @@ export default function CreditoDebitoPage() {
   const d = data.debito
   const r = data.rodape
 
+  // O breakdown de crédito/débito é agregado no BACKEND por ano/mês/
+  // unidade/navio — quinzena/dezena não re-fatia esta tela.
+  const labelPeriodo = PERIODO_INTRA_MES_OPTS.find((p) => p.value === periodo)?.label
+
   return (
     <div className="space-y-5">
+      <FiltrosSemEfeito
+        filtros={periodo && labelPeriodo ? [labelPeriodo] : []}
+        exibindo={`o período completo do filtro (${ano}${mes ? ` · ${MESES[mes - 1]}` : ''})`}
+      />
       {/* MELHORIA vs PBI: resultado e margem em destaque */}
       <div className="rounded-xl overflow-hidden relative" style={cardStyle}>
         <GlowLine color={t.gold} />
