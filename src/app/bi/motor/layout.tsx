@@ -90,6 +90,9 @@ export default function BIMotorLayout({ children }: { children: React.ReactNode 
   for (let a = anoAtual; a >= ANO_MIN; a--) anos.push(a)
 
   const selectStyle = { background: t.surface, border: `1px solid ${t.border}`, color: t.text } as const
+  // Popup nativo do <select> no Chrome/Windows é claro e as <option> herdam o
+  // color branco do select em dark mode — texto invisível sem estilo explícito.
+  const optionStyle = { background: t.surface, color: t.text } as const
 
   return (
     <div className="relative flex flex-col h-screen" style={{ background: t.bg, color: t.text }}>
@@ -131,7 +134,7 @@ export default function BIMotorLayout({ children }: { children: React.ReactNode 
               style={selectStyle}
               aria-label="Ano"
             >
-              {anos.map((a) => <option key={a} value={a}>{a}</option>)}
+              {anos.map((a) => <option key={a} value={a} style={optionStyle}>{a}</option>)}
             </select>
             <select
               value={unidadeId ?? ''}
@@ -140,8 +143,8 @@ export default function BIMotorLayout({ children }: { children: React.ReactNode 
               style={selectStyle}
               aria-label="Unidade"
             >
-              <option value="">Todas as unidades</option>
-              {unidadeOpts.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
+              <option value="" style={optionStyle}>Todas as unidades</option>
+              {unidadeOpts.map((u) => <option key={u.id} value={u.id} style={optionStyle}>{u.label}</option>)}
             </select>
           </div>
         </div>
