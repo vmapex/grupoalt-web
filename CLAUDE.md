@@ -786,3 +786,66 @@ do BI exibem (getLogo, tema-aware), PDFs estampam no cabeçalho (backend).
   `financeiro:ver`.
 - Backlog: Fase D do Motor (duas visões, escopo aguarda discussão — memória
   `fase-d-motor-bi`); unificação estrutural `bi/` ↔ `portal/`.
+
+## Sessão 2026-07-20/22 — Motor: fix comissão carreta + ajustes operacionais + Fase D (D1)
+
+**Fix comissão carreta não alugada (MOTOR 1.2.1, motor#228 + api-motor#185):**
+`calcComissaoGlobal` caía no flag legado `veiculo.carreta_alugada` (stale,
+invisível na UI) mesmo com a carreta vinculada `alugada=false`. Nova regra:
+carreta resolvida é autoridade — não alugada → 0; fallback legado só sem
+`carreta_id`. Dados de prod corrigidos via `diag-carreta-nao-alugada.ts`
+(2 veículos com flag zerado; 0 viagens abertas contaminadas; 79 fechadas
+preservadas por design #162).
+
+**4 ajustes operacionais do Motor (motor#229/#230 + api-motor#186):**
+relatório de embarque puxa cliente (fallback comprador) e motorista (alocado
+na linha → padrão do veículo → proprietário homônimo); OPERADOR exclui
+escala (delete passa a `cadastros_op_editar`); Unidades em modo consulta pro
+operador (chave de menu `unidades_ver`; NUNCA dar `cadastros_sistema_ver` a
+operador — é proxy de admin em excluir viagem FECHADA/reabrir fechamento);
+Detalhe por Viagem em ordem cronológica; dieta de menu do operador (sai
+Navios/Postos/Devedores; operador de unidade NAVIO mantém Navios).
+
+**E-mail no-reply (Skymail):** caixa `no-reply@grupoalt.agr.br` criada no
+painel Skymail (que hospeda o DNS; o MX segue M365). Regras: porta 465/SSL
+obrigatória (587 rejeitada) e SPF editado para
+`v=spf1 include:spf.protection.outlook.com include:spf.skymail.net.br -all`.
+Envs SMTP trocadas no Railway; reset de senha validado E2E. Detalhe na
+memória `smtp-skymail`.
+
+**Fase D — BI do Motor (D1 completa, 6 PRs mergeados):**
+- Power BI atual mapeado (6 abas; publish-to-web PÚBLICO — motivo nº1 da
+  migração; alimentado à mão pelas planilhas de fechamento).
+- motor#187: `GET /api/bi/executivo` — agregador puro (faturamento=razão+
+  bônus−desc; custo=motorista+bônus−desc−seguro−imposto; comissão carreta/
+  pedágio fora; competência dt_razao→dt_saida; flag mês parcial; YoY).
+- motor#188: coluna STATUS (ABERTA/FECHADA) no import de viagens — carga de
+  histórico 2024/25 (decisão: importar TUDO; YoY nasce cheio).
+- motor#189: `por_motorista` (curva ABC de agregados).
+- api#159: proxy `/motor/bi/executivo` (cache Redis 5min) + ação RBAC nova
+  **`fechamento:bi`** (`:ver` é gate do SSO de operador — não serve; ação
+  nova fail-closed, conceder via /portal/admin; is_admin tem por bypass).
+- web#207 + web#208: shell dedicado **`/bi/motor`** (espelho do BI
+  financeiro): filtros globais ano/unidade (`biMotorStore`), abas Visão
+  Executiva e Custo×Faturamento vivas, Devedores (D2) e Fechamento (D3)
+  estruturadas; `/portal/fechamento/bi` → redirect.
+
+**FEEDBACK do usuário pós-merge: "o BI ficou bem superficial"** — D1 é
+esqueleto + 2 lentes. Próxima sessão de BI = PROFUNDIDADE: acumulado YoY,
+variação % mês a mês, comparativos por período de fechamento (dezena/
+quinzena/navio), drill-down até viagem, Devedores real (aging) e Fechamento
+ao vivo (D2/D3 viram prioridade).
+
+## Estado atual do build (2026-07-22)
+
+- Rotas novas: `/bi/motor{,/custos,/devedores,/fechamento}`; testes **428
+  em `main`**; typecheck/build limpos (diretório `ECC/` untracked é local
+  do usuário e fora do build de CI).
+- **Pendências Fase D:** conceder `fechamento:bi` aos perfis (diretoria já
+  tem via is_admin); aprofundar BI (feedback acima); importar históricos
+  2024/25 (template Excel com STATUS=FECHADA; cadastrar motoristas/veículos
+  antigos antes); validação de paridade vs Power BI SÓ após estrutura
+  completa; descomissionar o publish-to-web no final.
+- Radar fora da Fase D: bug perfil/convite do Motor (memória
+  `motor-perfil-reseta-acesso`); rotacionar senha Postgres do Motor;
+  unificação `bi/` ↔ `portal/`.
