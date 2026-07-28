@@ -36,3 +36,6 @@ next-env.d.ts
 # editor / agent local (nao versionar)
 .claude/
 *.code-workspace
+
+# repo externo clonado localmente (fora do build e do typecheck)
+/ECC/
