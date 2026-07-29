@@ -286,3 +286,52 @@ export function useFechamentoBiResumo(params: {
   if (params.navio_id) clean.navio_id = params.navio_id
   return useApi<FechamentoBiResumoAPI>('/fechamento-bi/resumo', clean)
 }
+
+/* ── Drill-down até a viagem (2026-07-29) ──────────────────────────
+   Viagens do snapshot de UM fechamento consolidado — verdade histórica,
+   nada recalculado no caminho. `fechamentoId = null` desliga o fetch
+   (modal fechado não busca). */
+export interface FechamentoBiViagemAPI {
+  id: number | null
+  dt: string | null
+  motorista: string
+  cliente: string
+  placa: string
+  navio: string | null
+  km: number
+  cabecas: number
+  razao: number
+  custo_motorista: number
+  resultado: number
+  comissao_carreta: number
+  pedagio: number
+  combinada: boolean
+}
+
+export interface FechamentoBiViagensAPI {
+  fechamento: {
+    id: number
+    periodo_label: string | null
+    unidade_id: number | null
+    dt_ini: string | null
+    dt_fim: string | null
+  }
+  viagens: FechamentoBiViagemAPI[]
+  totais: {
+    viagens: number
+    razao: number
+    custo_motorista: number
+    resultado: number
+    comissao_carreta: number
+    pedagio: number
+    cabecas: number
+    km: number
+  }
+  meta: { fonte: string; fechamento_id: number }
+}
+
+export function useFechamentoBiViagens(fechamentoId: number | null) {
+  return useApi<FechamentoBiViagensAPI>(
+    fechamentoId ? `/fechamento-bi/fechamentos/${fechamentoId}/viagens` : null,
+  )
+}

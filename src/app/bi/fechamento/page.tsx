@@ -5,7 +5,7 @@
    filtros globais do layout (ano/mês/quinzena-dezena/navio/unidade).
    fmtInt em leitura; fmtK só em eixos/labels de gráfico.
    ═══════════════════════════════════════════════════════════════ */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { History } from 'lucide-react'
 import {
@@ -20,6 +20,8 @@ import { BarLabelVar } from '@/components/charts/BarLabelVar'
 import { fmtBRL, fmtInt, fmtPct, fmtK } from '@/lib/formatters'
 import { MESES, MesTriTick, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
 import { useResumoComRecorte } from './_useResumo'
+import { DrillViagensModal } from './_DrillViagens'
+import type { FechamentoBiFechamentoAPI } from '@/hooks/api/useFechamentoBi'
 
 function fmtData(iso: string | null): string {
   if (!iso || iso.length < 10) return '—'
@@ -32,6 +34,8 @@ export default function FaturamentoPage() {
     loading, error, refetch, ano, mes,
     recorteAtivo, labelRecorte, fechamentos, visao,
   } = useResumoComRecorte()
+  // Drill-down até a viagem: fechamento clicado na tabela do recorte.
+  const [drill, setDrill] = useState<FechamentoBiFechamentoAPI | null>(null)
 
   const serie = useMemo(() => {
     if (!visao) return []
@@ -198,10 +202,11 @@ export default function FaturamentoPage() {
         </div>
       </div>
 
-      {/* Fechamentos do recorte */}
+      {/* Fechamentos do recorte — clique numa linha abre o drill de viagens
+          (Fase D profundidade: descer do agregado até o dado). */}
       <div className="rounded-xl p-4 relative overflow-x-auto" style={cardStyle}>
         <GlowLine color={t.purple} />
-        {cardHeading(t, `Fechamentos do recorte (${fmtInt(fechamentos.length)})`)}
+        {cardHeading(t, `Fechamentos do recorte (${fmtInt(fechamentos.length)}) — clique para abrir as viagens`)}
         <table className="w-full text-xs" style={{ minWidth: 640 }}>
           <thead>
             <tr style={{ color: t.muted }}>
@@ -216,8 +221,14 @@ export default function FaturamentoPage() {
           </thead>
           <tbody>
             {fechamentos.map((f) => (
-              <tr key={f.id} style={{ borderTop: `1px solid ${t.border}` }}>
-                <td className="py-2" style={{ color: t.text }}>{f.periodo_label || `${fmtData(f.dt_ini)} – ${fmtData(f.dt_fim)}`}</td>
+              <tr
+                key={f.id}
+                onClick={() => setDrill(f)}
+                className="cursor-pointer transition-colors hover:brightness-125"
+                style={{ borderTop: `1px solid ${t.border}` }}
+                title="Abrir viagens do fechamento"
+              >
+                <td className="py-2" style={{ color: t.gold }}>{f.periodo_label || `${fmtData(f.dt_ini)} – ${fmtData(f.dt_fim)}`}</td>
                 <td className="py-2" style={{ color: t.textSec }}>{f.unidade_nome}</td>
                 <td className="py-2 text-right font-mono" style={{ color: t.muted }}>{fmtData(f.dt_fechamento)}</td>
                 <td className="py-2 text-right font-mono" style={{ color: t.textSec }}>{fmtInt(f.viagens)}</td>
@@ -231,6 +242,8 @@ export default function FaturamentoPage() {
           </tbody>
         </table>
       </div>
+
+      <DrillViagensModal fechamento={drill} onClose={() => setDrill(null)} />
     </div>
   )
 }
