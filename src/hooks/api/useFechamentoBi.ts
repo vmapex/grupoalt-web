@@ -335,3 +335,58 @@ export function useFechamentoBiViagens(fechamentoId: number | null) {
     fechamentoId ? `/fechamento-bi/fechamentos/${fechamentoId}/viagens` : null,
   )
 }
+
+/* ── D3: Fechamento ao vivo (2026-07-30) ───────────────────────────
+   Período ABERTO por unidade, calculado agora pelo motor server-side
+   do Motor (preview — nada persiste). Cache 120s no backend. */
+export interface FechamentoBiAoVivoMotoristaAPI {
+  motorista_id: number | null
+  nome: string
+  viagens: number
+  custo: number
+  seguro: number
+  imposto: number
+  liquido: number
+}
+
+export interface FechamentoBiAoVivoItemAPI {
+  unidade_id: number
+  unidade_nome: string
+  tipo_periodo: string | null
+  suportado: boolean
+  /** Presente só quando suportado=false (ex.: unidade NAVIO). */
+  motivo?: string
+  periodo?: {
+    dt_ini: string
+    dt_fim: string
+    label: string
+    ja_fechado: boolean
+    fechamento_id: number | null
+  }
+  progresso?: { dias_total: number; dias_decorridos: number; pct: number }
+  totais?: {
+    viagens: number
+    faturamento: number
+    custo_motorista: number
+    resultado: number
+    seguro_boi: number
+    imposto: number
+    comissao_carreta: number
+    pedagio: number
+    liquido_a_pagar: number
+  }
+  por_motorista?: FechamentoBiAoVivoMotoristaAPI[]
+  motor_versao?: string | null
+}
+
+export interface FechamentoBiAoVivoAPI {
+  hoje: string
+  itens: FechamentoBiAoVivoItemAPI[]
+  meta: { unidade_id: number | null; fonte: string }
+}
+
+export function useFechamentoBiAoVivo(unidadeId: number | null) {
+  const clean: Record<string, number> = {}
+  if (unidadeId) clean.unidade_id = unidadeId
+  return useApi<FechamentoBiAoVivoAPI>('/fechamento-bi/ao-vivo', clean)
+}
