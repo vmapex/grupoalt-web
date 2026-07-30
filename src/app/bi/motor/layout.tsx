@@ -15,7 +15,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { BarChart3, TrendingDown, HandCoins, ClipboardCheck, ArrowLeft } from 'lucide-react'
+import { BarChart3, TrendingDown, HandCoins, ClipboardCheck, Target, ArrowLeft } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaStore } from '@/store/empresaStore'
 import { useAuthStore } from '@/store/authStore'
@@ -31,6 +31,7 @@ const TABS = [
   { href: '/bi/motor/custos', label: 'Custo × Faturamento', Icon: TrendingDown },
   { href: '/bi/motor/devedores', label: 'Devedores', Icon: HandCoins },
   { href: '/bi/motor/fechamento', label: 'Fechamento', Icon: ClipboardCheck },
+  { href: '/bi/motor/metas', label: 'Metas', Icon: Target },
 ]
 
 function AcessoRestrito() {

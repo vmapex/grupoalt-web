@@ -9,6 +9,7 @@
    app/services/fechamento_bi.py do portal-api.
    ═══════════════════════════════════════════════════════════════ */
 import { useApi } from './_core'
+import api from '@/lib/api'
 
 export interface FechamentoBiUnidadeOptAPI {
   id: number
@@ -389,4 +390,46 @@ export function useFechamentoBiAoVivo(unidadeId: number | null) {
   const clean: Record<string, number> = {}
   if (unidadeId) clean.unidade_id = unidadeId
   return useApi<FechamentoBiAoVivoAPI>('/fechamento-bi/ao-vivo', clean)
+}
+
+/* ── Metas configuráveis (Fase D profundidade, 2026-07-30) ──────────
+   Vivem no banco do PORTAL (o Motor é read-only por design). Leitura
+   acompanha fechamento:bi; escrita exige fechamento:metas — o GET
+   devolve `pode_editar` pra UI esconder a edição sem round-trip. */
+
+export interface MetaFechamentoAPI {
+  unidade_id: number
+  mes: number
+  faturamento: number | null
+  margem: number | null
+}
+
+export interface MetasFechamentoAPI {
+  ano: number
+  unidade_id: number | null
+  metas: MetaFechamentoAPI[]
+  pode_editar: boolean
+}
+
+export function useMetasFechamento(params: { ano: number; unidade_id?: number | null }) {
+  const clean: Record<string, number> = { ano: params.ano }
+  if (params.unidade_id) clean.unidade_id = params.unidade_id
+  return useApi<MetasFechamentoAPI>('/fechamento-bi/metas', clean)
+}
+
+export interface MetaMesInput {
+  mes: number
+  faturamento: number | null
+  margem: number | null
+}
+
+/** Upsert em lote das metas de UMA unidade num ano. Linha com as duas
+ *  métricas nulas REMOVE a meta do mês (contrato do PUT). */
+export async function saveMetasFechamento(body: {
+  ano: number
+  unidade_id: number
+  metas: MetaMesInput[]
+}): Promise<{ ano: number; unidade_id: number; metas: MetaFechamentoAPI[] }> {
+  const res = await api.put('/fechamento-bi/metas', body)
+  return res.data
 }
