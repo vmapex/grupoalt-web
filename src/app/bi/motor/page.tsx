@@ -9,13 +9,15 @@ import {
   ResponsiveContainer, ComposedChart, BarChart, Bar, Line, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
 } from 'recharts'
-import { useThemeStore } from '@/store/themeStore'
+import { useThemeStore, type ThemeTokens } from '@/store/themeStore'
 import { useBiMotorStore } from '@/store/biMotorStore'
 import { KPICard } from '@/components/ui/KPICard'
 import { GlowLine } from '@/components/ui/GlowLine'
 import { CustomTooltip } from '@/components/charts/CustomTooltip'
 import { fmtInt, fmtPct, fmtK, fmtBRL } from '@/lib/formatters'
 import { useMotorBiExecutivo } from '@/hooks/api/useMotorBi'
+import { useMetasFechamento } from '@/hooks/api/useFechamentoBi'
+import { somarMetasPorMes, resumoMeta, type ResumoMeta } from '@/lib/metasBi'
 import { MESES, BiErro, BiCarregando, BiVazio, cardHeading } from './_shared'
 
 export default function VisaoExecutivaPage() {
@@ -36,18 +38,46 @@ export default function VisaoExecutivaPage() {
     }
   }, [data, unidadeId, setUnidadeOpts])
 
+  // Metas do recorte (mesmo filtro ano/unidade; sem unidade = soma do grupo).
+  const { data: metasData } = useMetasFechamento({ ano, unidade_id: unidadeId })
+  const metaPorMes = useMemo(
+    () => somarMetasPorMes(metasData?.metas ?? []),
+    [metasData],
+  )
+  const temMetaFat = metaPorMes.some((m) => m.faturamento != null)
+
   const serieMensal = useMemo(() => {
     if (!data) return []
     return data.serie_mensal.map((m, i) => ({
       name: MESES[i],
       atual: m.faturamento,
       anterior: data.serie_mensal_ano_anterior[i]?.faturamento ?? 0,
+      meta: metaPorMes[i]?.faturamento ?? null,
       margem: m.margem,
       parcial: m.parcial,
     }))
-  }, [data])
+  }, [data, metaPorMes])
 
   const mesParcial = data?.serie_mensal.find((m) => m.parcial)?.mes ?? null
+  // Base da comparação até-o-mês: mês corrente no ano corrente, DEZ em
+  // ano encerrado (serie_mensal só marca parcial no ano do servidor).
+  const ultimoMes = mesParcial ?? 12
+  const resumoFat = useMemo(
+    () => (data ? resumoMeta(
+      data.serie_mensal.map((m) => m.faturamento),
+      metaPorMes.map((m) => m.faturamento),
+      ultimoMes,
+    ) : null),
+    [data, metaPorMes, ultimoMes],
+  )
+  const resumoMargem = useMemo(
+    () => (data ? resumoMeta(
+      data.serie_mensal.map((m) => m.margem),
+      metaPorMes.map((m) => m.margem),
+      ultimoMes,
+    ) : null),
+    [data, metaPorMes, ultimoMes],
+  )
   const cardStyle = { background: t.surface, border: `1px solid ${t.border}` } as const
 
   if (error) return <BiErro erro={error} onRetry={refetch} />
@@ -108,6 +138,22 @@ export default function VisaoExecutivaPage() {
         </div>
       </div>
 
+      {/* Meta × realizado — só quando há meta cadastrada no recorte */}
+      {(resumoFat || resumoMargem) && (
+        <div className="rounded-xl p-4 relative" style={cardStyle}>
+          <GlowLine color={t.gold} />
+          {cardHeading(t, `Meta ${ano}${mesParcial ? ` — realizado até ${MESES[ultimoMes - 1]}` : ''}`)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {resumoFat && (
+              <MetaBar t={t} label="Faturamento" cor={t.gold} resumo={resumoFat} />
+            )}
+            {resumoMargem && (
+              <MetaBar t={t} label="Margem" cor={t.green} resumo={resumoMargem} />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Evolução mensal YoY */}
       <div className="rounded-xl p-4 relative" style={cardStyle}>
         <GlowLine color={t.blue} />
@@ -125,6 +171,18 @@ export default function VisaoExecutivaPage() {
                 ))}
               </Bar>
               <Line dataKey="anterior" name={`Faturamento ${ano - 1}`} stroke={t.muted} strokeWidth={2} dot={{ r: 2 }} type="monotone" />
+              {temMetaFat && (
+                <Line
+                  dataKey="meta"
+                  name={`Meta ${ano}`}
+                  stroke={t.gold}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  type="monotone"
+                  connectNulls={false}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -202,6 +260,39 @@ export default function VisaoExecutivaPage() {
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+function MetaBar({ t, label, cor, resumo }: {
+  t: ThemeTokens
+  label: string
+  cor: string
+  resumo: ResumoMeta
+}) {
+  const pct = resumo.pctAteMes
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs" style={{ color: t.textSec }}>{label}</span>
+        <span className="text-sm font-mono" style={{ color: cor }}>
+          {pct != null ? fmtPct(pct) : '—'}{' '}
+          <span className="text-[9px]" style={{ color: t.muted }}>da meta no período</span>
+        </span>
+      </div>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: t.border }}>
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(100, Math.max(0, pct ?? 0))}%`, background: cor }}
+        />
+      </div>
+      <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: t.muted }}>
+        <span>R$ {fmtInt(resumo.realizadoAteMes)} / R$ {fmtInt(resumo.metaAteMes)}</span>
+        <span>
+          ano: R$ {fmtInt(resumo.realizadoAno)} / R$ {fmtInt(resumo.metaAnual)}
+          {resumo.pctAnual != null ? ` (${fmtPct(resumo.pctAnual)})` : ''}
+        </span>
       </div>
     </div>
   )
