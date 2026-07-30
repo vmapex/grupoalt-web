@@ -929,3 +929,61 @@ SEM UNIDADE pela UI nova.
 - Lição operacional: PRs são mergeados MINUTOS após abertura — checar
   `gh pr view N --json state` antes de push de follow-up (2 commits
   ficaram órfãos em 23/07; resgatados via cherry-pick nos #163/#216).
+
+## Sessão 2026-07-26/30 — Fila zerada, auto-merge, status server-side, Fase D profundidade, trava fail-closed
+
+**Higiene de PRs (26-29/07):** 21 PRs mergeados nos 4 repos (fila zerada 2x),
+incluindo o lote Dependabot acumulado desde 15/06. Achados no caminho:
+api #156 era **commit vazio** (aberto da mesma branch do #155) — a dieta de
+CI da api nunca tinha entrado; resgatada no #171. **F3 da unificação já
+tinha saído no #201 (18/07)** sem registro — unificação portal↔BI está
+COMPLETA (F1-F4). e2e do motor-alt vermelho desde 25/07: staging sem
+migrations (preDeployCommand só cobre prod) — fix motor#237 (`prisma
+migrate deploy` no workflow). `integration` do motor-api rodado pela 1ª vez
+(pendência do #190): achou colisão real de fixture com o @@unique de dedup
+(motor#203); 194/194 pós-fix.
+
+**Auto-merge do Dependabot (web #223 + api #172):** patch sempre, minor só
+de dev; produção minor/major e pins sensíveis manuais. GitHub só mergeia
+com checks obrigatórios verdes — exigiu `lint-and-test` virar required na
+protecão da api (contexts estava VAZIO; auto-merge teria entrado sem CI).
+Lição: em PR do Dependabot usar `@dependabot rebase`/`recreate`, NUNCA
+`gh pr update-branch` (merge commit de terceiro trava o bot).
+
+**Status ABERTO/FECHADO server-side (motor-api #201 + motor #236):** badge
+da tela Postos divergia entre usuários (array de sessão) — agora a LIST
+anota `fechado`/`periodo_fechado_id` em lote e `?status=` é filtro de
+banco com querystring `.strict()`. Medição em prod: unidade 1 = 5.346/2
+(o 5.244/104 do diagnóstico estava mal medido; validado por 5 queries).
+
+**Fase D — profundidade (2 fatias, 6 PRs):**
+- **Drill-down até a viagem** (api #173 + web #224): modal na tabela
+  "Fechamentos do recorte" abre o snapshot com nomes resolvidos. Motor
+  intocado — o detalhe do histórico já carrega tudo.
+- **D3 Fechamento ao vivo** (motor #204 + api #174 + web #225): aba
+  `/bi/motor/fechamento` real — período ABERTO por unidade calculado pelo
+  preview server-side do Motor (gate desceu p/ `fechamento_ver`; não
+  persiste). Cards com badge EM ABERTO/JÁ FECHADO, progresso de dias,
+  por-motorista em unidade única, NAVIO não-suportado, nota PRÉVIA.
+  Cache 120s; 403 do Motor vira 503 acionável.
+- Restam da profundidade: metas configuráveis, comercial (margem
+  cliente/rota), taxa de recuperação de devedores + sineta.
+
+**CORREÇÃO URGENTE — trava de período fechado falhava ABERTA (motor-api
+#205 + #206):** a trava do incidente 2026-07-22 protegia viagem mas
+liberava lançamento/devedor quando não havia `historico_fechamentos` — e
+as 3 unidades importadas (achado #13: 16.860 viagens FECHADA) não têm
+histórico. Fix: fallback fail-closed (sinal = viagem FECHADA no mesmo
+período por `tipo_periodo`; erro de banco bloqueia). #206 fechou a
+varredura: criar do Leitor de Cupom pelo guard central + DELETE de
+histórico desabilitado (reopen-batch é caminho único). PENDENTE: PATCH
+sem guard (decisão) + achado #13 (históricos retroativos, com Daniela).
+
+## Estado atual do build (2026-07-30)
+
+- Testes **453 em `main`** (web); rota nova real: `/bi/motor/fechamento` (D3).
+- motor-api: 726 unit + 198 integration; trava fail-closed em produção.
+- Auto-merge Dependabot ativo (web+api) com required checks; próximo lote
+  (segunda 08h) é o primeiro teste real.
+- `fmtInt` leitura / `fmtK` gráficos; parseApiDate para datas cruas —
+  regras seguem valendo.
