@@ -63,15 +63,20 @@ export function UnidadeDropdown() {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+4px)] rounded-lg overflow-hidden z-50 min-w-[220px]"
+          className="absolute right-0 top-[calc(100%+4px)] rounded-lg overflow-hidden z-50 min-w-[220px] flex flex-col"
           style={{
             background: t.surfaceElevated,
             border: `1px solid ${t.borderHover}`,
             boxShadow: t.tooltipShadow,
+            // Sem teto de altura o dropdown crescia com a lista e vazava
+            // pra fora da viewport (2026-08-07: 17 unidades, as últimas
+            // ficavam inalcançáveis). Só a LISTA rola — cabeçalho,
+            // "Todas as unidades" e "Limpar filtro" ficam sempre visíveis.
+            maxHeight: 'min(72vh, 560px)',
           }}
         >
           <div
-            className="px-3 py-2 text-[8px] uppercase tracking-wider flex items-center justify-between"
+            className="px-3 py-2 text-[8px] uppercase tracking-wider flex items-center justify-between shrink-0"
             style={{ color: t.muted, borderBottom: `1px solid ${t.border}` }}
           >
             <span>Filtrar por unidade</span>
@@ -83,7 +88,7 @@ export function UnidadeDropdown() {
           {/* Opção "Todas" */}
           <button
             onClick={selectAll}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[10px] transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[10px] transition-colors cursor-pointer shrink-0"
             style={{
               color: allSelected ? t.blue : t.textSec,
               background: allSelected ? t.blueDim : 'transparent',
@@ -98,7 +103,7 @@ export function UnidadeDropdown() {
             <span className="flex-1 font-medium">Todas as unidades</span>
           </button>
 
-          <div style={{ height: 1, background: t.border }} />
+          <div className="shrink-0" style={{ height: 1, background: t.border }} />
 
           {/* Estado vazio */}
           {!hasProjetos && !loading && (
@@ -116,37 +121,39 @@ export function UnidadeDropdown() {
             </div>
           )}
 
-          {/* Lista de projetos com checkbox */}
-          {projetos.map((p) => {
-            const selected = isSelected(p.id)
-            return (
-              <button
-                key={p.id}
-                onClick={() => toggle(p.id)}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[10px] transition-colors cursor-pointer"
-                style={{
-                  color: selected ? t.blue : t.textSec,
-                  background: 'transparent',
-                  border: 'none',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {selected
-                  ? <CheckSquare size={13} style={{ color: t.blue }} />
-                  : <Square size={13} style={{ color: t.muted }} />
-                }
-                <div className="flex-1">
-                  <div>{p.nome}</div>
-                  <div className="font-mono text-[8px] mt-px" style={{ color: t.mutedDim }}>{p.codigo}</div>
-                </div>
-              </button>
-            )
-          })}
+          {/* Lista de projetos com checkbox — única área rolável */}
+          <div className="flex-1 min-h-0 overflow-y-auto" data-testid="unidade-lista">
+            {projetos.map((p) => {
+              const selected = isSelected(p.id)
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => toggle(p.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[10px] transition-colors cursor-pointer"
+                  style={{
+                    color: selected ? t.blue : t.textSec,
+                    background: 'transparent',
+                    border: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {selected
+                    ? <CheckSquare size={13} style={{ color: t.blue }} />
+                    : <Square size={13} style={{ color: t.muted }} />
+                  }
+                  <div className="flex-1">
+                    <div>{p.nome}</div>
+                    <div className="font-mono text-[8px] mt-px" style={{ color: t.mutedDim }}>{p.codigo}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
 
           {/* Footer com ação rápida */}
           {!allSelected && (
             <div
-              className="px-3 py-2 flex justify-end"
+              className="px-3 py-2 flex justify-end shrink-0"
               style={{ borderTop: `1px solid ${t.border}` }}
             >
               <button
