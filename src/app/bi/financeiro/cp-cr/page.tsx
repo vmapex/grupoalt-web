@@ -167,6 +167,8 @@ export default function PageCPCR() {
       if (f === 'categoria') return getCatDesc(r.cat)
       if (f === 'unidade') return projetoNomeByCodigo.get(r.projeto_omie_id || '') || ''
       if (f === 'vcto') return parseDMY(r.vcto)
+      // Sem previsão vai pro fim da ordenação (não vira 1970).
+      if (f === 'previsao') return r.previsao ? parseDMY(r.previsao) : new Date(8640000000000000)
       if (f === 'valor') return r.valor
       if (f === 'valor_pago') return r.valor_pago
       if (f === 'valor_aberto') return r.valor_aberto
@@ -446,6 +448,7 @@ export default function PageCPCR() {
                           <SortHeader label="Unidade" field="unidade" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         )}
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        <SortHeader label="Previsão" field="previsao" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Pago" field="valor_pago" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Em Aberto" field="valor_aberto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
@@ -479,6 +482,16 @@ export default function PageCPCR() {
                               </td>
                             )}
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
+                            {/* Previsão de pagamento — informativa: o filtro de
+                                período usa o VENCIMENTO (api #182). Destacada
+                                quando difere do vencimento (renegociada). */}
+                            <td
+                              className="px-3 py-2.5 font-mono text-[10px]"
+                              style={{ color: r.previsao && r.previsao !== r.vcto ? t.amber : t.muted }}
+                              title={r.previsao && r.previsao !== r.vcto ? 'Previsão diferente do vencimento' : undefined}
+                            >
+                              {r.previsao || '—'}
+                            </td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_aberto > 0 ? t.red : t.mutedDim }}>{r.valor_aberto > 0 ? fmtBRL(r.valor_aberto) : '—'}</td>
@@ -488,7 +501,7 @@ export default function PageCPCR() {
                           {/* Expanded payment details — fetches baixas on-demand */}
                           {isExpanded && isExpandable && (
                             <tr style={{ borderBottom: `1px solid ${t.border}22` }}>
-                              <td colSpan={empresaUsaProjetos ? 12 : 11} style={{ padding: 0 }}>
+                              <td colSpan={empresaUsaProjetos ? 13 : 12} style={{ padding: 0 }}>
                                 <ExpandedPayments
                                   empresaId={empresaId}
                                   tipo={tab}

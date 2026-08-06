@@ -96,6 +96,9 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     valor_pago: l.valor_pago ?? 0,
     valor_aberto: l.valor_aberto ?? l.saldo,
     vcto: formatIsoToBr(l.data_vcto),
+    // Previsão de pagamento (2026-08-07): '' quando o título não tem —
+    // a API devolve o valor REAL, sem cair pro vencimento (api #182).
+    previsao: l.data_previsao ? formatIsoToBr(l.data_previsao) : '',
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
     banco: '',
