@@ -23,6 +23,7 @@ import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore, useProjetoIds } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
+import { buildCategoriaOpts } from '@/lib/cpcrFiltros'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -105,6 +106,11 @@ export default function PageCPCR() {
   // re-filtrava e re-renderizava a tabela inteira.
   const searchDeb = useDebouncedValue(search, 250)
   const [statusFilter, setStatusFilter] = useState<string>('TODOS')
+  // Filtro por categoria (2026-08-07) — client-side como busca e status:
+  // a tela já carrega o período inteiro, e assim KPIs/aging/rankings
+  // acompanham pelo mesmo caminho (`filtroAtivo`). Guarda o CÓDIGO da
+  // categoria; '' = todas.
+  const [catFilter, setCatFilter] = useState<string>('')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
   // Chaveado pelo codigo Omie do título (não pelo índice — com paginação
   // o índice se repete em toda página).
@@ -156,10 +162,15 @@ export default function PageCPCR() {
         if (!match) return false
       }
       if (statusFilter !== 'TODOS' && r.status !== statusFilter) return false
+      if (catFilter && r.cat !== catFilter) return false
       return true
     }),
-    [rawData, searchDeb, statusFilter],
+    [rawData, searchDeb, statusFilter, catFilter],
   )
+
+  // Opções do filtro: só as categorias PRESENTES na aba corrente, com o
+  // nome resolvido pelo plano de contas dinâmico e ordem alfabética.
+  const catOpts = useMemo(() => buildCategoriaOpts(rawData, getCatDesc), [rawData, getCatDesc])
 
   const dataSorted = useMemo(
     () => sortRows(data, sort, (r, f) => {
@@ -186,7 +197,7 @@ export default function PageCPCR() {
   // ativos, os KPIs saem do conjunto FILTRADO (mesmas fórmulas do
   // fallback antigo); sem filtro, valem os agregados oficiais da API
   // (resumo), que trazem prazo médio e contagem canônicos.
-  const filtroAtivo = searchDeb.trim() !== '' || statusFilter !== 'TODOS'
+  const filtroAtivo = searchDeb.trim() !== '' || statusFilter !== 'TODOS' || catFilter !== ''
   const kpisFiltrados = useMemo(() => {
     const soma = (rows: ContaPagarReceber[]) => rows.reduce((s, r) => s + r.valor, 0)
     const pagos = data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO')
@@ -314,7 +325,10 @@ export default function PageCPCR() {
           return (
             <button
               key={tb}
-              onClick={() => { setTab(tb); setSearch('') }}
+              // Limpa a categoria junto: os planos de conta de CP e CR não
+              // se sobrepõem — manter o código selecionado zeraria a outra
+              // aba sem explicação aparente.
+              onClick={() => { setTab(tb); setSearch(''); setCatFilter('') }}
               className="flex items-center gap-2 px-7 py-3 text-[11px] cursor-pointer transition-all"
               style={{
                 fontWeight: tab === tb ? 600 : 400,
@@ -406,6 +420,37 @@ export default function PageCPCR() {
                     {opt.label}
                   </button>
                 ))}
+                <select
+                  value={catFilter}
+                  onChange={(e) => setCatFilter(e.target.value)}
+                  aria-label="Filtrar por categoria"
+                  className="rounded-md px-2 py-1.5 text-[10px] cursor-pointer outline-none max-w-[190px]"
+                  style={{
+                    background: catFilter ? t.blueDim : 'transparent',
+                    color: catFilter ? t.blue : t.muted,
+                    border: `1px solid ${catFilter ? `${t.blue}44` : t.border}`,
+                    fontWeight: catFilter ? 600 : 400,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {/* Popup nativo do select é claro no Chrome/Windows e as
+                      <option> herdam a cor do select — sem estilo explícito
+                      o texto some no dark mode. */}
+                  <option value="" style={{ background: t.surface, color: t.text }}>Todas as categorias</option>
+                  {/* Categoria selecionada que sumiu do recorte (troca de
+                      período): mantém a opção para o select não ficar em
+                      branco — a tela mostra 0 itens, que é a verdade. */}
+                  {catFilter && !catOpts.some((c) => c.codigo === catFilter) && (
+                    <option value={catFilter} style={{ background: t.surface, color: t.text }}>
+                      {getCatDesc(catFilter) || catFilter} (sem lançamentos)
+                    </option>
+                  )}
+                  {catOpts.map((c) => (
+                    <option key={c.codigo} value={c.codigo} style={{ background: t.surface, color: t.text }}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
                 <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{loading ? '...' : `${data.length} itens`}</span>
               </div>
               {/* Summary row */}
