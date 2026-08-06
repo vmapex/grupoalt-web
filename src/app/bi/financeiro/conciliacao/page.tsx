@@ -11,7 +11,7 @@ import { nextBusinessDay, fmtDateBR, isBusinessDay } from '@/lib/sla'
 import type { ConcilEntry } from '@/lib/mocks/concilData'
 import { useConcilCalendario, useConcilResumo, useConcilMovimentacao, useConcilDia } from '@/hooks/api/useConciliacao'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useProjetoIds } from '@/store/unidadeStore'
 import { transformConcilMovimento } from '@/lib/transformers'
 
 // ---------- constants ----------
@@ -153,7 +153,7 @@ export default function PageConciliacao() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState>({ field: 'date', dir: 'desc' })
 
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
 
   // API calls
   const { data: concilAPI, loading: loadingConcil } = useConcilMovimentacao(empresaId, projetoIds)

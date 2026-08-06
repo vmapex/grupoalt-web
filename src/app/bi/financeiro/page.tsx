@@ -19,7 +19,7 @@ import { useFluxoCaixa } from '@/hooks/api/useFluxo'
 import { useDRE } from '@/hooks/useDRE'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useProjetoIds } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { DREErrorBanner } from '@/components/ui/DREErrorBanner'
@@ -61,7 +61,7 @@ function DashboardExecutivo() {
   const dt_fim = isoToDMY(dateTo)
 
   // Filtro de unidade global (códigos Omie dos projetos selecionados)
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
 
   // API calls with date range
   const { data: extratoResponse, refetch: refetchExtrato } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)

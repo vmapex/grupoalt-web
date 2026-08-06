@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
 import { useThemeStore } from '@/store/themeStore'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useProjetoIds } from '@/store/unidadeStore'
 import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useDRE } from '@/hooks/useDRE'
@@ -43,7 +43,7 @@ export default function DREMensalPage() {
   const dateTo = useDateRangeStore((s) => s.to)
   const dt_inicio = isoToDMY(dateFrom)
   const dt_fim = isoToDMY(dateTo)
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
   const { map: categoriaMap } = useCategoriasMap(empresaId)
 
   const { data: extratoRaw, loading } = useExtrato(empresaId, dt_inicio, dt_fim, projetoIds)

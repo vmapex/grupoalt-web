@@ -17,7 +17,7 @@ import { useFluxoCaixa } from '@/hooks/api/useFluxo'
 import { useCPAll, useCRAll } from '@/hooks/api/useCPCR'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useProjetoIds } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { parseDMY } from '@/lib/formatters'
 
@@ -35,7 +35,7 @@ export default function PageFluxo() {
   const [incluirProjecao, setIncluirProjecao] = useState(false)
 
   // API calls — extrato sem filtro de datas para saldo atual real
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
   // Saldo atual vem do extrato (sem filtro de data) e e usado como ponto
   // de partida da projecao no backend. Step 13 — Parte D.
   const { data: extratoAtual } = useExtrato(empresaId, undefined, undefined, projetoIds, incluirProjecao)

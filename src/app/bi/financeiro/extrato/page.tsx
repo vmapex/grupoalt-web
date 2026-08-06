@@ -13,7 +13,7 @@ import { TablePager } from '@/components/ui/TablePager'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useUnidadeStore, useProjetoIds } from '@/store/unidadeStore'
 import { transformExtrato, transformSaldos } from '@/lib/transformers'
 import type { ExtratoLancamento, ContaSaldo } from '@/lib/mocks/extratoData'
 
@@ -38,7 +38,7 @@ export default function PageExtrato() {
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
   const projetos = useUnidadeStore((s) => s.projetos)
   const empresaUsaProjetos = projetos.length > 0
   const projetoNomeByCodigo = useMemo(
