@@ -101,6 +101,7 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     banco: '',
     nf: l.numero_documento || '',
     pa: l.numero_parcela || '',
+    projeto_omie_id: l.projeto_omie_id || '',
     pagamentos: (l.pagamentos || []).map((p) => ({
       data: p.data ? formatIsoToBr(p.data) : null,
       valor: p.valor,

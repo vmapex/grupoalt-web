@@ -111,6 +111,15 @@ export default function PageCPCR() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  // Coluna Unidade (2026-08-06) — mesmo padrão do Extrato: mapeia
+  // projeto_omie_id → nome via unidadeStore; some quando a empresa não
+  // usa projetos.
+  const projetos = useUnidadeStore((s) => s.projetos)
+  const empresaUsaProjetos = projetos.length > 0
+  const projetoNomeByCodigo = useMemo(
+    () => new Map(projetos.map((p) => [p.codigo, p.nome])),
+    [projetos],
+  )
 
   // CP/CR: busca TODOS os lançamentos dentro do filtro de datas (Step 13 — Parte C).
   // useCPAll/useCRAll paginam ate esgotar pra evitar truncamento silencioso.
@@ -156,7 +165,7 @@ export default function PageCPCR() {
     () => sortRows(data, sort, (r, f) => {
       if (f === 'fav') return r.fav
       if (f === 'categoria') return getCatDesc(r.cat)
-      if (f === 'categoria') return getCatDesc(r.cat)
+      if (f === 'unidade') return projetoNomeByCodigo.get(r.projeto_omie_id || '') || ''
       if (f === 'vcto') return parseDMY(r.vcto)
       if (f === 'valor') return r.valor
       if (f === 'valor_pago') return r.valor_pago
@@ -164,7 +173,7 @@ export default function PageCPCR() {
       if (f === 'status') return r.status
       return 0
     }),
-    [data, sort],
+    [data, sort, projetoNomeByCodigo],
   )
 
   // Perf (2026-08-06): só a página corrente vai pro DOM — KPIs, aging,
@@ -433,6 +442,9 @@ export default function PageCPCR() {
                         <SortHeader label="NF" field="nf" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="PA" field="pa" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Categoria" field="categoria" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        {empresaUsaProjetos && (
+                          <SortHeader label="Unidade" field="unidade" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
+                        )}
                         <SortHeader label="Vencimento" field="vcto" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} />
                         <SortHeader label="Valor" field="valor" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
                         <SortHeader label="Pago" field="valor_pago" sort={sort} onSort={(f) => setSort((prev) => toggleSort(prev, f))} align="right" />
@@ -461,6 +473,11 @@ export default function PageCPCR() {
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.nf || '—'}</td>
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.pa || '—'}</td>
                             <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>{getCatDesc(r.cat)}</td>
+                            {empresaUsaProjetos && (
+                              <td className="px-3 py-2.5 text-[10px]" style={{ color: t.muted }}>
+                                {projetoNomeByCodigo.get(r.projeto_omie_id || '') || '—'}
+                              </td>
+                            )}
                             <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: r.status === 'ATRASADO' ? t.red : t.muted }}>{r.vcto}</td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
@@ -471,7 +488,7 @@ export default function PageCPCR() {
                           {/* Expanded payment details — fetches baixas on-demand */}
                           {isExpanded && isExpandable && (
                             <tr style={{ borderBottom: `1px solid ${t.border}22` }}>
-                              <td colSpan={11} style={{ padding: 0 }}>
+                              <td colSpan={empresaUsaProjetos ? 12 : 11} style={{ padding: 0 }}>
                                 <ExpandedPayments
                                   empresaId={empresaId}
                                   tipo={tab}
