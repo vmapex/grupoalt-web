@@ -19,6 +19,8 @@ export interface ContaPagarReceber {
   nf: string
   pa: string
   pagamentos: PagamentoDetalhe[]
+  /** Código do projeto Omie (unidade) — '' quando o título não tem projeto. */
+  projeto_omie_id?: string
 }
 
 export const mockCPFull: ContaPagarReceber[] = [

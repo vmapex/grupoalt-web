@@ -164,6 +164,13 @@ describe('transformCPCR', () => {
     expect(result[0].valor).toBe(0)
   })
 
+  it('carrega projeto_omie_id (coluna Unidade) e null vira string vazia', () => {
+    const com = transformCPCR([mockLanc({ projeto_omie_id: '77' })], 'CP')
+    expect(com[0].projeto_omie_id).toBe('77')
+    const sem = transformCPCR([mockLanc({ projeto_omie_id: null })], 'CP')
+    expect(sem[0].projeto_omie_id).toBe('')
+  })
+
   it('valor_pago null vira 0; valor_aberto null cai em saldo', () => {
     const result = transformCPCR(
       [mockLanc({ valor: 1000, valor_pago: null, valor_aberto: null, saldo: 800 })],
