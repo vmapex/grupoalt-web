@@ -171,11 +171,27 @@ export default function PageCPCR() {
   // rankings e gráficos continuam lendo o conjunto completo.
   const { paged, page, totalPages, total, setPage } = usePagedRows(dataSorted)
 
-  // Use API KPIs when available, otherwise compute from data
-  const totalAberto = resumo?.total_aberto ?? data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
-  const aVencer = resumo?.total_a_vencer ?? data.filter((r) => r.status === 'A VENCER' || r.status === 'A RECEBER').reduce((s, r) => s + r.valor, 0)
-  const atrasado = resumo?.total_atrasado ?? data.filter((r) => r.status === 'ATRASADO').reduce((s, r) => s + r.valor, 0)
-  const pago = resumo?.total_realizado ?? data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
+  // Cards acompanham o filtro (pedido 2026-08-06): com busca ou status
+  // ativos, os KPIs saem do conjunto FILTRADO (mesmas fórmulas do
+  // fallback antigo); sem filtro, valem os agregados oficiais da API
+  // (resumo), que trazem prazo médio e contagem canônicos.
+  const filtroAtivo = searchDeb.trim() !== '' || statusFilter !== 'TODOS'
+  const kpisFiltrados = useMemo(() => {
+    const soma = (rows: ContaPagarReceber[]) => rows.reduce((s, r) => s + r.valor, 0)
+    const pagos = data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO')
+    return {
+      totalAberto: soma(data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO')),
+      aVencer: soma(data.filter((r) => r.status === 'A VENCER' || r.status === 'A RECEBER')),
+      atrasado: soma(data.filter((r) => r.status === 'ATRASADO')),
+      pago: soma(pagos),
+      qtdRealizado: pagos.length,
+    }
+  }, [data])
+  const totalAberto = filtroAtivo ? kpisFiltrados.totalAberto : resumo?.total_aberto ?? kpisFiltrados.totalAberto
+  const aVencer = filtroAtivo ? kpisFiltrados.aVencer : resumo?.total_a_vencer ?? kpisFiltrados.aVencer
+  const atrasado = filtroAtivo ? kpisFiltrados.atrasado : resumo?.total_atrasado ?? kpisFiltrados.atrasado
+  const pago = filtroAtivo ? kpisFiltrados.pago : resumo?.total_realizado ?? kpisFiltrados.pago
+  const qtdRealizado = filtroAtivo ? kpisFiltrados.qtdRealizado : resumo?.quantidade_realizado ?? kpisFiltrados.qtdRealizado
   // Memoizado: sem isso, `aberto` era um array NOVO a cada render e
   // invalidava o memo do aging (recalculava sempre).
   const aberto = useMemo(
@@ -202,16 +218,16 @@ export default function PageCPCR() {
   }, [aberto])
   const agingMax = Math.max(...Object.values(aging), 1)
 
-  // Category breakdown
+  // Category breakdown — com filtro ativo, calcula do conjunto filtrado
+  // (o por_categoria da API é do período inteiro, sem filtro).
   const catSorted = useMemo(() => {
-    // Use API category data when available
-    if (resumo?.por_categoria?.length) {
+    if (!filtroAtivo && resumo?.por_categoria?.length) {
       return resumo.por_categoria.map((c) => [getCatDesc(c.categoria) || c.categoria, c.valor] as [string, number])
     }
     const catBreak: Record<string, number> = {}
     data.forEach((r) => { const desc = getCatDesc(r.cat); catBreak[desc] = (catBreak[desc] || 0) + r.valor })
     return Object.entries(catBreak).sort((a, b) => b[1] - a[1])
-  }, [data, resumo])
+  }, [data, resumo, filtroAtivo, getCatDesc])
   const catMax = catSorted[0]?.[1] || 1
   const catTotal = catSorted.reduce((s, [, v]) => s + v, 0) || 1
 
@@ -334,8 +350,10 @@ export default function PageCPCR() {
           { label: isCP ? 'Total a Pagar' : 'Total a Receber', value: fmtInt(totalAberto), color: accent, accent, sub: 'Em aberto' },
           { label: 'A Vencer', value: fmtInt(aVencer), color: t.text, accent: t.green, sub: 'Dentro do prazo' },
           { label: 'Atrasado', value: fmtInt(atrasado), color: atrasado > 0 ? t.red : t.text, accent: t.red, sub: atrasado > 0 ? 'Atenção necessária' : 'Nenhum em atraso' },
-          { label: 'Prazo Médio', value: `${pmDias} dias`, color: t.text, accent: t.amber, sub: isCP ? 'Pagamento' : 'Recebimento' },
-          { label: isCP ? 'Pago' : 'Recebido', value: fmtInt(pago), color: t.muted, accent: t.blue, sub: `${resumo?.quantidade_realizado ?? 0} títulos` },
+          // Prazo médio é métrica do PERÍODO (backend) — com filtro ativo o
+          // valor global fica, mas o sub avisa que não é do recorte filtrado.
+          { label: 'Prazo Médio', value: `${pmDias} dias`, color: t.text, accent: t.amber, sub: filtroAtivo ? 'Período completo' : isCP ? 'Pagamento' : 'Recebimento' },
+          { label: isCP ? 'Pago' : 'Recebido', value: fmtInt(pago), color: t.muted, accent: t.blue, sub: `${qtdRealizado} títulos` },
         ].map((k, i) => (
           <KPICard key={i} label={k.label} value={k.value} color={k.color} accent={k.accent} sub={k.sub} borderRight={i < 4} />
         ))}
