@@ -1,4 +1,5 @@
 'use client'
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import api from '@/lib/api'
 
@@ -101,3 +102,34 @@ export const useUnidadeStore = create<UnidadeState>((set, get) => ({
 
   reset: () => set({ projetos: [], selectedIds: [], loading: false }),
 }))
+
+
+/**
+ * Códigos Omie das unidades selecionadas, com REFERÊNCIA ESTÁVEL.
+ *
+ * Incidente 2026-08-06 (produção): as telas do BI liam
+ * `useUnidadeStore((s) => s.getSelectedCodigos())`. Esse seletor devolve
+ * `undefined` quando não há filtro (estável — por isso ninguém via o
+ * problema), mas um ARRAY NOVO a cada chamada quando há unidade
+ * selecionada. Zustand v5 usa `useSyncExternalStore`, que compara o
+ * snapshot entre render e commit: referência sempre nova = re-render
+ * infinito ("Maximum update depth exceeded") e a aba morre com
+ * "This page couldn't load" ao filtrar por unidade.
+ *
+ * Aqui o componente assina apenas ESTADO BRUTO (`projetos`,
+ * `selectedIds` — referências que só mudam num `set`) e a lista é
+ * derivada em `useMemo`. `getSelectedCodigos` continua no store para uso
+ * IMPERATIVO (`useUnidadeStore.getState().getSelectedCodigos()`), fora
+ * do ciclo de render — nunca como seletor de componente.
+ */
+export function useProjetoIds(): string[] | undefined {
+  const projetos = useUnidadeStore((s) => s.projetos)
+  const selectedIds = useUnidadeStore((s) => s.selectedIds)
+  return useMemo(() => {
+    if (selectedIds.length === 0) return undefined
+    return projetos
+      .filter((p) => selectedIds.includes(p.id))
+      .map((p) => p.codigo)
+      .filter(Boolean)
+  }, [projetos, selectedIds])
+}

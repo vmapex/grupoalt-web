@@ -21,7 +21,7 @@ import { TablePager } from '@/components/ui/TablePager'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
-import { useUnidadeStore } from '@/store/unidadeStore'
+import { useUnidadeStore, useProjetoIds } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 
 function isoToDMY(iso: string): string {
@@ -110,7 +110,7 @@ export default function PageCPCR() {
   // o índice se repete em toda página).
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
-  const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
+  const projetoIds = useProjetoIds()
   // Coluna Unidade (2026-08-06) — mesmo padrão do Extrato: mapeia
   // projeto_omie_id → nome via unidadeStore; some quando a empresa não
   // usa projetos.
