@@ -7,6 +7,9 @@ import { ConcilBadge } from '@/components/ui/ConcilBadge'
 import { fmtBRL, fmtInt, parseDMY, toggleSort, sortRows, type SortState } from '@/lib/formatters'
 import { useExtrato } from '@/hooks/api/useExtrato'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { usePagedRows, PAGE_SIZE_DEFAULT } from '@/hooks/usePagedRows'
+import { TablePager } from '@/components/ui/TablePager'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -29,6 +32,9 @@ export default function PageExtrato() {
   const dt_inicio = isoToDMY(dateFrom)
   const dt_fim = isoToDMY(dateTo)
   const [search, setSearch] = useState('')
+  // Debounce: sem isso cada tecla re-filtrava milhares de linhas e
+  // re-renderizava a tabela inteira.
+  const searchDeb = useDebouncedValue(search, 250)
   const [filtro, setFiltro] = useState<'all' | 'concil' | 'pend'>('all')
   const [sort, setSort] = useState<SortState>({ field: 'data', dir: 'desc' })
 
@@ -67,8 +73,8 @@ export default function PageExtrato() {
   const filtered = useMemo(
     () =>
       extrato.filter((r) => {
-        if (search) {
-          const q = search.toLowerCase()
+        if (searchDeb) {
+          const q = searchDeb.toLowerCase()
           const match =
             r.favorecido.toLowerCase().includes(q) ||
             r.descricao.toLowerCase().includes(q) ||
@@ -80,7 +86,7 @@ export default function PageExtrato() {
         if (filtro === 'pend' && r.conciliado) return false
         return true
       }),
-    [search, filtro, extrato],
+    [searchDeb, filtro, extrato],
   )
 
   const sorted = useMemo(
@@ -97,6 +103,10 @@ export default function PageExtrato() {
       }),
     [filtered, sort],
   )
+
+  // Perf (2026-08-06): só a página corrente vai pro DOM — KPIs
+  // (entradas/saídas/saldos/contagem) continuam lendo `filtered` inteiro.
+  const { paged, page, totalPages, total, setPage } = usePagedRows(sorted)
 
   const totEnt = useMemo(() => filtered.filter((r) => r.valor > 0).reduce((s, r) => s + r.valor, 0), [filtered])
   const totSai = useMemo(() => filtered.filter((r) => r.valor < 0).reduce((s, r) => s + Math.abs(r.valor), 0), [filtered])
@@ -223,7 +233,7 @@ export default function PageExtrato() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r, i) => {
+                {paged.map((r, i) => {
                   const isE = r.valor > 0
                   return (
                     <tr
@@ -270,6 +280,7 @@ export default function PageExtrato() {
             </table>
           )}
         </div>
+        <TablePager page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE_DEFAULT} setPage={setPage} />
       </div>
 
       {/* Right: Saldo por Conta */}

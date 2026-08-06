@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useEffect } from 'react'
+import { Fragment, useState, useMemo, useEffect } from 'react'
 import {
   ComposedChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
@@ -15,6 +15,9 @@ import type { ContaPagarReceber, PagamentoDetalhe } from '@/lib/mocks/cpcrData'
 import { useBaixas, useCPAll, useCRAll, useCPResumo, useCRResumo } from '@/hooks/api/useCPCR'
 import { fmtBRL, fmtInt, fmtK, parseDMY, toggleSort, sortRows, sortByMonthYear, type SortState } from '@/lib/formatters'
 import { useEmpresaId } from '@/hooks/useEmpresaId'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { usePagedRows, PAGE_SIZE_DEFAULT } from '@/hooks/usePagedRows'
+import { TablePager } from '@/components/ui/TablePager'
 import { SyncWatcher } from '@/components/sync/SyncWatcher'
 import { useCategoriasMap } from '@/hooks/useCategoriasMap'
 import { useDateRangeStore } from '@/store/dateRangeStore'
@@ -98,8 +101,13 @@ export default function PageCPCR() {
   }, [])
   const [view, setView] = useState<'lanc' | 'temp' | 'repr'>('lanc')
   const [search, setSearch] = useState('')
+  // Debounce: o filtro varre milhares de linhas — sem isso, cada tecla
+  // re-filtrava e re-renderizava a tabela inteira.
+  const searchDeb = useDebouncedValue(search, 250)
   const [statusFilter, setStatusFilter] = useState<string>('TODOS')
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
+  // Chaveado pelo codigo Omie do título (não pelo índice — com paginação
+  // o índice se repete em toda página).
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   const projetoIds = useUnidadeStore((s) => s.getSelectedCodigos())
@@ -130,8 +138,8 @@ export default function PageCPCR() {
 
   const data = useMemo(
     () => rawData.filter((r) => {
-      if (search) {
-        const q = search.toLowerCase()
+      if (searchDeb) {
+        const q = searchDeb.toLowerCase()
         const match =
           r.fav.toLowerCase().includes(q) ||
           getCatDesc(r.cat).toLowerCase().includes(q) ||
@@ -141,7 +149,7 @@ export default function PageCPCR() {
       if (statusFilter !== 'TODOS' && r.status !== statusFilter) return false
       return true
     }),
-    [rawData, search, statusFilter],
+    [rawData, searchDeb, statusFilter],
   )
 
   const dataSorted = useMemo(
@@ -159,17 +167,27 @@ export default function PageCPCR() {
     [data, sort],
   )
 
+  // Perf (2026-08-06): só a página corrente vai pro DOM — KPIs, aging,
+  // rankings e gráficos continuam lendo o conjunto completo.
+  const { paged, page, totalPages, total, setPage } = usePagedRows(dataSorted)
+
   // Use API KPIs when available, otherwise compute from data
   const totalAberto = resumo?.total_aberto ?? data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
   const aVencer = resumo?.total_a_vencer ?? data.filter((r) => r.status === 'A VENCER' || r.status === 'A RECEBER').reduce((s, r) => s + r.valor, 0)
   const atrasado = resumo?.total_atrasado ?? data.filter((r) => r.status === 'ATRASADO').reduce((s, r) => s + r.valor, 0)
   const pago = resumo?.total_realizado ?? data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO').reduce((s, r) => s + r.valor, 0)
-  const aberto = data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO')
+  // Memoizado: sem isso, `aberto` era um array NOVO a cada render e
+  // invalidava o memo do aging (recalculava sempre).
+  const aberto = useMemo(
+    () => data.filter((r) => r.status !== 'PAGO' && r.status !== 'RECEBIDO'),
+    [data],
+  )
   const pmDias = resumo?.prazo_medio ?? (isCP ? 24.7 : 19.3)
 
-  // Aging buckets
-  const today = new Date()
+  // Aging buckets — `today` dentro do memo (new Date() a cada render
+  // também quebrava a memoização).
   const aging = useMemo(() => {
+    const today = new Date()
     const ag: Record<string, number> = { '0-15': 0, '16-30': 0, '31-60': 0, '60+': 0 }
     aberto.forEach((r) => {
       const dt = parseDMY(r.vcto)
@@ -406,18 +424,17 @@ export default function PageCPCR() {
                       </tr>
                     </thead>
                     <tbody>
-                      {dataSorted.map((r, i) => {
+                      {paged.map((r) => {
                         const isPaid = ['PAGO', 'RECEBIDO', 'PARCIAL'].includes(r.status)
                         const isExpandable = isPaid && r.valor_pago > 0
-                        const isExpanded = expandedRow === i
+                        const isExpanded = expandedRow === r.codigo
                         const lastPgto = r.pagamentos?.length > 0 ? r.pagamentos[r.pagamentos.length - 1] : null
                         return (
-                          <>{/* Main row */}
+                          <Fragment key={r.codigo}>{/* Main row */}
                           <tr
-                            key={i}
                             className="transition-colors hover:bg-surface-hover"
                             style={{ borderBottom: isExpanded ? 'none' : `1px solid ${t.border}22`, cursor: isExpandable ? 'pointer' : 'default' }}
-                            onClick={() => isExpandable ? setExpandedRow(isExpanded ? null : i) : undefined}
+                            onClick={() => isExpandable ? setExpandedRow(isExpanded ? null : r.codigo) : undefined}
                           >
                             <td className="px-1 py-2.5 text-center" style={{ width: 24 }}>
                               {isExpandable && (isExpanded ? <ChevronDown size={11} style={{ color: t.blue }} /> : <ChevronRight size={11} style={{ color: t.muted }} />)}
@@ -435,7 +452,7 @@ export default function PageCPCR() {
                           </tr>
                           {/* Expanded payment details — fetches baixas on-demand */}
                           {isExpanded && isExpandable && (
-                            <tr key={`${i}-exp`} style={{ borderBottom: `1px solid ${t.border}22` }}>
+                            <tr style={{ borderBottom: `1px solid ${t.border}22` }}>
                               <td colSpan={11} style={{ padding: 0 }}>
                                 <ExpandedPayments
                                   empresaId={empresaId}
@@ -446,13 +463,14 @@ export default function PageCPCR() {
                               </td>
                             </tr>
                           )}
-                          </>
+                          </Fragment>
                         )
                       })}
                     </tbody>
                   </table>
                 )}
               </div>
+              <TablePager page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE_DEFAULT} setPage={setPage} />
             </>
           )}
 
