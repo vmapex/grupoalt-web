@@ -21,6 +21,9 @@ export interface ContaPagarReceber {
   pagamentos: PagamentoDetalhe[]
   /** Código do projeto Omie (unidade) — '' quando o título não tem projeto. */
   projeto_omie_id?: string
+  /** Previsão de pagamento (DD/MM/AAAA) — '' quando não há. O filtro de
+   *  período usa o VENCIMENTO; a previsão é informativa aqui. */
+  previsao?: string
 }
 
 export const mockCPFull: ContaPagarReceber[] = [

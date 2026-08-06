@@ -164,6 +164,15 @@ describe('transformCPCR', () => {
     expect(result[0].valor).toBe(0)
   })
 
+  it('previsao real: preenchida vira DD/MM, ausente vira string vazia', () => {
+    // api #182: o backend nao cai mais pro vencimento quando nao ha
+    // previsao — a coluna precisa distinguir "sem previsao" de "= vcto".
+    const com = transformCPCR([mockLanc({ data_previsao: '2026-03-20' })], 'CP')
+    expect(com[0].previsao).toBe('20/03/2026')
+    const sem = transformCPCR([mockLanc({ data_previsao: null })], 'CP')
+    expect(sem[0].previsao).toBe('')
+  })
+
   it('carrega projeto_omie_id (coluna Unidade) e null vira string vazia', () => {
     const com = transformCPCR([mockLanc({ projeto_omie_id: '77' })], 'CP')
     expect(com[0].projeto_omie_id).toBe('77')
