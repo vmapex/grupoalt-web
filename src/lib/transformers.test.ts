@@ -164,6 +164,18 @@ describe('transformCPCR', () => {
     expect(result[0].valor).toBe(0)
   })
 
+  it('dt_pgto vem do TÍTULO (não do array de pagamentos, vazio na listagem)', () => {
+    // Bug 2026-08-07: título PAGO exibia "—" em Dt. Pgto porque a coluna
+    // lia `pagamentos[]`, que a LIST devolve vazio (baixas on-demand).
+    const pago = transformCPCR(
+      [mockLanc({ data_pagamento: '2025-01-03', status: 'PAGO', pagamentos: [] })],
+      'CP',
+    )
+    expect(pago[0].dt_pgto).toBe('03/01/2025')
+    const aberto = transformCPCR([mockLanc({ data_pagamento: null })], 'CP')
+    expect(aberto[0].dt_pgto).toBe('')
+  })
+
   it('previsao real: preenchida vira DD/MM, ausente vira string vazia', () => {
     // api #182: o backend nao cai mais pro vencimento quando nao ha
     // previsao — a coluna precisa distinguir "sem previsao" de "= vcto".

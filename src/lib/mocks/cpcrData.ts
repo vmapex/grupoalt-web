@@ -24,6 +24,8 @@ export interface ContaPagarReceber {
   /** Previsão de pagamento (DD/MM/AAAA) — '' quando não há. O filtro de
    *  período usa o VENCIMENTO; a previsão é informativa aqui. */
   previsao?: string
+  /** Data de pagamento/recebimento do título (DD/MM/AAAA) — '' se em aberto. */
+  dt_pgto?: string
 }
 
 export const mockCPFull: ContaPagarReceber[] = [

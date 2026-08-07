@@ -216,6 +216,9 @@ export default function PageCPCR() {
       if (f === 'vcto') return parseDMY(r.vcto)
       // Sem previsão vai pro fim da ordenação (não vira 1970).
       if (f === 'previsao') return r.previsao ? parseDMY(r.previsao) : new Date(8640000000000000)
+      // Cabeçalho "Dt. Pgto" era clicável mas não ordenava nada (caía no
+      // `return 0`); em aberto vai pro fim, como a previsão.
+      if (f === 'dt_pgto') return r.dt_pgto ? parseDMY(r.dt_pgto) : new Date(8640000000000000)
       if (f === 'valor') return r.valor
       if (f === 'valor_pago') return r.valor_pago
       if (f === 'valor_aberto') return r.valor_aberto
@@ -554,7 +557,9 @@ export default function PageCPCR() {
                             <td className="px-3 py-2.5 text-right font-mono font-medium" style={{ color: accent }}>{fmtBRL(r.valor)}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_pago > 0 ? t.green : t.mutedDim }}>{r.valor_pago > 0 ? fmtBRL(r.valor_pago) : '—'}</td>
                             <td className="px-3 py-2.5 text-right font-mono text-[10px]" style={{ color: r.valor_aberto > 0 ? t.red : t.mutedDim }}>{r.valor_aberto > 0 ? fmtBRL(r.valor_aberto) : '—'}</td>
-                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{lastPgto?.data || '—'}</td>
+                            {/* dt_pgto do título; `lastPgto` fica como
+                                fallback (mocks/baixas já carregadas). */}
+                            <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: t.muted }}>{r.dt_pgto || lastPgto?.data || '—'}</td>
                             <td className="px-3 py-2.5 text-center"><Badge status={r.status} /></td>
                           </tr>
                           {/* Expanded payment details — fetches baixas on-demand */}

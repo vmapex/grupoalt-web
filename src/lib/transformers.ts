@@ -99,6 +99,11 @@ export function transformCPCR(items: LancamentoAPI[], tipo: 'CP' | 'CR'): ContaP
     // Previsão de pagamento (2026-08-07): '' quando o título não tem —
     // a API devolve o valor REAL, sem cair pro vencimento (api #182).
     previsao: l.data_previsao ? formatIsoToBr(l.data_previsao) : '',
+    // Data de pagamento do TÍTULO (2026-08-07). A coluna lia só o array
+    // `pagamentos`, que na LISTAGEM vem vazio de propósito (as baixas
+    // são carregadas on-demand ao expandir a linha) — resultado: título
+    // PAGO exibia "—" em Dt. Pgto.
+    dt_pgto: l.data_pagamento ? formatIsoToBr(l.data_pagamento) : '',
     status: l.status as ContaPagarReceber['status'],
     cat: l.categoria || '',
     banco: '',
