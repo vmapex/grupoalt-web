@@ -47,6 +47,16 @@ describe('buildCategoriaOpts', () => {
     expect(opts).toEqual([{ codigo: '2.01', nome: 'Postos' }])
   })
 
+  it('filtro facetado: base já filtrada por status só oferece o que existe', () => {
+    // Cenário do usuário (2026-08-07): status "Atrasado" ativo. As opções
+    // vêm das linhas que JÁ passaram por busca+status — categoria sem
+    // atrasado não pode aparecer na lista.
+    const atrasados = [linha('2.01')] // só Postos tem atrasado
+    expect(buildCategoriaOpts(atrasados, getNome)).toEqual([
+      { codigo: '2.01', nome: 'Postos' },
+    ])
+  })
+
   it('lista vazia devolve nenhuma opção', () => {
     expect(buildCategoriaOpts([], getNome)).toEqual([])
   })
