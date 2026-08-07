@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { MultiSelectDropdown } from './MultiSelectDropdown'
+import { MultiSelectDropdown, type MultiSelectOption } from './MultiSelectDropdown'
 
 /**
  * Filtro multi-seleção (2026-08-07) — nasceu do filtro de categoria do
@@ -23,7 +23,7 @@ vi.mock('@/store/themeStore', () => ({
     }),
 }))
 
-const OPTS = [
+const OPTS: MultiSelectOption[] = [
   { value: '2.01', label: 'Postos' },
   { value: '2.02', label: 'Agregados' },
   { value: '2.03', label: 'Aluguel' },
