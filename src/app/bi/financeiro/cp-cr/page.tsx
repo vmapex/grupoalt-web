@@ -24,6 +24,7 @@ import { useDateRangeStore } from '@/store/dateRangeStore'
 import { useUnidadeStore, useProjetoIds } from '@/store/unidadeStore'
 import { transformCPCR } from '@/lib/transformers'
 import { buildCategoriaOpts } from '@/lib/cpcrFiltros'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
 
 function isoToDMY(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -110,7 +111,17 @@ export default function PageCPCR() {
   // a tela já carrega o período inteiro, e assim KPIs/aging/rankings
   // acompanham pelo mesmo caminho (`filtroAtivo`). Guarda o CÓDIGO da
   // categoria; '' = todas.
-  const [catFilter, setCatFilter] = useState<string>('')
+  // Multi-seleção (2026-08-07): Set vazio = todas. Mesmo padrão do
+  // bankFilter da Conciliação.
+  const [catFilters, setCatFilters] = useState<Set<string>>(new Set())
+  const toggleCat = (codigo: string) =>
+    setCatFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(codigo)) next.delete(codigo)
+      else next.add(codigo)
+      return next
+    })
+  const limparCats = () => setCatFilters(new Set())
   const [sort, setSort] = useState<SortState>({ field: 'vcto', dir: 'asc' })
   // Chaveado pelo codigo Omie do título (não pelo índice — com paginação
   // o índice se repete em toda página).
@@ -172,8 +183,10 @@ export default function PageCPCR() {
   )
 
   const data = useMemo(
-    () => (catFilter ? dataSemCategoria.filter((r) => r.cat === catFilter) : dataSemCategoria),
-    [dataSemCategoria, catFilter],
+    () => (catFilters.size > 0
+      ? dataSemCategoria.filter((r) => catFilters.has(r.cat))
+      : dataSemCategoria),
+    [dataSemCategoria, catFilters],
   )
 
   // Só as categorias com lançamento no recorte corrente, nome resolvido
@@ -182,6 +195,18 @@ export default function PageCPCR() {
     () => buildCategoriaOpts(dataSemCategoria, getCatDesc),
     [dataSemCategoria, getCatDesc],
   )
+
+  // Opções do dropdown = as do recorte + as JÁ SELECIONADAS que saíram
+  // dele (marcadas "sem lançamentos"): sem isso, trocar o período
+  // esconderia uma categoria marcada e o usuário não teria como
+  // desmarcá-la — ficaria com um filtro invisível preso.
+  const catSelectOpts = useMemo(() => {
+    const base = catOpts.map((c) => ({ value: c.codigo, label: c.nome }))
+    const ausentes = [...catFilters]
+      .filter((cod) => !catOpts.some((c) => c.codigo === cod))
+      .map((cod) => ({ value: cod, label: getCatDesc(cod) || cod, ausente: true }))
+    return [...base, ...ausentes]
+  }, [catOpts, catFilters, getCatDesc])
 
   const dataSorted = useMemo(
     () => sortRows(data, sort, (r, f) => {
@@ -208,7 +233,7 @@ export default function PageCPCR() {
   // ativos, os KPIs saem do conjunto FILTRADO (mesmas fórmulas do
   // fallback antigo); sem filtro, valem os agregados oficiais da API
   // (resumo), que trazem prazo médio e contagem canônicos.
-  const filtroAtivo = searchDeb.trim() !== '' || statusFilter !== 'TODOS' || catFilter !== ''
+  const filtroAtivo = searchDeb.trim() !== '' || statusFilter !== 'TODOS' || catFilters.size > 0
   const kpisFiltrados = useMemo(() => {
     const soma = (rows: ContaPagarReceber[]) => rows.reduce((s, r) => s + r.valor, 0)
     const pagos = data.filter((r) => r.status === 'PAGO' || r.status === 'RECEBIDO')
@@ -339,7 +364,7 @@ export default function PageCPCR() {
               // Limpa a categoria junto: os planos de conta de CP e CR não
               // se sobrepõem — manter o código selecionado zeraria a outra
               // aba sem explicação aparente.
-              onClick={() => { setTab(tb); setSearch(''); setCatFilter('') }}
+              onClick={() => { setTab(tb); setSearch(''); limparCats() }}
               className="flex items-center gap-2 px-7 py-3 text-[11px] cursor-pointer transition-all"
               style={{
                 fontWeight: tab === tb ? 600 : 400,
@@ -431,37 +456,15 @@ export default function PageCPCR() {
                     {opt.label}
                   </button>
                 ))}
-                <select
-                  value={catFilter}
-                  onChange={(e) => setCatFilter(e.target.value)}
-                  aria-label="Filtrar por categoria"
-                  className="rounded-md px-2 py-1.5 text-[10px] cursor-pointer outline-none max-w-[190px]"
-                  style={{
-                    background: catFilter ? t.blueDim : 'transparent',
-                    color: catFilter ? t.blue : t.muted,
-                    border: `1px solid ${catFilter ? `${t.blue}44` : t.border}`,
-                    fontWeight: catFilter ? 600 : 400,
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {/* Popup nativo do select é claro no Chrome/Windows e as
-                      <option> herdam a cor do select — sem estilo explícito
-                      o texto some no dark mode. */}
-                  <option value="" style={{ background: t.surface, color: t.text }}>Todas as categorias</option>
-                  {/* Categoria selecionada que sumiu do recorte (troca de
-                      período): mantém a opção para o select não ficar em
-                      branco — a tela mostra 0 itens, que é a verdade. */}
-                  {catFilter && !catOpts.some((c) => c.codigo === catFilter) && (
-                    <option value={catFilter} style={{ background: t.surface, color: t.text }}>
-                      {getCatDesc(catFilter) || catFilter} (sem lançamentos)
-                    </option>
-                  )}
-                  {catOpts.map((c) => (
-                    <option key={c.codigo} value={c.codigo} style={{ background: t.surface, color: t.text }}>
-                      {c.nome}
-                    </option>
-                  ))}
-                </select>
+                <MultiSelectDropdown
+                  options={catSelectOpts}
+                  selected={catFilters}
+                  onToggle={toggleCat}
+                  onClear={limparCats}
+                  allLabel="Todas as categorias"
+                  countLabel="categorias"
+                  ariaLabel="Filtrar por categoria"
+                />
                 <span className="text-[10px] font-mono whitespace-nowrap" style={{ color: t.muted }}>{loading ? '...' : `${data.length} itens`}</span>
               </div>
               {/* Summary row */}
