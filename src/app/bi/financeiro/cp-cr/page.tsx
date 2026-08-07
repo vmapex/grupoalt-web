@@ -151,7 +151,11 @@ export default function PageCPCR() {
   const accent = isCP ? t.red : t.green
   const accentDim = isCP ? t.redDim : t.greenDim
 
-  const data = useMemo(
+  // Linhas que passam por TODOS os filtros MENOS o de categoria. É a base
+  // das opções do seletor: filtro facetado — as categorias oferecidas
+  // respeitam busca e status (ex.: em "Atrasado" só listam categorias que
+  // TÊM atrasado), mas o filtro não pode se auto-restringir a uma opção só.
+  const dataSemCategoria = useMemo(
     () => rawData.filter((r) => {
       if (searchDeb) {
         const q = searchDeb.toLowerCase()
@@ -162,15 +166,22 @@ export default function PageCPCR() {
         if (!match) return false
       }
       if (statusFilter !== 'TODOS' && r.status !== statusFilter) return false
-      if (catFilter && r.cat !== catFilter) return false
       return true
     }),
-    [rawData, searchDeb, statusFilter, catFilter],
+    [rawData, searchDeb, statusFilter, getCatDesc],
   )
 
-  // Opções do filtro: só as categorias PRESENTES na aba corrente, com o
-  // nome resolvido pelo plano de contas dinâmico e ordem alfabética.
-  const catOpts = useMemo(() => buildCategoriaOpts(rawData, getCatDesc), [rawData, getCatDesc])
+  const data = useMemo(
+    () => (catFilter ? dataSemCategoria.filter((r) => r.cat === catFilter) : dataSemCategoria),
+    [dataSemCategoria, catFilter],
+  )
+
+  // Só as categorias com lançamento no recorte corrente, nome resolvido
+  // pelo plano dinâmico e ordem alfabética pt-BR.
+  const catOpts = useMemo(
+    () => buildCategoriaOpts(dataSemCategoria, getCatDesc),
+    [dataSemCategoria, getCatDesc],
+  )
 
   const dataSorted = useMemo(
     () => sortRows(data, sort, (r, f) => {
